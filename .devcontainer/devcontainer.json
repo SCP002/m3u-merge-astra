@@ -12,6 +12,18 @@
         "go.gopath": "/go",
         "go.useLanguageServer": true,
         "go.lintTool": "golangci-lint",
+        "go.formatTool": "custom",
+        "go.alternateTools": {
+          "customFormatter": "golines"
+        },
+        "go.formatFlags": [
+          "-m",
+          "120"
+        ],
+        "[go]": {
+          "editor.defaultFormatter": "golang.go",
+          "editor.formatOnSave": true
+        },
         "go.testFlags": [
           "-v"
         ],
