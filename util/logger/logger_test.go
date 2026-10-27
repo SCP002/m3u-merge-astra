@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"testing"
+	"time"
 
 	pLog "github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
@@ -264,13 +265,13 @@ func TestAddFileWriter(t *testing.T) {
 	}
 
 	var entry logEntry
-	timeRx := regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}(Z|[+-][0-9]{2}:[0-9]{2})$`)
 
 	line, err := reader.ReadBytes('\n')
 	assert.NoError(t, err, "should not return error")
 	err = json.Unmarshal(line, &entry)
 	assert.NoError(t, err, "should not return error")
-	assert.Regexp(t, timeRx, entry.Time, "time in entry must match regexp format")
+	_, err = time.Parse(time.RFC3339Nano, entry.Time)
+	assert.NoError(t, err, "time in entry must be in RFC3339 format with millis")
 	assert.Exactly(t, "info", entry.Level, "log severity must be that level")
 	assert.Exactly(t, "value 1", entry.Field1, "field should have this value")
 	assert.Exactly(t, 2, entry.Field2, "field should have this value")
@@ -280,7 +281,8 @@ func TestAddFileWriter(t *testing.T) {
 	assert.NoError(t, err, "should not return error")
 	err = json.Unmarshal(line, &entry)
 	assert.NoError(t, err, "should not return error")
-	assert.Regexp(t, timeRx, entry.Time, "time in entry must match regexp format")
+	_, err = time.Parse(time.RFC3339Nano, entry.Time)
+	assert.NoError(t, err, "time in entry must be in RFC3339 format with millis")
 	assert.Exactly(t, "warn", entry.Level, "log severity must be that level")
 	assert.Exactly(t, "value 3", entry.Field1, "field should have this value")
 	assert.Exactly(t, 4, entry.Field2, "field should have this value")
