@@ -14,9 +14,9 @@ func Prepend[T any](inp []T, elm T) []T {
 
 // AppendNew returns `inp` with every element of `elms` added to the end of `inp` if it's not in `inp` and runs
 // `callback`.
-func AppendNew[T comparable](inp []T, callback func(T), elms ...T) []T {
+func AppendNew[T any](inp []T, callback func(T), elms ...T) []T {
 	for _, elm := range elms {
-		if !lo.Contains(inp, elm) {
+		if !lo.ContainsBy(inp, func(cElm T) bool { return cmp.Equal(cElm, elm) }) {
 			inp = append(inp, elm)
 			if callback != nil {
 				callback(elm)

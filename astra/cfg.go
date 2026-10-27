@@ -1,6 +1,7 @@
 package astra
 
 import (
+	"encoding/json/jsontext"
 	"m3u-merge-astra/util/copier"
 	"m3u-merge-astra/util/slice"
 	"m3u-merge-astra/util/slice/find"
@@ -18,15 +19,17 @@ type Cfg struct {
 
 // Category represents category for groups of astra streams.
 type Category struct {
-	Name   string  `json:"name"`
-	Groups []Group `json:"groups"`
-	Remove bool    `json:"remove,omitzero"` // Used by API to remove category.
+	Name    string         `json:"name"`
+	Groups  []Group        `json:"groups"`
+	Remove  bool           `json:"remove,omitzero"` // Used by API to remove category.
+	Unknown jsontext.Value `json:",embed"`          // All unknown fields go here.
 }
 
 // Group represents group of astra streams.
 type Group struct {
-	Name   string `json:"name"`
-	Remove bool   `json:"remove,omitzero"` // Used by API to remove group.
+	Name    string         `json:"name"`
+	Remove  bool           `json:"remove,omitzero"` // Used by API to remove group.
+	Unknown jsontext.Value `json:",embed"`          // All unknown fields go here.
 }
 
 // UpdateCategories returns deep copy of categories `cats` with new and changed categories and groups from `streams`.
@@ -38,9 +41,7 @@ func (r repo) UpdateCategories(cats []Category, streams []Stream) []Category {
 	// Transform []Stream into []Category.
 	sCats := lo.FlatMap(streams, func(s Stream, _ int) []Category {
 		return lo.MapToSlice(s.Groups, func(catName string, groupName string) Category {
-			return Category{Name: catName, Groups: lo.WithoutEmpty([]Group{
-				{Name: groupName},
-			})}
+			return Category{Name: catName, Groups: lo.Ternary(groupName != "", []Group{{Name: groupName}}, []Group{})}
 		})
 	})
 
