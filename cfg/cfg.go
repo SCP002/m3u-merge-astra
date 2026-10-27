@@ -1,64 +1,59 @@
 package cfg
 
 import (
-	_ "embed"
 	"fmt"
 	"io/fs"
 	"os"
-	"reflect"
 	"regexp"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/cockroachdb/errors"
-	"github.com/knadh/koanf"
-	"github.com/knadh/koanf/parsers/yaml"
-	"github.com/knadh/koanf/providers/file"
-	"github.com/mitchellh/mapstructure"
+	"github.com/goccy/go-yaml"
 	"github.com/samber/lo"
 
 	"m3u-merge-astra/util/logger"
-	"m3u-merge-astra/util/parse"
 	"m3u-merge-astra/util/simplify"
-	yamlUtil "m3u-merge-astra/util/yaml"
 )
 
-//go:embed default.yaml
-var defCfgBytes []byte
+func init() {
+	// Treat regexp.Regexp as its pattern string on encoding.
+	yaml.RegisterCustomMarshaler(func(rx regexp.Regexp) ([]byte, error) {
+		return []byte(rx.String()), nil
+	})
+}
 
 // Root represents root settings of the program.
 type Root struct {
-	General General `koanf:"general"`
-	M3U     M3U     `koanf:"m3u"`
-	Streams Streams `koanf:"streams"`
+	General General `yaml:"general"`
+	M3U     M3U     `yaml:"m3u"`
+	Streams Streams `yaml:"streams"`
 }
 
 // General represents general settings of the program.
 type General struct {
 	// FullTranslit specifies if name transliteration should be used to detect which M3U channel corresponds a stream.
-	FullTranslit bool `koanf:"full_translit"`
+	FullTranslit bool `yaml:"full_translit"`
 
 	// FullTranslitMap represents source to destination character mapping.
 	//
 	// All symbols are lowercase as comparsion function will convert every character in a name to lowercase.
 	//
 	// Key: From. Value: To.
-	FullTranslitMap map[string]string `koanf:"full_translit_map"`
+	FullTranslitMap map[string]string `yaml:"full_translit_map"`
 
 	// SimilarTranslit specifies if name transliteration between visually similar characters should be used to detect
 	// which M3U channel corresponds a stream.
-	SimilarTranslit bool `koanf:"similar_translit"`
+	SimilarTranslit bool `yaml:"similar_translit"`
 
 	// SimilarTranslitMap represents source to destination character mapping.
 	//
 	// All symbols are lowercase as comparsion function will convert every character in a name to lowercase.
 	//
 	// Key: From. Value: To.
-	SimilarTranslitMap map[string]string `koanf:"similar_translit_map"`
+	SimilarTranslitMap map[string]string `yaml:"similar_translit_map"`
 
 	// NameAliases specifies if name aliases should be used to detect which M3U channel corresponds a stream.
-	NameAliases bool `koanf:"name_aliases"`
+	NameAliases bool `yaml:"name_aliases"`
 
 	// NameAliasList represents the list of lists.
 	//
@@ -66,18 +61,18 @@ type General struct {
 	//
 	// During comparsion, names will be simplified (lowercase, no special characters except the '+' sign), but not
 	// transliterated.
-	NameAliasList [][]string `koanf:"name_alias_list"`
+	NameAliasList [][]string `yaml:"name_alias_list"`
 
 	// NameAliasList represents simplified version of NameAliasList.
 	//
 	// This field will not be included into config and used to improve performance of util/compare.IsNameSame().
-	SimpleNameAliasList [][]string
+	SimpleNameAliasList [][]string `yaml:"-"`
 
 	// AstraAPIRespTimeout represents astra API response timeout.
-	AstraAPIRespTimeout time.Duration `koanf:"astra_api_resp_timeout"`
+	AstraAPIRespTimeout time.Duration `yaml:"astra_api_resp_timeout"`
 
 	// MergeCategories specifies if duplicated categories should be removed with unique groups combined per category.
-	MergeCategories bool `koanf:"merge_categories"`
+	MergeCategories bool `yaml:"merge_categories"`
 }
 
 // SimplifyAliases returns simplified alias list in `c`.
@@ -95,109 +90,109 @@ func (c General) SimplifyAliases() (out [][]string) {
 // M3U represents M3U related settings of the program.
 type M3U struct {
 	// RespTimeout represents M3U playlist URL response timeout.
-	RespTimeout time.Duration `koanf:"resp_timeout"`
+	RespTimeout time.Duration `yaml:"resp_timeout"`
 
 	// ChannNameBlacklist represens the list of regular expressions.
 	//
 	// If any expression match name of a channel, this channel will be removed from M3U input before merging.
-	ChannNameBlacklist []regexp.Regexp `koanf:"chann_name_blacklist"`
+	ChannNameBlacklist []regexp.Regexp `yaml:"chann_name_blacklist"`
 
 	// ChannGroupBlacklist represens the list of regular expressions.
 	//
 	// If any expression match group of a channel, this channel will be removed from M3U input before merging.
 	//
 	// It runs after replacing groups by ChannGroupMap so enter the appropriate values.
-	ChannGroupBlacklist []regexp.Regexp `koanf:"chann_group_blacklist"`
+	ChannGroupBlacklist []regexp.Regexp `yaml:"chann_group_blacklist"`
 
 	// ChannURLBlacklist represens the list of regular expressions.
 	//
 	// If any expression match URL of a channel, this channel will be removed from M3U input before merging.
-	ChannURLBlacklist []regexp.Regexp `koanf:"chann_url_blacklist"`
+	ChannURLBlacklist []regexp.Regexp `yaml:"chann_url_blacklist"`
 
 	// ChannGroupMap represents invalid to valid M3U channel group mapping.
 	//
 	// Key: From. Value: To.
-	ChannGroupMap map[string]string `koanf:"chann_group_map"`
+	ChannGroupMap map[string]string `yaml:"chann_group_map"`
 }
 
 // Streams represents astra streams related settings of the program.
 type Streams struct {
 	// AddedPrefix represents new stream name prefix.
-	AddedPrefix string `koanf:"added_prefix"`
+	AddedPrefix string `yaml:"added_prefix"`
 
 	// AddNew specifies if new astra streams should be added if streams does not contain M3U channel name.
-	AddNew bool `koanf:"add_new"`
+	AddNew bool `yaml:"add_new"`
 
 	// AddGroupsToNew specifies if groups should be added to new astra streams.
-	AddGroupsToNew bool `koanf:"add_groups_to_new"`
+	AddGroupsToNew bool `yaml:"add_groups_to_new"`
 
 	// GroupsCategoryForNew represents category name to use for groups of new astra streams.
-	GroupsCategoryForNew string `koanf:"groups_category_for_new"`
+	GroupsCategoryForNew string `yaml:"groups_category_for_new"`
 
 	// AddNewWithKnownInputs specifies if new astra streams should be added if streams contain M3U channel URL.
-	AddNewWithKnownInputs bool `koanf:"add_new_with_known_inputs"`
+	AddNewWithKnownInputs bool `yaml:"add_new_with_known_inputs"`
 
 	// MakeNewEnabled specifies if new streams should be enabled.
-	MakeNewEnabled bool `koanf:"make_new_enabled"`
+	MakeNewEnabled bool `yaml:"make_new_enabled"`
 
 	// NewType represents new stream type, can be one of two types:
 	//
 	// SPTS - Single-Program Transport Stream. Streaming channels to the end users over IP network.
 	//
 	// MPTS - Multi-Program Transport Stream. Preparing multiplexes to DVB modulators.
-	NewType StreamType `koanf:"new_type"`
+	NewType StreamType `yaml:"new_type"`
 
 	// NewKeepActive represents delay before stop stream if no active connections for new streams.
-	NewKeepActive int `koanf:"new_keep_active"`
+	NewKeepActive int `yaml:"new_keep_active"`
 
 	// DisabledPrefix represents disabled stream name prefix.
-	DisabledPrefix string `koanf:"disabled_prefix"`
+	DisabledPrefix string `yaml:"disabled_prefix"`
 
 	// RemoveWithoutInputs specifies if streams without inputs should be removed.
 	//
 	// It has priority over DisableWithoutInputs.
-	RemoveWithoutInputs bool `koanf:"remove_without_inputs"`
+	RemoveWithoutInputs bool `yaml:"remove_without_inputs"`
 
 	// DisableWithoutInputs specifies if streams without inputs should be disabled.
-	DisableWithoutInputs bool `koanf:"disable_without_inputs"`
+	DisableWithoutInputs bool `yaml:"disable_without_inputs"`
 
 	// EnableOnInputUpdate specifies if streams should be enabled if they got new inputs or inputs were updated
 	// (but not removed).
-	EnableOnInputUpdate bool `koanf:"enable_on_input_update"`
+	EnableOnInputUpdate bool `yaml:"enable_on_input_update"`
 
 	// Rename specifies if astra streams should be renamed as M3U channels if their standartized names are equal.
-	Rename bool `koanf:"rename"`
+	Rename bool `yaml:"rename"`
 
 	// AddNewInputs specifies if new inputs of astra streams should be added if such found in M3U channels.
-	AddNewInputs bool `koanf:"add_new_inputs"`
+	AddNewInputs bool `yaml:"add_new_inputs"`
 
 	// UniteInputs specifies if inputs of streams with the same names should be moved to the first stream found.
-	UniteInputs bool `koanf:"unite_inputs"`
+	UniteInputs bool `yaml:"unite_inputs"`
 
 	// HashCheckOnAddNewInputs specifies if new inputs of astra streams should be added even if M3U channel and
 	// stream input only differ by hash (everything after #).
-	HashCheckOnAddNewInputs bool `koanf:"hash_check_on_add_new_inputs"`
+	HashCheckOnAddNewInputs bool `yaml:"hash_check_on_add_new_inputs"`
 
 	// SortInputs specifies if inputs of astra streams should be sorted.
-	SortInputs bool `koanf:"sort_inputs"`
+	SortInputs bool `yaml:"sort_inputs"`
 
 	// InputWeightToTypeMap represents Mapping of how high stream input should appear in the list after sorting.
 	//
 	// Any unspecified input will have weight of maximum - 1 (right before the last entry).
-	InputWeightToTypeMap map[int]regexp.Regexp `koanf:"input_weight_to_type_map"`
+	InputWeightToTypeMap map[int]regexp.Regexp `yaml:"input_weight_to_type_map"`
 
 	// UnknownInputWeight represents Default weight of unknown inputs.
-	UnknownInputWeight int `koanf:"unknown_input_weight"`
+	UnknownInputWeight int `yaml:"unknown_input_weight"`
 
 	// InputBlacklist represens the list of regular expressions.
 	//
 	// If any expression match URL of a stream's input, this input will be removed from astra streams before adding new
 	// ones.
-	InputBlacklist []regexp.Regexp `koanf:"input_blacklist"`
+	InputBlacklist []regexp.Regexp `yaml:"input_blacklist"`
 
 	// RemoveDuplicatedInputs specifies if inputs of astra streams which already present in config should be
 	// removed.
-	RemoveDuplicatedInputs bool `koanf:"remove_duplicated_inputs"`
+	RemoveDuplicatedInputs bool `yaml:"remove_duplicated_inputs"`
 
 	// RemoveDuplicatedInputsByRxList represens the list of regular expressions.
 	//
@@ -205,17 +200,17 @@ type Streams struct {
 	// stream, any other inputs of that stream which first capture group is the same will be removed from stream.
 	//
 	// This setting is not controlled by 'remove_duplicated_inputs'.
-	RemoveDuplicatedInputsByRxList []regexp.Regexp `koanf:"remove_duplicated_inputs_by_rx_list"`
+	RemoveDuplicatedInputsByRxList []regexp.Regexp `yaml:"remove_duplicated_inputs_by_rx_list"`
 
 	// RemoveDisabledInputs specifies if disabled inputs should be removed.
-	RemoveDisabledInputs bool `koanf:"remove_disabled_inputs"`
+	RemoveDisabledInputs bool `yaml:"remove_disabled_inputs"`
 
 	// DisableAllButOneInputByRxList represens the list of regular expressions.
 	//
 	// If any expression match URL of a stream's input, only this input will be kept and all other will be disabled.
 	//
 	// If list has multiple entries, only input matching first found expression will be kept.
-	DisableAllButOneInputByRxList []regexp.Regexp `koanf:"disable_all_but_one_input_by_rx_list"`
+	DisableAllButOneInputByRxList []regexp.Regexp `yaml:"disable_all_but_one_input_by_rx_list"`
 
 	// RemoveDeadInputs specifies if inputs of astra streams which do not respond or give invalid response should be
 	// removed.
@@ -223,77 +218,77 @@ type Streams struct {
 	// Supports HTTP(S), enable 'use_analyzer' option for more.
 	//
 	// It has priority over DisableDeadInputs.
-	RemoveDeadInputs bool `koanf:"remove_dead_inputs"`
+	RemoveDeadInputs bool `yaml:"remove_dead_inputs"`
 
 	// DisableDeadInputs specifies if inputs of astra streams which do not respond or give invalid response should be
 	// disabled.
 	//
 	// Supports HTTP(S), enable 'use_analyzer' option for more.
-	DisableDeadInputs bool `koanf:"disable_dead_inputs"`
+	DisableDeadInputs bool `yaml:"disable_dead_inputs"`
 
 	// DeadInputsCheckBlacklist represens the list of regular expressions.
 	//
 	// If any expression match URL of a stream's input, this input will not be checked for availability.
-	DeadInputsCheckBlacklist []regexp.Regexp `koanf:"dead_inputs_check_blacklist"`
+	DeadInputsCheckBlacklist []regexp.Regexp `yaml:"dead_inputs_check_blacklist"`
 
 	// InputMaxConns represents maximum amount of simultaneous connections to validate inputs of astra streams.
 	//
 	// Use more than 1 with caution. It may result in false positives if server consider frequent requests as spam.
-	InputMaxConns int `koanf:"input_max_conns"`
+	InputMaxConns int `yaml:"input_max_conns"`
 
 	// InputRespTimeout represents astra stream input response timeout.
-	InputRespTimeout time.Duration `koanf:"input_resp_timeout"`
+	InputRespTimeout time.Duration `yaml:"input_resp_timeout"`
 
 	// UseAnalyzer specifies if astra analyzer (astra --analyze -p `port`) should be used to check for dead inputs.
 	//
 	// Supports HTTP(S), UDP, RTP, RTSP.
-	UseAnalyzer bool `koanf:"use_analyzer"`
+	UseAnalyzer bool `yaml:"use_analyzer"`
 
 	// AnalyzerAddr represents astra analyzer address in format of 'host:port'.
-	AnalyzerAddr string `koanf:"analyzer_addr"`
+	AnalyzerAddr string `yaml:"analyzer_addr"`
 
 	// AnalyzerWatchTime represents amount of time per attempt that astra analyzer should spend collecting results.
-	AnalyzerWatchTime time.Duration `koanf:"analyzer_watch_time"`
+	AnalyzerWatchTime time.Duration `yaml:"analyzer_watch_time"`
 
 	// AnalyzerMaxAttempts represents maximum amount of attempts that astra analyzer should perform trying to get
 	// response from stream input.
-	AnalyzerMaxAttempts int `koanf:"analyzer_max_attempts"`
+	AnalyzerMaxAttempts int `yaml:"analyzer_max_attempts"`
 
 	// AnalyzerWatchTime represents average bitrate threshold in kbit/s for stream inputs.
 	//
 	// If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.
-	AnalyzerBitrateThreshold int `koanf:"analyzer_bitrate_threshold"`
+	AnalyzerBitrateThreshold int `yaml:"analyzer_bitrate_threshold"`
 
 	// AnalyzerVideoOnlyBitrateThreshold represents average bitrate threshold in kbit/s for stream inputs without audio.
 	//
 	// If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.
-	AnalyzerVideoOnlyBitrateThreshold int `koanf:"analyzer_video_only_bitrate_threshold"`
+	AnalyzerVideoOnlyBitrateThreshold int `yaml:"analyzer_video_only_bitrate_threshold"`
 
 	// AnalyzerAudioOnlyBitrateThreshold represents average bitrate threshold in kbit/s for stream inputs without video.
 	//
 	// If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.
-	AnalyzerAudioOnlyBitrateThreshold int `koanf:"analyzer_audio_only_bitrate_threshold"`
+	AnalyzerAudioOnlyBitrateThreshold int `yaml:"analyzer_audio_only_bitrate_threshold"`
 
 	// AnalyzerCCErrorsThreshold represents average amount of CC errors for stream inputs.
 	//
 	// If astra analyzer will return amount of CC errors higher than specified threshold, input will be cosidered dead.
 	//
 	// Set to negative value to disable this check.
-	AnalyzerCCErrorsThreshold int `koanf:"analyzer_cc_errors_threshold"`
+	AnalyzerCCErrorsThreshold int `yaml:"analyzer_cc_errors_threshold"`
 
 	// AnalyzerPCRErrorsThreshold represents average amount of PCR errors for stream inputs.
 	//
 	// If astra analyzer will return amount of PCR errors higher than specified threshold, input will be cosidered dead.
 	//
 	// Set to negative value to disable this check.
-	AnalyzerPCRErrorsThreshold int `koanf:"analyzer_pcr_errors_threshold"`
+	AnalyzerPCRErrorsThreshold int `yaml:"analyzer_pcr_errors_threshold"`
 
 	// AnalyzerPESErrorsThreshold represents average amount of PES errors for stream inputs.
 	//
 	// If astra analyzer will return amount of PES errors higher than specified threshold, input will be cosidered dead.
 	//
 	// Set to negative value to disable this check.
-	AnalyzerPESErrorsThreshold int `koanf:"analyzer_pes_errors_threshold"`
+	AnalyzerPESErrorsThreshold int `yaml:"analyzer_pes_errors_threshold"`
 
 	// InputUpdateMap represens list of regular expression pairs.
 	//
@@ -305,43 +300,43 @@ type Streams struct {
 	// Using InputBlacklist with AddNewInputs instead will have almost the same end result but since old
 	// URL's will be removed beforehand, original hash (#...) will be lost. Also it will be less clear which input was
 	// being replaced.
-	InputUpdateMap []UpdateRecord `koanf:"input_update_map"`
+	InputUpdateMap []UpdateRecord `yaml:"input_update_map"`
 
 	// UpdateInputs specifies if inputs of astra streams should be updated with M3U channels according to
 	// InputUpdateMap.
-	UpdateInputs bool `koanf:"update_inputs"`
+	UpdateInputs bool `yaml:"update_inputs"`
 
 	// KeepInputHash specifies if old URL hash should be kept on updating inputs of astra streams.
-	KeepInputHash bool `koanf:"keep_input_hash"`
+	KeepInputHash bool `yaml:"keep_input_hash"`
 
 	// RemoveInputsByUpdateMap specifies if inputs of astra streams which match at least one InputUpdateMap.From
 	// expression but not in M3U channels should be removed.
-	RemoveInputsByUpdateMap bool `koanf:"remove_inputs_by_update_map"`
+	RemoveInputsByUpdateMap bool `yaml:"remove_inputs_by_update_map"`
 
 	// NameToInputHashMap represents mapping of stream name regular expression to stream input hash which should
 	// be added.
-	NameToInputHashMap []HashAddRule `koanf:"name_to_input_hash_map"`
+	NameToInputHashMap []HashAddRule `yaml:"name_to_input_hash_map"`
 
 	// GroupToInputHashMap represents mapping of stream group regular expression to stream input hash which should
 	// be added.
 	// Stream groups should be defined to match expressions in the form of 'Category: Group'.
-	GroupToInputHashMap []HashAddRule `koanf:"group_to_input_hash_map"`
+	GroupToInputHashMap []HashAddRule `yaml:"group_to_input_hash_map"`
 
 	// InputToInputHashMap represents mapping of stream input regular expression to stream input hash which should
 	// be added.
-	InputToInputHashMap []HashAddRule `koanf:"input_to_input_hash_map"`
+	InputToInputHashMap []HashAddRule `yaml:"input_to_input_hash_map"`
 
 	// NameToKeepActiveMap represents mapping of stream name regular expression to 'keep active' setting of stream
 	// which should be set.
 	//
 	// Only first matching rule applies per stream in the priority: By inputs -> By name -> By group.
-	NameToKeepActiveMap []KeepActiveAddRule `koanf:"name_to_keep_active_map"`
+	NameToKeepActiveMap []KeepActiveAddRule `yaml:"name_to_keep_active_map"`
 
 	// GroupToKeepActiveMap represents mapping of stream group regular expression to 'keep active' setting of stream
 	// which should be set.
 	//
 	// Only first matching rule applies per stream in the priority: By inputs -> By name -> By group.
-	GroupToKeepActiveMap []KeepActiveAddRule `koanf:"group_to_keep_active_map"`
+	GroupToKeepActiveMap []KeepActiveAddRule `yaml:"group_to_keep_active_map"`
 
 	// InputToKeepActiveMap represents mapping of stream input regular expression to 'keep active' setting of stream
 	// which should be set.
@@ -349,25 +344,25 @@ type Streams struct {
 	// Only first matching rule applies per stream in the priority: By inputs -> By name -> By group.
 	//
 	// Setting will be set if at least one input matches the `By` expression.
-	InputToKeepActiveMap []KeepActiveAddRule `koanf:"input_to_keep_active_map"`
+	InputToKeepActiveMap []KeepActiveAddRule `yaml:"input_to_keep_active_map"`
 }
 
 // UpdateRecord represents astra stream input update rule.
 type UpdateRecord struct {
-	From regexp.Regexp `koanf:"from"`
-	To   regexp.Regexp `koanf:"to"`
+	From regexp.Regexp `yaml:"from"`
+	To   regexp.Regexp `yaml:"to"`
 }
 
 // HashAddRule represents astra stream input hash adding rule.
 type HashAddRule struct {
-	By   regexp.Regexp `koanf:"by"`
-	Hash string        `koanf:"hash"`
+	By   regexp.Regexp `yaml:"by"`
+	Hash string        `yaml:"hash"`
 }
 
 // KeepActiveAddRule represents astra stream 'keep active' adding rule.
 type KeepActiveAddRule struct {
-	By         regexp.Regexp `koanf:"by"`
-	KeepActive int           `koanf:"keep_active"`
+	By         regexp.Regexp `yaml:"by"`
+	KeepActive int           `yaml:"keep_active"`
 }
 
 // StreamType represents astra stream type.
@@ -377,17 +372,6 @@ const (
 	SPTS StreamType = "spts"
 	MPTS StreamType = "mpts"
 )
-
-// DamagedConfigError represents error thrown if program config is missing unexpected fields.
-type DamagedConfigError struct {
-	MissingFields []string
-}
-
-// Error is used to satisfy golang error interface.
-func (e DamagedConfigError) Error() string {
-	msg := "Existing program config is missing unexpected fields. Create new config or add missing fields manually"
-	return fmt.Sprintf("%v: %v", msg, strings.Join(e.MissingFields, ", "))
-}
 
 // BadRegexpError represents error thrown if program config has invalid regular expression.
 type BadRegexpError struct {
@@ -406,642 +390,58 @@ func (e BadRegexpError) Error() string {
 //
 // Builds simplified version of name aliases to Root.General.SimpleNameAliasList.
 //
-// Can return errors defined in this package: DamagedConfigError, BadRegexpError.
+// Can return errors defined in this package: BadRegexpError.
 func Init(log *logger.Logger, cfgFilePath string) (Root, bool, error) {
 	log.Info("Reading program config")
 
-	ko := koanf.New(".")
-
-	loadConfig := func() error {
-		return ko.Load(file.Provider(cfgFilePath), yaml.Parser())
-	}
-
-	writeDefConfig := func() error {
-		return os.WriteFile(cfgFilePath, defCfgBytes, 0644)
-	}
-
-	// Load config file into koanf or create a new if not exist.
 	var root Root
-	if err := loadConfig(); err != nil {
+	commentMap := yaml.CommentMap{}
+	defCfg := NewDefCfg()
+	defComments := defCommentMap()
+
+	readConfig := func() error {
+		bytes, err := os.ReadFile(cfgFilePath)
+		if err != nil {
+			return err
+		}
+		return errors.Wrap(yaml.UnmarshalWithOptions(bytes, &root, yaml.CommentToMap(commentMap)),
+			"Decode config file")
+	}
+
+	writeConfig := func(cfg Root, comments yaml.CommentMap) error {
+		bytes, err := yaml.MarshalWithOptions(cfg, yaml.WithComment(comments),
+			yaml.UseLiteralStyleIfMultiline(true), yaml.UseSingleQuote(true))
+		if err != nil {
+			return errors.Wrap(err, "Encode config file")
+		}
+		return os.WriteFile(cfgFilePath, bytes, 0644)
+	}
+
+	validateConfig := func() error {
+		for _, rx := range root.Streams.RemoveDuplicatedInputsByRxList {
+			if rx.NumSubexp() < 1 {
+				msg := "Expecting at least one capture group"
+				return errors.Wrap(BadRegexpError{Regexp: rx, Reason: msg}, "Validate config")
+			}
+		}
+		return nil
+	}
+
+	// Read config or create a new if not exist.
+	if err := readConfig(); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			log.Info("Config file not found, creating a default")
-			if err := writeDefConfig(); err != nil {
+			if err := writeConfig(defCfg, defComments); err != nil {
 				return root, false, errors.Wrap(err, "Write default config")
 			}
 			return root, true, nil
 		} else {
-			return root, false, errors.Wrap(err, "Load config")
+			return root, false, errors.Wrap(err, "Read config")
 		}
 	}
 
-	// Decode loaded config file into structure.
-	decoder := mapstructure.ComposeDecodeHookFunc(
-		// Compile regular expressions.
-		func(from, to reflect.Type, fromData any) (any, error) {
-			if to == reflect.TypeOf(regexp.Regexp{}) {
-				rxStr := reflect.ValueOf(fromData).String()
-				return regexp.Compile(rxStr)
-			}
-			return fromData, nil
-		},
-		// Default decoders.
-		mapstructure.StringToTimeDurationHookFunc(),
-		mapstructure.StringToSliceHookFunc(","),
-	)
-	metadata := mapstructure.Metadata{}
-	err := ko.UnmarshalWithConf("", &root, koanf.UnmarshalConf{
-		DecoderConfig: &mapstructure.DecoderConfig{
-			DecodeHook:           decoder,
-			ErrorUnused:          true,
-			IgnoreUntaggedFields: true,
-			Metadata:             &metadata,
-			Result:               &root,
-			WeaklyTypedInput:     true,
-			ZeroFields:           true,
-		},
-	})
-	if err != nil {
-		return root, false, errors.Wrap(err, "Decode config")
-	}
-
-	// Check if config is damaged (there are more missing fields than was added since v1.0.0).
-	knownFields := []string{
-		/*  0 */ "streams.add_groups_to_new",
-		/*  1 */ "streams.groups_category_for_new",
-		/*  2 */ "streams.enable_on_input_update",
-		/*  3 */ "general.name_aliases",
-		/*  4 */ "general.name_alias_list",
-		/*  5 */ "streams.remove_duplicated_inputs_by_rx_list",
-		/*  6 */ "streams.new_keep_active",
-		/*  7 */ "streams.name_to_keep_active_map",
-		/*  8 */ "streams.group_to_keep_active_map",
-		/*  9 */ "streams.input_to_keep_active_map",
-		/* 10 */ "streams.use_analyzer",
-		/* 11 */ "streams.analyzer_addr",
-		/* 12 */ "streams.analyzer_watch_time",
-		/* 13 */ "streams.analyzer_bitrate_threshold",
-		/* 14 */ "streams.analyzer_video_only_bitrate_threshold",
-		/* 15 */ "streams.analyzer_audio_only_bitrate_threshold",
-		/* 16 */ "streams.analyzer_cc_errors_threshold",
-		/* 17 */ "streams.analyzer_pcr_errors_threshold",
-		/* 18 */ "streams.analyzer_pes_errors_threshold",
-		/* 19 */ "streams.disable_dead_inputs",
-		/* 20 */ "general.astra_api_resp_timeout",
-		/* 21 */ "general.merge_categories",
-		/* 22 */ "streams.analyzer_max_attempts",
-		/* 23 */ "streams.disable_all_but_one_input_by_rx_list",
-		/* 24 */ "streams.remove_disabled_inputs",
-	}
-	missingFields, _ := lo.Difference(metadata.Unset, knownFields)
-	internalFields := []string{
-		"general.SimpleNameAliasList",
-	}
-	// Remove internal fields from missing to prevent false positive DamagedConfigError.
-	missingFields, _ = lo.Difference(missingFields, internalFields)
-	if len(missingFields) > 0 {
-		err := DamagedConfigError{MissingFields: missingFields}
-		return root, false, errors.Wrap(err, "Check config")
-	}
-
-	// Add missing known fields.
-	cfgBytes, err := os.ReadFile(cfgFilePath) // Broken if read with ko.Bytes("").
-	if err != nil {
-		return root, false, errors.Wrap(err, "Read config")
-	}
-	defCfg := NewDefCfg()
-
-	// v1.0.0 to v1.1.0.
-	knownField := knownFields[0]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.AddGroupsToNew
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment:  []string{"Add groups to new astra streams?"},
-			Data:         yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.FormatBool(defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.add_new", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.AddGroupsToNew = defVal
-	}
-	// v1.0.0 to v1.1.0.
-	knownField = knownFields[1]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.GroupsCategoryForNew
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment:  []string{"Category name to use for groups of new astra streams."},
-			Data:         yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: fmt.Sprintf("'%v'", defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.add_groups_to_new", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.GroupsCategoryForNew = defVal
-	}
-	// v1.1.0 to v1.2.0.
-	knownField = knownFields[2]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.EnableOnInputUpdate
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment:  []string{"Enable streams if they got new inputs or inputs were updated (but not removed)?"},
-			Data:         yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.FormatBool(defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.disable_without_inputs", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.EnableOnInputUpdate = defVal
-	}
-	// v1.2.0 to v1.3.0.
-	knownField = knownFields[3]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.General.NameAliases
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			HeadComment: []string{"Use name aliases list to detect which M3U channel corresponds a stream?"},
-			Data:        yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.FormatBool(defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "general.similar_translit_map", true, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.General.NameAliases = defVal
-	}
-	// v1.2.0 to v1.3.0.
-	knownField = knownFields[4]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.General.NameAliasList
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment: []string{
-				"List of lists.",
-				"Names defined here will be considered identical to any other name in the same nested group.",
-				"During comparsion, names will be simplified (lowercase, no special characters except the '+' sign),",
-				"but not transliterated.",
-			},
-			Data: yamlUtil.NestedList{
-				Key: parse.LastPathItem(knownField, "."),
-				Tree: yamlUtil.ValueTree{
-					Children: []yamlUtil.ValueTree{
-						{
-							Value: yamlUtil.Value{Value: "'Sample'", Commented: true},
-							Children: []yamlUtil.ValueTree{
-								{Value: yamlUtil.Value{Value: "'Sample TV'", Commented: true}},
-								{Value: yamlUtil.Value{Value: "'Sample Television Channel'", Commented: true}},
-							},
-						},
-						{
-							Value: yamlUtil.Value{Value: "'Discovery ID'", Commented: true},
-							Children: []yamlUtil.ValueTree{
-								{Value: yamlUtil.Value{Value: "'Discovery Investigation'", Commented: true}},
-							},
-						},
-					},
-				},
-			},
-			EndNewline: true,
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "general.name_aliases", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.General.NameAliasList = defVal
-	}
-	// v1.3.0 to v1.4.0.
-	knownField = knownFields[5]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.RemoveDuplicatedInputsByRxList
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment: []string{
-				"List of regular expressions.",
-				"If any first capture group (anything surrounded by the first '()') of regular expression match URL " +
-					"of input of a",
-				"stream, any other inputs of that stream which first capture group is the same will be removed from " +
-					"stream.",
-				"",
-				"This setting is not controlled by 'remove_duplicated_inputs'.",
-			},
-			Data: yamlUtil.List{
-				Key: parse.LastPathItem(knownField, "."),
-				Values: []yamlUtil.Value{
-					{Value: `'^.*:\/\/([^#?/]*)' # By host`, Commented: true},
-					{Value: `'^.*:\/\/.*?\/([^#?]*)' # By path`, Commented: true},
-				},
-			},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.remove_duplicated_inputs", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.RemoveDuplicatedInputsByRxList = defVal
-	}
-	// v1.3.0 to v1.4.0.
-	knownField = knownFields[6]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.NewKeepActive
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment:  []string{"Delay before stop stream if no active connections for new streams."},
-			Data:         yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.Itoa(defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.new_type", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.NewKeepActive = defVal
-	}
-	// v1.3.0 to v1.4.0.
-	knownField = knownFields[7]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.NameToKeepActiveMap
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment: []string{
-				"Mapping of stream name regular expression to 'keep active' setting of stream which should be set.",
-				"",
-				"Only first matching rule applies per stream in the priority: By inputs -> By name -> By group.",
-			},
-			Data: yamlUtil.Sequence{
-				Key: parse.LastPathItem(knownField, "."),
-				Sets: [][]yamlUtil.Pair{
-					{
-						{Key: "by", Value: "'[- _]HD$'", Commented: true},
-						{Key: "keep_active", Value: "10", Commented: true},
-					},
-					{
-						{Key: "by", Value: "'[- _]FM$'", Commented: true},
-						{Key: "keep_active", Value: "0", Commented: true},
-					},
-				},
-			},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.input_to_input_hash_map", true, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.NameToKeepActiveMap = defVal
-	}
-	// v1.3.0 to v1.4.0.
-	knownField = knownFields[8]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.GroupToKeepActiveMap
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment: []string{
-				"Mapping of stream group regular expression to 'keep active' setting of stream which should be set.",
-				"",
-				"Only first matching rule applies per stream in the priority: By inputs -> By name -> By group.",
-			},
-			Data: yamlUtil.Sequence{
-				Key: parse.LastPathItem(knownField, "."),
-				Sets: [][]yamlUtil.Pair{
-					{
-						{Key: "by", Value: "'(?i)All: HD Channels$'", Commented: true},
-						{Key: "keep_active", Value: "10", Commented: true},
-					},
-					{
-						{Key: "by", Value: "'(?i).*RADIO$'", Commented: true},
-						{Key: "keep_active", Value: "0", Commented: true},
-					},
-				},
-			},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.name_to_keep_active_map", true, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.GroupToKeepActiveMap = defVal
-	}
-	// v1.3.0 to v1.4.0.
-	knownField = knownFields[9]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.InputToKeepActiveMap
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment: []string{
-				"Mapping of stream input regular expression to 'keep active' setting of stream which should be set.",
-				"",
-				"Only first matching rule applies per stream in the priority: By inputs -> By name -> By group.",
-				"",
-				"Setting will be set if at least one input matches the 'by' expression.",
-			},
-			Data: yamlUtil.Sequence{
-				Key: parse.LastPathItem(knownField, "."),
-				Sets: [][]yamlUtil.Pair{
-					{
-						{Key: "by", Value: "':8080'", Commented: true},
-						{Key: "keep_active", Value: "10", Commented: true},
-					},
-					{
-						{Key: "by", Value: `'^rts?p:\/\/'`, Commented: true},
-						{Key: "keep_active", Value: "0", Commented: true},
-					},
-				},
-			},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.group_to_keep_active_map", true, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.InputToKeepActiveMap = defVal
-	}
-	// v1.4.0 to v1.5.0.
-	knownField = knownFields[10]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.UseAnalyzer
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment: []string{
-				"Use astra analyzer (astra --analyze -p <port>) to check for dead inputs?",
-				"",
-				"Supports HTTP(S), UDP, RTP, RTSP.",
-			},
-			Data: yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.FormatBool(defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.input_resp_timeout", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.UseAnalyzer = defVal
-	}
-	// v1.4.0 to v1.5.0.
-	knownField = knownFields[11]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.AnalyzerAddr
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment:  []string{"Astra analyzer address in format of 'host:port'."},
-			Data:         yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: fmt.Sprintf("'%v'", defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.use_analyzer", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.AnalyzerAddr = defVal
-	}
-	// v1.4.0 to v1.5.0.
-	knownField = knownFields[12]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.AnalyzerWatchTime
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment:  []string{"Amount of time per attempt that astra analyzer should spend collecting results."},
-			Data:         yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: fmt.Sprintf("'%v'", defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.analyzer_addr", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.AnalyzerWatchTime = defVal
-	}
-	// v1.4.0 to v1.5.0.
-	knownField = knownFields[13]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.AnalyzerBitrateThreshold
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment: []string{
-				"Average bitrate threshold in kbit/s for stream inputs.",
-				"",
-				"If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.",
-			},
-			Data: yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.Itoa(defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.analyzer_watch_time", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.AnalyzerBitrateThreshold = defVal
-	}
-	// v1.4.0 to v1.5.0.
-	knownField = knownFields[14]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.AnalyzerVideoOnlyBitrateThreshold
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment: []string{
-				"Average bitrate threshold in kbit/s for stream inputs without audio.",
-				"",
-				"If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.",
-			},
-			Data: yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.Itoa(defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.analyzer_bitrate_threshold", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.AnalyzerVideoOnlyBitrateThreshold = defVal
-	}
-	// v1.4.0 to v1.5.0.
-	knownField = knownFields[15]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.AnalyzerAudioOnlyBitrateThreshold
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment: []string{
-				"Average bitrate threshold in kbit/s for stream inputs without video.",
-				"",
-				"If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.",
-			},
-			Data: yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.Itoa(defVal)},
-		}
-		cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.analyzer_video_only_bitrate_threshold", false, node)
-		if err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.AnalyzerAudioOnlyBitrateThreshold = defVal
-	}
-	// v1.4.0 to v1.5.0.
-	knownField = knownFields[16]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.AnalyzerCCErrorsThreshold
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment: []string{
-				"Average amount of CC errors for stream inputs.",
-				"",
-				"If astra analyzer will return amount of CC errors higher than specified threshold, " +
-					"input will be cosidered dead.",
-				"",
-				"Set to negative value to disable this check.",
-			},
-			Data: yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.Itoa(defVal)},
-		}
-		cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.analyzer_audio_only_bitrate_threshold", false, node)
-		if err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.AnalyzerCCErrorsThreshold = defVal
-	}
-	// v1.4.0 to v1.5.0.
-	knownField = knownFields[17]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.AnalyzerPCRErrorsThreshold
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment: []string{
-				"Average amount of PCR errors for stream inputs.",
-				"",
-				"If astra analyzer will return amount of PCR errors higher than specified threshold, " +
-					"input will be cosidered dead.",
-				"",
-				"Set to negative value to disable this check.",
-			},
-			Data: yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.Itoa(defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.analyzer_cc_errors_threshold", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.AnalyzerPCRErrorsThreshold = defVal
-	}
-	// v1.4.0 to v1.5.0.
-	knownField = knownFields[18]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.AnalyzerPESErrorsThreshold
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment: []string{
-				"Average amount of PES errors for stream inputs.",
-				"",
-				"If astra analyzer will return amount of PES errors higher than specified threshold, " +
-					"input will be cosidered dead.",
-				"",
-				"Set to negative value to disable this check.",
-			},
-			Data: yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.Itoa(defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.analyzer_pcr_errors_threshold", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.AnalyzerPESErrorsThreshold = defVal
-	}
-	// v1.4.0 to v1.5.0.
-	knownField = knownFields[19]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.DisableDeadInputs
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment: []string{
-				"Disable inputs of astra streams which do not respond or give invalid response?",
-				"Supports HTTP(S), enable 'use_analyzer' option for more.",
-			},
-			Data: yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.FormatBool(defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.remove_dead_inputs", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.DisableDeadInputs = defVal
-	}
-	// v1.5.0 to v2.0.0.
-	knownField = knownFields[20]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.General.AstraAPIRespTimeout
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			HeadComment: []string{"Astra API response timeout."},
-			Data:        yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: fmt.Sprintf("'%v'", defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "general.name_alias_list", true, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.General.AstraAPIRespTimeout = defVal
-	}
-	// v1.5.0 to v2.0.0.
-	knownField = knownFields[21]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.General.MergeCategories
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment:  []string{"Should duplicated categories be removed with unique groups combined per category?"},
-			Data:         yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.FormatBool(defVal)},
-			EndNewline:   true,
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "general.astra_api_resp_timeout", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.General.MergeCategories = defVal
-	}
-	// v1.5.0 to v2.0.0.
-	knownField = knownFields[22]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.AnalyzerMaxAttempts
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			StartNewline: true,
-			HeadComment: []string{
-				"Maximum amount of attempts that astra analyzer should perform trying to get response from stream " +
-					"input.",
-			},
-			Data: yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.Itoa(defVal)},
-		}
-		if cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.analyzer_watch_time", false, node); err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.AnalyzerMaxAttempts = defVal
-	}
-	// v2.0.0 to v2.1.0.
-	knownField = knownFields[23]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.DisableAllButOneInputByRxList
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			HeadComment: []string{
-				"List of regular expressions.",
-				"If any expression match URL of a stream's input, only this input will be kept and all other will be " +
-					"disabled.",
-				"If list has multiple entries, only input matching first found expression will be kept.",
-			},
-			Data: yamlUtil.List{
-				Key: parse.LastPathItem(knownField, "."),
-				Values: []yamlUtil.Value{
-					{Value: `'[#&]no_sync(&|$)'`, Commented: true},
-				},
-			},
-			EndNewline: true,
-		}
-		cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.remove_duplicated_inputs_by_rx_list", true, node)
-		if err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.DisableAllButOneInputByRxList = defVal
-	}
-	// v2.1.0 to v2.2.0.
-	knownField = knownFields[24]
-	if lo.Contains(metadata.Unset, knownField) {
-		defVal := defCfg.Streams.RemoveDisabledInputs
-		log.Infof("Adding missing field to config: %v: %v", knownField, defVal)
-		node := yamlUtil.Node{
-			HeadComment: []string{"Remove disabled inputs?"},
-			Data:        yamlUtil.Scalar{Key: parse.LastPathItem(knownField, "."), Value: strconv.FormatBool(defVal)},
-			EndNewline:  true,
-		}
-		cfgBytes, err = yamlUtil.Insert(cfgBytes, "streams.remove_duplicated_inputs_by_rx_list", true, node)
-		if err != nil {
-			return root, false, errors.Wrap(err, "Add missing field to config")
-		}
-		root.Streams.RemoveDisabledInputs = defVal
-	}
-
-	// Validate amount of capture groups.
-	for _, rx := range root.Streams.RemoveDuplicatedInputsByRxList {
-		if rx.NumSubexp() < 1 {
-			msg := "Expecting at least one capture group"
-			return root, false, errors.Wrap(BadRegexpError{Regexp: rx, Reason: msg}, "Validate config")
-		}
-	}
-
-	// Write modified config.
-	if err = os.WriteFile(cfgFilePath, cfgBytes, 0644); err != nil {
-		return root, false, errors.Wrap(err, "Write modified config")
+	if err := validateConfig(); err != nil {
+		return root, false, errors.Wrap(err, "Validate config")
 	}
 
 	// Build simple aliases list.
@@ -1074,7 +474,7 @@ func DefSimilarTranslitMap() map[string]string {
 	}
 }
 
-// NewDefCfg returns default config as written in "default.yaml" file.
+// NewDefCfg returns default config.
 func NewDefCfg() Root {
 	return Root{
 		General: General{
@@ -1083,17 +483,17 @@ func NewDefCfg() Root {
 			SimilarTranslit:     true,
 			SimilarTranslitMap:  DefSimilarTranslitMap(),
 			NameAliases:         true,
-			NameAliasList:       [][]string(nil),
+			NameAliasList:       [][]string{},
 			SimpleNameAliasList: [][]string(nil),
 			AstraAPIRespTimeout: time.Second * 10,
 			MergeCategories:     false,
 		},
 		M3U: M3U{
 			RespTimeout:         time.Second * 10,
-			ChannNameBlacklist:  []regexp.Regexp(nil),
-			ChannGroupBlacklist: []regexp.Regexp(nil),
-			ChannURLBlacklist:   []regexp.Regexp(nil),
-			ChannGroupMap:       map[string]string(nil),
+			ChannNameBlacklist:  []regexp.Regexp{},
+			ChannGroupBlacklist: []regexp.Regexp{},
+			ChannURLBlacklist:   []regexp.Regexp{},
+			ChannGroupMap:       map[string]string{},
 		},
 		Streams: Streams{
 			AddedPrefix:                       "_ADDED: ",
@@ -1113,16 +513,16 @@ func NewDefCfg() Root {
 			UniteInputs:                       true,
 			HashCheckOnAddNewInputs:           false,
 			SortInputs:                        true,
-			InputWeightToTypeMap:              map[int]regexp.Regexp(nil),
+			InputWeightToTypeMap:              map[int]regexp.Regexp{},
 			UnknownInputWeight:                50,
-			InputBlacklist:                    []regexp.Regexp(nil),
+			InputBlacklist:                    []regexp.Regexp{},
 			RemoveDuplicatedInputs:            true,
-			RemoveDuplicatedInputsByRxList:    []regexp.Regexp(nil),
+			RemoveDuplicatedInputsByRxList:    []regexp.Regexp{},
 			RemoveDisabledInputs:              false,
-			DisableAllButOneInputByRxList:     []regexp.Regexp(nil),
+			DisableAllButOneInputByRxList:     []regexp.Regexp{},
 			RemoveDeadInputs:                  false,
 			DisableDeadInputs:                 false,
-			DeadInputsCheckBlacklist:          []regexp.Regexp(nil),
+			DeadInputsCheckBlacklist:          []regexp.Regexp{},
 			InputMaxConns:                     1,
 			InputRespTimeout:                  time.Second * 10,
 			UseAnalyzer:                       false,
@@ -1135,16 +535,558 @@ func NewDefCfg() Root {
 			AnalyzerCCErrorsThreshold:         -1,
 			AnalyzerPCRErrorsThreshold:        -1,
 			AnalyzerPESErrorsThreshold:        -1,
-			InputUpdateMap:                    []UpdateRecord(nil),
+			InputUpdateMap:                    []UpdateRecord{},
 			UpdateInputs:                      false,
 			KeepInputHash:                     true,
 			RemoveInputsByUpdateMap:           false,
-			NameToInputHashMap:                []HashAddRule(nil),
-			GroupToInputHashMap:               []HashAddRule(nil),
-			InputToInputHashMap:               []HashAddRule(nil),
-			NameToKeepActiveMap:               []KeepActiveAddRule(nil),
-			GroupToKeepActiveMap:              []KeepActiveAddRule(nil),
-			InputToKeepActiveMap:              []KeepActiveAddRule(nil),
+			NameToInputHashMap:                []HashAddRule{},
+			GroupToInputHashMap:               []HashAddRule{},
+			InputToInputHashMap:               []HashAddRule{},
+			NameToKeepActiveMap:               []KeepActiveAddRule{},
+			GroupToKeepActiveMap:              []KeepActiveAddRule{},
+			InputToKeepActiveMap:              []KeepActiveAddRule{},
+		},
+	}
+}
+
+// defCommentMap returns comments for the default config written by Init().
+func defCommentMap() yaml.CommentMap {
+	return yaml.CommentMap{
+		"$": []*yaml.Comment{
+			yaml.HeadComment(
+				" For details, see https://github.com/SCP002/m3u-merge-astra/blob/master/README.md#program-config-settings",
+			),
+		},
+		"$.general": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" -------------------------------------------------------------------------------------------------------------------",
+				" General settings of the program.",
+			),
+		},
+		"$.general.full_translit": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Use name transliteration to detect which M3U channel corresponds a stream?",
+			),
+		},
+		"$.general.full_translit_map": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Source to destination character mapping.",
+				" All symbols are lowercase as comparsion function will convert every character in a name to lowercase.",
+				" Key: From. Value: To.",
+			),
+		},
+		"$.general.similar_translit": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Use name transliteration between visually similar characters to detect",
+				" which M3U channel corresponds a stream?",
+			),
+		},
+		"$.general.similar_translit_map": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Source to destination character mapping.",
+				" All symbols are lowercase as comparsion function will convert every character in a name to lowercase.",
+				" Key: From. Value: To.",
+			),
+		},
+		"$.general.name_aliases": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Use name aliases list to detect which M3U channel corresponds a stream?",
+			),
+		},
+		"$.general.name_alias_list": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" List of lists.",
+				" Names defined here will be considered identical to any other name in the same nested group.",
+				" During comparsion, names will be simplified (lowercase, no special characters except the '+' sign),",
+				" but not transliterated.",
+				"",
+				" - - 'Sample'",
+				"   - 'Sample TV'",
+				"   - 'Sample Television Channel'",
+				" - - 'Discovery ID'",
+				"   - 'Discovery Investigation'",
+			),
+		},
+		"$.general.astra_api_resp_timeout": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Astra API response timeout.",
+			),
+		},
+		"$.general.merge_categories": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Should duplicated categories be removed with unique groups combined per category?",
+			),
+		},
+		"$.m3u": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" -------------------------------------------------------------------------------------------------------------------",
+				" M3U related settings of the program.",
+			),
+		},
+		"$.m3u.resp_timeout": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" M3U playlist URL response timeout in seconds.",
+			),
+		},
+		"$.m3u.chann_name_blacklist": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" List of regular expressions.",
+				" If any expression match name of a channel, this channel will be removed from M3U input before merging.",
+				"",
+				" - 'Nonsense TV'",
+				" - '(?i)^Test$'",
+			),
+		},
+		"$.m3u.chann_group_blacklist": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" List of regular expressions.",
+				" If any expression match group of a channel, this channel will be removed from M3U input before merging.",
+				" It runs after replacing groups by 'chann_group_map' so enter the appropriate values.",
+				"",
+				" - '18\\+'",
+				" - '(?i)^cooking$'",
+			),
+		},
+		"$.m3u.chann_url_blacklist": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" List of regular expressions.",
+				" If any expression match URL of a channel, this channel will be removed from M3U input before merging.",
+				"",
+				" - 'https?:\\/\\/filter_me\\.com'",
+				" - '192\\.168\\.88\\.14\\/play'",
+			),
+		},
+		"$.m3u.chann_group_map": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Invalid to valid M3U channel group mapping.",
+				" Key: From. Value: To.",
+				"",
+				" '': 'General'",
+				" '-': 'General'",
+				" 'For kids': 'Kids'",
+			),
+		},
+		"$.streams": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" -------------------------------------------------------------------------------------------------------------------",
+				" Astra streams related settings of the program.",
+			),
+		},
+		"$.streams.added_prefix": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" New stream name prefix.",
+				" Safe to set to ''.",
+			),
+		},
+		"$.streams.add_new": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Add new astra streams if streams does not contain M3U channel name?",
+			),
+		},
+		"$.streams.add_groups_to_new": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Add groups to new astra streams?",
+			),
+		},
+		"$.streams.groups_category_for_new": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Category name to use for groups of new astra streams.",
+			),
+		},
+		"$.streams.add_new_with_known_inputs": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Add new astra streams if streams contain M3U channel URL?",
+			),
+		},
+		"$.streams.make_new_enabled": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Make new streams enabled?",
+			),
+		},
+		"$.streams.new_type": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" New stream type, can be one of two types:",
+				" spts - Single-Program Transport Stream. Streaming channels to the end users over IP network.",
+				" mpts - Multi-Program Transport Stream. Preparing multiplexes to DVB modulators.",
+			),
+		},
+		"$.streams.new_keep_active": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Delay before stop stream if no active connections for new streams.",
+			),
+		},
+		"$.streams.disabled_prefix": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Disabled stream name prefix.",
+				" Safe to set to ''.",
+			),
+		},
+		"$.streams.remove_without_inputs": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Remove streams without inputs?",
+				" It has priority over 'disable_without_inputs'.",
+			),
+		},
+		"$.streams.disable_without_inputs": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Disable streams without inputs?",
+			),
+		},
+		"$.streams.enable_on_input_update": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Enable streams if they got new inputs or inputs were updated (but not removed)?",
+			),
+		},
+		"$.streams.rename": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Rename astra streams as M3U channels if their standartized names are equal?",
+			),
+		},
+		"$.streams.add_new_inputs": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Add new inputs to astra streams if such found in M3U channels?",
+			),
+		},
+		"$.streams.unite_inputs": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Move inputs of streams with the same names to the first stream found?",
+			),
+		},
+		"$.streams.hash_check_on_add_new_inputs": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Add new inputs to astra streams even if M3U channel and stream input only differ by hash (everything after #)?",
+			),
+		},
+		"$.streams.sort_inputs": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Sort inputs of astra streams?",
+			),
+		},
+		"$.streams.input_weight_to_type_map": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Mapping of how high stream input should appear in the list after sorting.",
+				" Any unspecified input will have weight of 'unknown_input_weight'.",
+				"",
+				" 1: '192.\\168\\.88\\.' # Always first.",
+				" 99: 'least_reliable\\.tv' # Always last.",
+			),
+		},
+		"$.streams.unknown_input_weight": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Default weight of unknown inputs.",
+			),
+		},
+		"$.streams.input_blacklist": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" List of regular expressions.",
+				" If any expression match URL of a stream's input, this input will be removed from astra streams before adding",
+				" new ones.",
+				"",
+				" - 'https?:\\/\\/filter_me\\.com'",
+				" - '192\\.168\\.88\\.14\\/play'",
+			),
+		},
+		"$.streams.remove_duplicated_inputs": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Remove inputs of astra streams which already present in config?",
+			),
+		},
+		"$.streams.remove_duplicated_inputs_by_rx_list": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" List of regular expressions.",
+				" If any first capture group (anything surrounded by the first '()') of regular expression match URL of input of",
+				" a stream, any other inputs of that stream which first capture group is the same will be removed from stream.",
+				"",
+				" This setting is not controlled by 'remove_duplicated_inputs'.",
+				"",
+				" - '^.*:\\/\\/([^#?/]*)' # By host",
+				" - '^.*:\\/\\/.*?\\/([^#?]*)' # By path",
+			),
+		},
+		"$.streams.remove_disabled_inputs": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Remove disabled inputs?",
+			),
+		},
+		"$.streams.disable_all_but_one_input_by_rx_list": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" List of regular expressions.",
+				" If any expression match URL of a stream's input, only this input will be kept and all other will be disabled.",
+				" If list has multiple entries, only input matching first found expression will be kept.",
+				"",
+				" - '[#&]no_sync(&|$)'",
+			),
+		},
+		"$.streams.remove_dead_inputs": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Remove inputs of astra streams which do not respond or give invalid response?",
+				" Supports HTTP(S), enable 'use_analyzer' option for more.",
+				" It has priority over 'disable_dead_inputs'.",
+			),
+		},
+		"$.streams.disable_dead_inputs": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Disable inputs of astra streams which do not respond or give invalid response?",
+				" Supports HTTP(S), enable 'use_analyzer' option for more.",
+			),
+		},
+		"$.streams.dead_inputs_check_blacklist": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" List of regular expressions.",
+				" If any expression match URL of a stream's input, this input will not be checked for availability.",
+				"",
+				" - 'https?:\\/\\/dont-check\\.com\\/play'",
+				" - '192\\.168\\.88\\.'",
+			),
+		},
+		"$.streams.input_max_conns": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Maximum amount of simultaneous connections to validate inputs of astra streams.",
+				" Use more than 1 with caution. It may result in false positives if server consider frequent requests as spam.",
+			),
+		},
+		"$.streams.input_resp_timeout": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Astra stream input response timeout.",
+			),
+		},
+		"$.streams.use_analyzer": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Use astra analyzer (astra --analyze -p <port>) to check for dead inputs?",
+				"",
+				" Supports HTTP(S), UDP, RTP, RTSP.",
+			),
+		},
+		"$.streams.analyzer_addr": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Astra analyzer address in format of 'host:port'.",
+			),
+		},
+		"$.streams.analyzer_watch_time": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Amount of time per attempt that astra analyzer should spend collecting results.",
+			),
+		},
+		"$.streams.analyzer_max_attempts": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Maximum amount of attempts that astra analyzer should perform trying to get response from stream input.",
+			),
+		},
+		"$.streams.analyzer_bitrate_threshold": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Average bitrate threshold in kbit/s for stream inputs.",
+				"",
+				" If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.",
+			),
+		},
+		"$.streams.analyzer_video_only_bitrate_threshold": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Average bitrate threshold in kbit/s for stream inputs without audio.",
+				"",
+				" If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.",
+			),
+		},
+		"$.streams.analyzer_audio_only_bitrate_threshold": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Average bitrate threshold in kbit/s for stream inputs without video.",
+				"",
+				" If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.",
+			),
+		},
+		"$.streams.analyzer_cc_errors_threshold": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Average amount of CC errors for stream inputs.",
+				"",
+				" If astra analyzer will return amount of CC errors higher than specified threshold, input will be cosidered",
+				" dead.",
+				"",
+				" Set to negative value to disable this check.",
+			),
+		},
+		"$.streams.analyzer_pcr_errors_threshold": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Average amount of PCR errors for stream inputs.",
+				"",
+				" If astra analyzer will return amount of PCR errors higher than specified threshold, input will be cosidered",
+				" dead.",
+				"",
+				" Set to negative value to disable this check.",
+			),
+		},
+		"$.streams.analyzer_pes_errors_threshold": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Average amount of PES errors for stream inputs.",
+				"",
+				" If astra analyzer will return amount of PES errors higher than specified threshold, input will be cosidered",
+				" dead.",
+				"",
+				" Set to negative value to disable this check.",
+			),
+		},
+		"$.streams.input_update_map": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" List of regular expression pairs.",
+				" If any 'from' expression match URL of astra stream's input, it will be replaced with URL from according M3U",
+				" channel if it matches the 'to' expression.",
+				" Only first matching input will be updated per M3U channel.",
+				"",
+				" In most cases specified 'from' and 'to' should be identical.",
+				"",
+				" - from: '127\\.0\\.0\\.1'",
+				"   to: '127\\.0\\.0\\.1'",
+				" - from: 'some_url\\.com'",
+				"   to: 'some_url\\.com'",
+			),
+		},
+		"$.streams.update_inputs": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Update inputs of astra streams with M3U channels according to 'input_update_map'?",
+			),
+		},
+		"$.streams.keep_input_hash": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Keep old input hash on updating inputs of astra streams?",
+			),
+		},
+		"$.streams.remove_inputs_by_update_map": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Remove inputs of astra streams which match at least one 'input_update_map.from' expression but not in M3U",
+				" channels?",
+			),
+		},
+		"$.streams.name_to_input_hash_map": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Mapping of stream name regular expression to stream input hash which should be added.",
+				"",
+				" - by: '[- _]HD$'",
+				"   hash: 'buffer_time=10'",
+				" - by: '[- _]FM$'",
+				"   hash: 'no_sync'",
+			),
+		},
+		"$.streams.group_to_input_hash_map": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Mapping of stream group regular expression to stream input hash which should be added.",
+				" Stream groups should be defined to match expressions in the form of 'Category: Group'.",
+				"",
+				" - by: '(?i)All: HD Channels$'",
+				"   hash: 'buffer_time=10'",
+				" - by: '(?i).*RADIO$'",
+				"   hash: 'no_sync'",
+			),
+		},
+		"$.streams.input_to_input_hash_map": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Mapping of stream input regular expression to stream input hash which should be added.",
+				"",
+				" - by: ':8080'",
+				"   hash: 'ua=VLC/3.0.9 LibVLC/3.0.9'",
+				" - by: '^rts?p:\\/\\/'",
+				"   hash: 'no_reload'",
+			),
+		},
+		"$.streams.name_to_keep_active_map": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Mapping of stream name regular expression to 'keep active' setting of stream which should be set.",
+				"",
+				" Only first matching rule applies per stream in the priority: By inputs -> By name -> By group.",
+				"",
+				" - by: '[- _]HD$'",
+				"   keep_active: 10",
+				" - by: '[- _]FM$'",
+				"   keep_active: 0",
+			),
+		},
+		"$.streams.group_to_keep_active_map": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Mapping of stream group regular expression to 'keep active' setting of stream which should be set.",
+				"",
+				" Only first matching rule applies per stream in the priority: By inputs -> By name -> By group.",
+				"",
+				" - by: '(?i)All: HD Channels$'",
+				"   keep_active: 10",
+				" - by: '(?i).*RADIO$'",
+				"   keep_active: 0",
+			),
+		},
+		"$.streams.input_to_keep_active_map": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" Mapping of stream input regular expression to 'keep active' setting of stream which should be set.",
+				"",
+				" Only first matching rule applies per stream in the priority: By inputs -> By name -> By group.",
+				"",
+				" Setting will be set if at least one input matches the 'by' expression.",
+				"",
+				" - by: ':8080'",
+				"   keep_active: 10",
+				" - by: '^rts?p:\\/\\/'",
+				"   keep_active: 0",
+			),
 		},
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"m3u-merge-astra/astra"
 	"m3u-merge-astra/astra/api"
 	"m3u-merge-astra/cfg"
-	"m3u-merge-astra/util/file"
 	"m3u-merge-astra/util/logger"
 	"m3u-merge-astra/util/network"
 	"os"
@@ -19,9 +18,12 @@ import (
 func TestMain(t *testing.T) {
 	programCfgPath := filepath.Join(t.TempDir(), "m3u-merge-astra-main-test.yaml")
 
+	// Read initial astra config.
+	log := logger.New(logger.DebugLevel, os.Stderr)
+
 	// Create program config file.
-	err := file.Copy(filepath.Join("cfg", "default.yaml"), programCfgPath)
-	assert.NoError(t, err, "should copy default program config")
+	_, _, err := cfg.Init(log, programCfgPath)
+	assert.NoError(t, err, "should create default program config")
 
 	// Create M3U file.
 	m3uPath := filepath.Join(t.TempDir(), "m3u-merge-astra-main-test.m3u")
@@ -33,8 +35,6 @@ func TestMain(t *testing.T) {
 	err = os.WriteFile(m3uPath, m3uBytes, 0644)
 	assert.NoError(t, err, "should write m3u file")
 
-	// Read initial astra config.
-	log := logger.New(logger.DebugLevel, os.Stderr)
 	apiHttpClient := network.NewHttpClient(time.Second * 10)
 	apiHandler := api.NewHandler(log, apiHttpClient, "http://127.0.0.1:8000", "admin", "admin")
 	astraCfg, err := apiHandler.FetchCfg()
