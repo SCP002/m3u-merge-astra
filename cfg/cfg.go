@@ -550,6 +550,8 @@ func NewDefCfg() Root {
 }
 
 // defCommentMap returns comments for the default config written by Init().
+//
+//nolint:lll // Human-readable YAML comments cannot be wrapped without changing their text.
 func defCommentMap() yaml.CommentMap {
 	return yaml.CommentMap{
 		"$": []*yaml.Comment{

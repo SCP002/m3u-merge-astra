@@ -7,6 +7,8 @@ import (
 )
 
 // Flags represents command line flags.
+//
+//nolint:lll // go-flags struct tags cannot be wrapped across lines.
 type Flags struct {
 	Version        bool       `short:"v" long:"version"        description:"Print the program version"`
 	Noninteractive bool       `short:"n" long:"noninteractive" description:"Do not ask user for input (confirmations etc.)"`
