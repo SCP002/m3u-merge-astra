@@ -181,10 +181,14 @@ func (h handler) request(method string, path string, cmd any) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Send HTTP request to API")
 	}
+	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "Read API response body")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("API responded with status code %v: %s", resp.StatusCode, respBody)
 	}
 
 	return respBody, nil
