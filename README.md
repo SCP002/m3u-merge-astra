@@ -378,7 +378,7 @@ docker compose --file compose.dev.yaml run --rm --build dev bash ./build.sh
 
 ## Build from source code [Go / Golang]
 
-1. Install [Golang](https://golang.org/) 1.27 or newer.
+1. Install [Golang](https://golang.org/) 1.27.3 or newer.
 
 2. Download the source code:  
 
