@@ -8,8 +8,8 @@ import (
 )
 
 func TestPrepend(t *testing.T) {
-	assert.Exactly(t, []int{0}, Prepend([]int{}, 0), "should add 0")
-	assert.Exactly(t, []int{0, 1}, Prepend([]int{1}, 0), "should add 0 to the beginning")
+	assert.Exactly(t, []int{0}, Prepend([]int{}, 0))
+	assert.Exactly(t, []int{0, 1}, Prepend([]int{1}, 0))
 }
 
 func TestAppendNew(t *testing.T) {
@@ -21,11 +21,11 @@ func TestAppendNew(t *testing.T) {
 		cbCounter++
 	}, []int{1, 2, 3}...)
 
-	assert.NotSame(t, &ol1, &ol2, "should return copy of objects")
-	assert.Exactly(t, ol1Original, ol1, "should not modify the source objects")
+	assert.NotSame(t, &ol1, &ol2)
+	assert.Exactly(t, ol1Original, ol1)
 
-	assert.Exactly(t, []int{0, 1, 2, 3}, ol2, "should add unique numbers")
-	assert.Exactly(t, 2, cbCounter, "callback should be called that amount of times")
+	assert.Exactly(t, []int{0, 1, 2, 3}, ol2)
+	assert.Exactly(t, 2, cbCounter)
 
 	assert.NotPanics(t, func() { AppendNew(ol1, nil, []int{4}...) }, "should not panic if callback is nil")
 }
@@ -35,8 +35,8 @@ func TestRemoveLast(t *testing.T) {
 	ol1Original := copier.TestDeep(t, ol1)
 
 	ol2 := RemoveLast(ol1, "A")
-	assert.NotSame(t, &ol1, &ol2, "should return copy of objects")
-	assert.Exactly(t, ol1Original, ol1, "should not modify the source")
+	assert.NotSame(t, &ol1, &ol2)
+	assert.Exactly(t, ol1Original, ol1)
 
 	expected := []string{"C", "A", "", "B"}
 	assert.Exactly(t, expected, ol2, "should remove last object for which predicate returns true")
@@ -47,8 +47,8 @@ func TestRemoveFirst(t *testing.T) {
 	ol1Original := copier.TestDeep(t, ol1)
 
 	ol2 := RemoveFirst(ol1, "A")
-	assert.NotSame(t, &ol1, &ol2, "should return copy of objects")
-	assert.Exactly(t, ol1Original, ol1, "should not modify the source")
+	assert.NotSame(t, &ol1, &ol2)
+	assert.Exactly(t, ol1Original, ol1)
 
 	expected := []string{"C", "", "A", "B"}
 	assert.Exactly(t, expected, ol2, "should remove first object for which predicate returns true")
@@ -61,10 +61,10 @@ func TestFilled(t *testing.T) {
 }
 
 func TestHasAnyPrefix(t *testing.T) {
-	assert.True(t, HasAnyPrefix("some words", "some"), "should have prefix")
-	assert.False(t, HasAnyPrefix("some words", "words"), "should not have prefix")
-	assert.True(t, HasAnyPrefix("some words", "unknown", "some"), "should have one of prefixes")
-	assert.False(t, HasAnyPrefix("some words", "unknown", "unknown 2"), "should not contain any prefix")
+	assert.True(t, HasAnyPrefix("some words", "some"))
+	assert.False(t, HasAnyPrefix("some words", "words"))
+	assert.True(t, HasAnyPrefix("some words", "unknown", "some"))
+	assert.False(t, HasAnyPrefix("some words", "unknown", "unknown 2"))
 }
 
 func TestIsAllEmpty(t *testing.T) {
@@ -95,8 +95,8 @@ func TestMapFindDuplBy(t *testing.T) {
 		}
 		return elm
 	})
-	assert.NotSame(t, &ol1, &ol2Structs, "should return copy of objects")
-	assert.Exactly(t, ol1Original, ol1, "should not modify the source")
+	assert.NotSame(t, &ol1, &ol2Structs)
+	assert.Exactly(t, ol1Original, ol1)
 
 	expectedStructs := []Struct{
 		{Str: "A", Int: 0},
@@ -105,7 +105,7 @@ func TestMapFindDuplBy(t *testing.T) {
 		{Str: "B", Int: 1},
 		{Str: "C", Int: 0},
 	}
-	assert.Exactly(t, expectedStructs, ol2Structs, "should set Int field for duplicates to 1")
+	assert.Exactly(t, expectedStructs, ol2Structs)
 
 	// Map to different type.
 	ol2Ints := MapFindDuplBy(ol1, func(elm Struct) string {
@@ -116,9 +116,9 @@ func TestMapFindDuplBy(t *testing.T) {
 		}
 		return 0
 	})
-	assert.NotSame(t, &ol1, &ol2Ints, "should return copy of objects")
-	assert.Exactly(t, ol1Original, ol1, "should not modify the source")
+	assert.NotSame(t, &ol1, &ol2Ints)
+	assert.Exactly(t, ol1Original, ol1)
 
 	expectedInts := []int{0, 0, 1, 1, 0}
-	assert.Exactly(t, expectedInts, ol2Ints, "should return that integer array")
+	assert.Exactly(t, expectedInts, ol2Ints)
 }

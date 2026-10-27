@@ -29,7 +29,7 @@ func TestNewHandler(t *testing.T) {
 		user:       "user",
 		password:   "pass",
 	}
-	assert.Exactly(t, expected, NewHandler(log, httpClient, "127.0.0.1", "user", "pass"), "should initialize handler")
+	assert.Exactly(t, expected, NewHandler(log, httpClient, "127.0.0.1", "user", "pass"))
 }
 
 // Requires a running astra.
@@ -40,11 +40,11 @@ func TestSetCategories(t *testing.T) {
 
 	// Remove existing categories.
 	config, err := apiHandler.FetchCfg()
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 	for _, category := range config.Categories {
 		category.Remove = true
 		err := apiHandler.SetCategory(0, category)
-		assert.NoError(t, err, "should not return error")
+		assert.NoError(t, err)
 	}
 
 	// Set.
@@ -90,14 +90,14 @@ func TestSetCategories(t *testing.T) {
 
 	// Check.
 	config, err = apiHandler.FetchCfg()
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 	expected := []astra.Category{
 		{Name: "Category 1", Groups: []astra.Group{{Name: "Group 1"}, {Name: "Group 2"}}},
 		{Name: "Category 2*", Groups: []astra.Group{{Name: "Group 3*"}, {Remove: true}}},
 		{Name: "Category 3", Groups: []astra.Group{{Name: "Group 5"}, {Name: "Group 6"}}},
 		{Name: "Category 6", Groups: []astra.Group{{Name: "Group 11"}, {Name: "Group 12"}}},
 	}
-	assert.Equal(t, expected, config.Categories, "returned config should consist of categories set")
+	assert.Equal(t, expected, config.Categories)
 
 	// Test log output.
 	var out bytes.Buffer
@@ -123,13 +123,13 @@ func TestSetCategory(t *testing.T) {
 	apiHandler := NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
 
 	astraCfg, err := apiHandler.FetchCfg()
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 
 	// Remove old categories.
 	for _, category := range astraCfg.Categories {
 		category.Remove = true
 		err = apiHandler.SetCategory(0, category)
-		if ok := assert.NoError(t, err, "should remove category"); !ok {
+		if ok := assert.NoError(t, err); !ok {
 			t.FailNow()
 		}
 	}
@@ -139,7 +139,7 @@ func TestSetCategory(t *testing.T) {
 		Name:   fmt.Sprintf("Category %v", rnd.String(4, false, true)),
 		Groups: []astra.Group{{Name: "Group name 1"}, {Name: "Group name 2"}, {Name: "Group name 3"}},
 	})
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 
 	// Set new stream (test for crash when changing categories with existing streams).
 	err = apiHandler.SetStream("0001", astra.Stream{
@@ -148,10 +148,10 @@ func TestSetCategory(t *testing.T) {
 		Enabled: true,
 		Type:    string(cfg.SPTS),
 	})
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 
 	astraCfg, err = apiHandler.FetchCfg()
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 
 	modifiedCategory := astra.Category{
 		Name: "Category modified",
@@ -162,12 +162,11 @@ func TestSetCategory(t *testing.T) {
 		},
 	}
 	err = apiHandler.SetCategory(0, modifiedCategory)
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 
 	astraCfg, err = apiHandler.FetchCfg()
-	assert.NoError(t, err, "should not return error")
-	assert.Equal(t, astraCfg.Categories, []astra.Category{modifiedCategory},
-		"category in returned config should be category set")
+	assert.NoError(t, err)
+	assert.Equal(t, astraCfg.Categories, []astra.Category{modifiedCategory})
 }
 
 func TestSetStreams(t *testing.T) {
@@ -177,7 +176,7 @@ func TestSetStreams(t *testing.T) {
 
 	// Remove existing streams.
 	config, err := apiHandler.FetchCfg()
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 	apiHandler.SetStreams(lo.Map(config.Streams, func(s astra.Stream, _ int) astra.Stream {
 		s.Remove = true
 		return s
@@ -193,8 +192,8 @@ func TestSetStreams(t *testing.T) {
 
 	// Check.
 	config, err = apiHandler.FetchCfg()
-	assert.NoError(t, err, "should not return error")
-	assert.Equal(t, streams, config.Streams, "returned config should consist of streams set")
+	assert.NoError(t, err)
+	assert.Equal(t, streams, config.Streams)
 
 	// Test log output.
 	var out bytes.Buffer
@@ -225,7 +224,7 @@ func TestSetStream(t *testing.T) {
 		Name:    streamName,
 		Type:    string(cfg.SPTS),
 	})
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 
 	// Change.
 	err = apiHandler.SetStream("0000", astra.Stream{
@@ -235,14 +234,14 @@ func TestSetStream(t *testing.T) {
 		Name:    streamName,
 		Type:    string(cfg.SPTS),
 	})
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 
 	// Check.
 	cfg, err := apiHandler.FetchCfg()
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 	assert.True(t, lo.ContainsBy(cfg.Streams, func(s astra.Stream) bool {
 		return s.ID == "0000" && s.Name == streamName && cmp.Equal(s.Inputs, []string{"http://xxx"})
-	}), "returned config should contain data from stream set")
+	}))
 }
 
 // Requires a running astra.
@@ -251,8 +250,8 @@ func TestFetchCfg(t *testing.T) {
 	httpClient := network.NewHttpClient(time.Second * 3)
 	apiHandler := NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
 	astraCfg, err := apiHandler.FetchCfg()
-	assert.NotEmpty(t, astraCfg, "should return not empty config")
-	assert.NoError(t, err, "should not return error")
+	assert.NotEmpty(t, astraCfg)
+	assert.NoError(t, err)
 }
 
 // Requires a running astra.
@@ -261,6 +260,6 @@ func TestRequest(t *testing.T) {
 	httpClient := network.NewHttpClient(time.Second * 3)
 	apiHandler := NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
 	resp, err := apiHandler.request("POST", "/control/", loadReq{Cmd: "sessions"})
-	assert.Contains(t, string(resp), "sessions", "should return sessions list")
-	assert.NoError(t, err, "should not return error")
+	assert.Contains(t, string(resp), "sessions")
+	assert.NoError(t, err)
 }

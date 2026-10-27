@@ -14,9 +14,9 @@ func TestSort(t *testing.T) {
 	ol1Original := copier.TestDeep(t, ol1)
 
 	ol2 := Sort(ol1)
-	assert.NotSame(t, &ol1, &ol2, "should return copy of objects")
-	assert.Exactly(t, ol1Original, ol1, "should not modify the source")
+	assert.NotSame(t, &ol1, &ol2)
+	assert.Exactly(t, ol1Original, ol1)
 
 	expected := []TestNamedStruct{{Name: ""}, {Name: "A"}, {Name: "B"}, {Name: "C"}}
-	assert.Exactly(t, expected, ol2, "should sort objects by name")
+	assert.Exactly(t, expected, ol2)
 }

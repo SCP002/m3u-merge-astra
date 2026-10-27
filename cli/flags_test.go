@@ -12,46 +12,46 @@ import (
 func TestParse(t *testing.T) {
 	os.Args = []string{""}
 	flags, err := Parse()
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 	assert.False(t, flags.Noninteractive, "noninteracive flag should be false if not specified")
 	assert.Empty(t, flags.LogFile, "logFile flag should be empty if not specified")
 
 	os.Args = []string{"", "--help"}
 	_, err = Parse()
-	assert.True(t, IsErrOfType(err, goFlags.ErrHelp), "should return help error")
+	assert.True(t, IsErrOfType(err, goFlags.ErrHelp))
 
 	os.Args = []string{"", "--version"}
 	flags, err = Parse()
-	assert.NoError(t, err, "should not return error")
-	assert.True(t, flags.Version, "flag should be specified")
+	assert.NoError(t, err)
+	assert.True(t, flags.Version)
 
 	os.Args = []string{"", "--logLevel=-1"}
 	_, err = Parse()
 	assert.Error(t, err, "should return error for negative log level")
-	assert.True(t, IsErrOfType(err, goFlags.ErrMarshal), "should return marshal error")
+	assert.True(t, IsErrOfType(err, goFlags.ErrMarshal))
 
 	os.Args = []string{"", "--logLevel=2"}
 	flags, err = Parse()
-	assert.NoError(t, err, "should not return error")
-	assert.Exactly(t, pLog.DebugLevel, flags.LogLevel, "flag should have this value")
+	assert.NoError(t, err)
+	assert.Exactly(t, pLog.DebugLevel, flags.LogLevel)
 
 	os.Args = []string{"", "--logLevel=999"}
 	flags, err = Parse()
-	assert.NoError(t, err, "should not return error")
-	assert.Exactly(t, pLog.Level(999), flags.LogLevel, "flag should have this value")
+	assert.NoError(t, err)
+	assert.Exactly(t, pLog.Level(999), flags.LogLevel)
 
 	os.Args = []string{"", "--noninteractive", "--logFile=/log", "--programCfgPath=/cfg/path", "--m3uPath=/m3u/path",
 		"--astraAddr=http://127.0.0.1:8005", "--astraUser=admin", "--astraPwd=admin"}
 	flags, err = Parse()
-	assert.NoError(t, err, "should not return error")
-	assert.True(t, flags.Noninteractive, "flag should have this value")
-	assert.Exactly(t, pLog.InfoLevel, flags.LogLevel, "flag should have this value")
-	assert.Exactly(t, "/log", flags.LogFile, "flag should have this value")
-	assert.Exactly(t, "/cfg/path", flags.ProgramCfgPath, "flag should have this value")
-	assert.Exactly(t, "/m3u/path", flags.M3UPath, "flag should have this value")
-	assert.Exactly(t, "http://127.0.0.1:8005", flags.AstraAddr, "flag should have this value")
-	assert.Exactly(t, "admin", flags.AstraUser, "flag should have this value")
-	assert.Exactly(t, "admin", flags.AstraPwd, "flag should have this value")
+	assert.NoError(t, err)
+	assert.True(t, flags.Noninteractive)
+	assert.Exactly(t, pLog.InfoLevel, flags.LogLevel)
+	assert.Exactly(t, "/log", flags.LogFile)
+	assert.Exactly(t, "/cfg/path", flags.ProgramCfgPath)
+	assert.Exactly(t, "/m3u/path", flags.M3UPath)
+	assert.Exactly(t, "http://127.0.0.1:8005", flags.AstraAddr)
+	assert.Exactly(t, "admin", flags.AstraUser)
+	assert.Exactly(t, "admin", flags.AstraPwd)
 }
 
 func TestIsErrOfType(t *testing.T) {

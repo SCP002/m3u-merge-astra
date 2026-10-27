@@ -12,28 +12,28 @@ func TestTimes(t *testing.T) {
 		count++
 		return true
 	})
-	assert.Equal(t, 10, count, "should iterate 10 times")
+	assert.Equal(t, 10, count)
 
 	count = 0
 	Times(10, func(iteration int) bool {
 		count++
 		return iteration != 5
 	})
-	assert.Equal(t, 5, count, "should iterate 5 times")
+	assert.Equal(t, 5, count)
 
 	count = 0
 	Times(10, func(iteration int) bool {
 		count++
 		return false
 	})
-	assert.Equal(t, 1, count, "should iterate once")
+	assert.Equal(t, 1, count)
 
 	count = 0
 	Times(0, func(iteration int) bool {
 		count++
 		return true
 	})
-	assert.Equal(t, 0, count, "should not iterate")
+	assert.Equal(t, 0, count)
 }
 
 func TestForEach(t *testing.T) {
@@ -45,7 +45,7 @@ func TestForEach(t *testing.T) {
 	})
 
 	expected := []string{"a", "b", "c"}
-	assert.Exactly(t, expected, result, "should have these values")
+	assert.Exactly(t, expected, result)
 
 	slice = []string{}
 

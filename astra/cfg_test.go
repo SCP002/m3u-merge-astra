@@ -34,16 +34,16 @@ func TestUpdateCategories(t *testing.T) {
 
 	cl2 := r.UpdateCategories(cl1, sl1)
 
-	assert.NotSame(t, &cl1, &cl2, "should return copy of categories")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source categories")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source streams")
+	assert.NotSame(t, &cl1, &cl2)
+	assert.Exactly(t, cl1Original, cl1)
+	assert.Exactly(t, sl1Original, sl1)
 
 	expected := []Category{
 		{Name: "Category 1", Groups: []Group{{Name: "A"}, {Name: "A"}, {Name: "B"}}},
 		{Name: "Category 2", Groups: []Group{{Name: "C"}, {Name: "D"}, {Name: "D"}, {Name: "B"}, {Name: "A"}}},
 		{Name: "Category 3", Groups: []Group{{Name: "A"}, {Name: "B"}, {Name: "C"}}},
 	}
-	assert.Exactly(t, expected, cl2, "should add new category with the specified groups")
+	assert.Exactly(t, expected, cl2)
 
 	// Test log output.
 	var out syncBuffer
@@ -81,8 +81,8 @@ func TestChangedCategories(t *testing.T) {
 	cl2Original := copier.TestDeep(t, cl2)
 
 	changed := r.ChangedCategories(cl1, cl2)
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source categories")
-	assert.Exactly(t, cl2Original, cl2, "should not modify the source categories")
+	assert.Exactly(t, cl1Original, cl1)
+	assert.Exactly(t, cl2Original, cl2)
 
 	expected := []lo.Entry[int, Category]{
 		{Key: 1, Value: Category{Name: "Category 2", Groups: []Group{{Name: "C"}, {Name: "D"}}}},
@@ -92,7 +92,7 @@ func TestChangedCategories(t *testing.T) {
 		{Key: 4, Value: Category{Name: "Category 5", Remove: true}},
 		{Key: 3, Value: Category{Name: "Category 4", Groups: []Group{{Name: "D"}}, Remove: true}},
 	}
-	assert.Exactly(t, expected, changed, "should return that category map")
+	assert.Exactly(t, expected, changed)
 
 	// Test with changes, categories to remove in the beginning of cl1.
 	cl1 = []Category{
@@ -115,8 +115,8 @@ func TestChangedCategories(t *testing.T) {
 	cl2Original = copier.TestDeep(t, cl2)
 
 	changed = r.ChangedCategories(cl1, cl2)
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source categories")
-	assert.Exactly(t, cl2Original, cl2, "should not modify the source categories")
+	assert.Exactly(t, cl1Original, cl1)
+	assert.Exactly(t, cl2Original, cl2)
 
 	expected = []lo.Entry[int, Category]{
 		{Key: -1, Value: Category{Name: "Category 6", Groups: []Group{{Name: "A"}, {Name: "B"}}}},
@@ -126,7 +126,7 @@ func TestChangedCategories(t *testing.T) {
 		{Key: 1, Value: Category{Name: "Category 2", Groups: []Group{{Name: "B"}}, Remove: true}},
 		{Key: 0, Value: Category{Name: "Category 1", Groups: []Group{{Name: "A"}}, Remove: true}},
 	}
-	assert.Exactly(t, expected, changed, "should return that category map")
+	assert.Exactly(t, expected, changed)
 
 	// Test without changes.
 	cl1 = []Category{
@@ -142,8 +142,8 @@ func TestChangedCategories(t *testing.T) {
 	cl2Original = copier.TestDeep(t, cl2)
 
 	changed = r.ChangedCategories(cl1, cl2)
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source categories")
-	assert.Exactly(t, cl2Original, cl2, "should not modify the source categories")
+	assert.Exactly(t, cl1Original, cl1)
+	assert.Exactly(t, cl2Original, cl2)
 
 	expected = nil
 	assert.Exactly(t, expected, changed, "should return empty map if no changs found")
@@ -164,8 +164,8 @@ func TestMergeCategories(t *testing.T) {
 
 	cl2 := r.MergeCategories(cl1)
 
-	assert.NotSame(t, &cl1, &cl2, "should return copy of categories")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source categories")
+	assert.NotSame(t, &cl1, &cl2)
+	assert.Exactly(t, cl1Original, cl1)
 
 	expected := []Category{
 		{
@@ -196,5 +196,5 @@ func TestMergeCategories(t *testing.T) {
 			Groups: []Group{{Name: "X"}},
 		},
 	}
-	assert.Exactly(t, expected, cl2, "should return unique categories with the combined groups")
+	assert.Exactly(t, expected, cl2)
 }

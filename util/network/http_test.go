@@ -44,86 +44,86 @@ func TestNewHttpServer(t *testing.T) {
 	client := NewHttpClient(time.Second * 3)
 
 	resp, err := client.Get("http://127.0.0.1:7878/ok/1")
-	assert.Exactly(t, 200, resp.StatusCode, "should return OK status")
-	assert.NoError(t, err, "should not return error")
+	assert.Exactly(t, 200, resp.StatusCode)
+	assert.NoError(t, err)
 
 	resp, err = client.Get("https://127.0.0.1:9090/ok/1")
-	assert.Exactly(t, 200, resp.StatusCode, "should return OK status")
-	assert.NoError(t, err, "should not return error")
+	assert.Exactly(t, 200, resp.StatusCode)
+	assert.NoError(t, err)
 
 	resp, err = client.Get("http://127.0.0.1:1010/ok/1")
-	assert.Nil(t, resp, "should return empty reposnse")
+	assert.Nil(t, resp)
 	assert.Exactly(t, Refused, GetErrType(err), "should refuse connections to the wrong port")
 
 	resp, err = client.Get("https://127.0.0.1:1010/ok/1")
-	assert.Nil(t, resp, "should return empty reposnse")
+	assert.Nil(t, resp)
 	assert.Exactly(t, Refused, GetErrType(err), "should refuse connections to the wrong port")
 
 	resp, err = client.Get("http://127.0.0.1:9090/ok/1")
 	assert.Exactly(t, 400, resp.StatusCode, "should return Bad Request status (HTTP request to HTTPS server)")
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 
 	resp, err = client.Get("https://127.0.0.1:7878/ok/1")
-	assert.Nil(t, resp, "should return empty reposnse")
+	assert.Nil(t, resp)
 	assert.Exactly(t, HTTPSClientHTTPServer, GetErrType(err), "should return HTTP response to HTTPS client error")
 
 	resp, err = client.Get("http://127.0.0.1:7878/not_found/1")
-	assert.Exactly(t, 404, resp.StatusCode, "should return Not Found status")
-	assert.NoError(t, err, "should not return error")
+	assert.Exactly(t, 404, resp.StatusCode)
+	assert.NoError(t, err)
 
 	resp, err = client.Get("https://127.0.0.1:9090/not_found/1")
-	assert.Exactly(t, 404, resp.StatusCode, "should return Not Found status")
-	assert.NoError(t, err, "should not return error")
+	assert.Exactly(t, 404, resp.StatusCode)
+	assert.NoError(t, err)
 
 	resp, err = client.Get("http://127.0.0.1:1010/not_found/1")
-	assert.Nil(t, resp, "should return empty reposnse")
+	assert.Nil(t, resp)
 	assert.Exactly(t, Refused, GetErrType(err), "should refuse connections to the wrong port")
 
 	resp, err = client.Get("https://127.0.0.1:1010/not_found/1")
-	assert.Nil(t, resp, "should return empty reposnse")
+	assert.Nil(t, resp)
 	assert.Exactly(t, Refused, GetErrType(err), "should refuse connections to the wrong port")
 
 	resp, err = client.Get("http://127.0.0.1:9090/not_found/1")
 	assert.Exactly(t, 400, resp.StatusCode, "should return Bad Request status (HTTP request to HTTPS server)")
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 
 	resp, err = client.Get("https://127.0.0.1:7878/not_found/1")
-	assert.Nil(t, resp, "should return empty reposnse")
+	assert.Nil(t, resp)
 	assert.Exactly(t, HTTPSClientHTTPServer, GetErrType(err), "should return HTTP response to HTTPS client error")
 
 	resp, err = client.Get("http://dead/no_such_host/1")
-	assert.Nil(t, resp, "should return empty reposnse")
+	assert.Nil(t, resp)
 	assert.Exactly(t, NoSuchHost, GetErrType(err), "dead URL's should return DNS lookup error")
 
 	resp, err = client.Get("https://dead/no_such_host/1")
-	assert.Nil(t, resp, "should return empty reposnse")
+	assert.Nil(t, resp)
 	assert.Exactly(t, NoSuchHost, GetErrType(err), "dead URL's should return DNS lookup error")
 
 	resp, err = client.Get("http://127.0.0.1:7878/timeout/1")
-	assert.Nil(t, resp, "should return empty reposnse")
-	assert.Exactly(t, Timeout, GetErrType(err), "should return timeout error")
+	assert.Nil(t, resp)
+	assert.Exactly(t, Timeout, GetErrType(err))
 
 	resp, err = client.Get("https://127.0.0.1:9090/timeout/1")
-	assert.Nil(t, resp, "should return empty reposnse")
-	assert.Exactly(t, Timeout, GetErrType(err), "should return timeout error")
+	assert.Nil(t, resp)
+	assert.Exactly(t, Timeout, GetErrType(err))
 
 	client = NewFakeHttpClient(time.Second * 3)
 
 	resp, err = client.Get("http://example.com:7878/ok/1")
-	assert.Exactly(t, 200, resp.StatusCode, "should return OK status")
-	assert.NoError(t, err, "should not return error")
+	assert.Exactly(t, 200, resp.StatusCode)
+	assert.NoError(t, err)
 
 	resp, err = client.Get("https://example.com:9090/ok/1")
-	assert.Exactly(t, 200, resp.StatusCode, "should return OK status")
-	assert.NoError(t, err, "should not return error")
+	assert.Exactly(t, 200, resp.StatusCode)
+	assert.NoError(t, err)
 }
 
 func TestNewHttpClient(t *testing.T) {
 	// Tested in TestNewHttpServer.
-	assert.NotNil(t, NewHttpClient(0), "should create new http client")
+	assert.NotNil(t, NewHttpClient(0))
 }
 
 func TestNewFakeHttpClient(t *testing.T) {
 	// Tested in TestNewHttpServer.
-	assert.NotNil(t, NewFakeHttpClient(0), "should create new fake http client")
+	assert.NotNil(t, NewFakeHttpClient(0))
 }

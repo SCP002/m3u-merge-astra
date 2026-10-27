@@ -18,24 +18,24 @@ func TestIndexOrElse(t *testing.T) {
 		return o == search
 	})
 
-	assert.NotSame(t, &ol1, &ol2, "should return copy of objects")
-	assert.Exactly(t, ol1Original, ol1, "should not modify the source objects")
+	assert.NotSame(t, &ol1, &ol2)
+	assert.Exactly(t, ol1Original, ol1)
 
-	assert.Exactly(t, ol1, ol2, "should not add existing object")
-	assert.Exactly(t, search, o, "should return fallback object")
-	assert.Exactly(t, 1, idx, "should return index of the existing object")
+	assert.Exactly(t, ol1, ol2)
+	assert.Exactly(t, search, o)
+	assert.Exactly(t, 1, idx)
 
 	search = "C"
 	ol2, o, idx = IndexOrElse(ol1, search, func(o string) bool {
 		return o == search
 	})
 
-	assert.NotSame(t, &ol1, &ol2, "should return copy of objects")
-	assert.Exactly(t, ol1Original, ol1, "should not modify the source objects")
+	assert.NotSame(t, &ol1, &ol2)
+	assert.Exactly(t, ol1Original, ol1)
 
-	assert.Exactly(t, []string{"A", "B", "C"}, ol2, "should add new object")
-	assert.Exactly(t, search, o, "should return fallback object")
-	assert.Exactly(t, 2, idx, "should return index of the new object")
+	assert.Exactly(t, []string{"A", "B", "C"}, ol2)
+	assert.Exactly(t, search, o)
+	assert.Exactly(t, 2, idx)
 }
 
 func TestNamed(t *testing.T) {
@@ -50,10 +50,10 @@ func TestNamed(t *testing.T) {
 	}
 
 	o, idx, found := Named(cfg, ol, "name2")
-	assert.NotSame(t, &ol[1], &o, "should return copy of object")
-	assert.Exactly(t, ol[1], o, "should return object matching the specified name")
+	assert.NotSame(t, &ol[1], &o)
+	assert.Exactly(t, ol[1], o)
 	assert.Exactly(t, 1, idx, "should return index of first found element")
-	assert.True(t, found, "should find object matching the specified name")
+	assert.True(t, found)
 
 	o, idx, found = Named(cfg, ol, "name4")
 	assert.Exactly(t, slice.TestNamedStruct{}, o, "should return empty object if not found")
@@ -83,7 +83,7 @@ func TestEverySimilar(t *testing.T) {
 	})
 
 	expected := map[int]string{3: "Name_2", 5: "Name-2"}
-	assert.Exactly(t, expected, idxNameMap, "should find these objects")
+	assert.Exactly(t, expected, idxNameMap)
 }
 
 func TestGetSimilar(t *testing.T) {
@@ -104,11 +104,11 @@ func TestGetSimilar(t *testing.T) {
 	ol1Original := copier.TestDeep(t, ol1)
 	ol2 := GetSimilar(cfg, ol1, "name2!")
 
-	assert.NotSame(t, &ol1, &ol2, "should return copy of objects")
-	assert.Exactly(t, ol1Original, ol1, "should not modify the source objects")
+	assert.NotSame(t, &ol1, &ol2)
+	assert.Exactly(t, ol1Original, ol1)
 
 	expected := []slice.TestNamedStruct{{Name: "Name 2"}, {Name: "Name_2"}, {Name: "Name-2"}}
-	assert.Exactly(t, expected, ol2, "should find these objects")
+	assert.Exactly(t, expected, ol2)
 }
 
 func TestHasAnySimilar(t *testing.T) {
@@ -120,7 +120,7 @@ func TestHasAnySimilar(t *testing.T) {
 	}
 	ol := []slice.TestNamedStruct{{Name: "Name"}, {Name: "Name 2"}, {Name: "Name 3"}}
 
-	assert.True(t, HasAnySimilar(cfg, ol, "name2!"), "should find this object")
-	assert.False(t, HasAnySimilar(cfg, ol, "Name 4"), "should not find this object")
+	assert.True(t, HasAnySimilar(cfg, ol, "name2!"))
+	assert.False(t, HasAnySimilar(cfg, ol, "Name 4"))
 	assert.True(t, HasAnySimilar(cfg, ol, "Name 4", "name2!"), "should find second object")
 }

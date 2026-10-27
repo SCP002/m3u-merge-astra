@@ -30,17 +30,17 @@ func TestRenameStreams(t *testing.T) {
 
 	sl2 := r.RenameStreams(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source streams")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source channels")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
+	assert.Exactly(t, cl1Original, cl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := astra.Stream{Name: "Known_Name_2"}
-	assert.Exactly(t, expected, sl2[0], "should rename stream to it's channel counterpart")
+	assert.Exactly(t, expected, sl2[0])
 
 	expected = astra.Stream{Name: "Known_Name"}
-	assert.Exactly(t, expected, sl2[1], "should rename stream to it's channel counterpart")
+	assert.Exactly(t, expected, sl2[1])
 
 	expected = astra.Stream{Name: "Other name A"}
 	assert.Exactly(t, expected, sl2[2], "should not rename stream if no channel counterpart name found")
@@ -84,16 +84,16 @@ func TestUpdateInputs(t *testing.T) {
 	r.cfg.Streams.KeepInputHash = false
 	sl2 := r.UpdateInputs(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source streams")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source channels")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
+	assert.Exactly(t, cl1Original, cl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := []string{
 		"http://other/input", "http://new/known/input/2#b", "http://new/known/input/1", "http://known/input/1#b",
 	}
-	assert.Exactly(t, expected, sl2[0].Inputs, "should have these inputs")
+	assert.Exactly(t, expected, sl2[0].Inputs)
 
 	assert.Exactly(t, sl1[1], sl2[1], "should not update to input to channel URL not in cfg.Streams.InputUpdateMap")
 
@@ -102,16 +102,16 @@ func TestUpdateInputs(t *testing.T) {
 	r.cfg.Streams.KeepInputHash = true
 	sl2 = r.UpdateInputs(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source streams")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source channels")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
+	assert.Exactly(t, cl1Original, cl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected = []string{
 		"http://other/input", "http://new/known/input/2#b&a", "http://new/known/input/1", "http://known/input/1#b",
 	}
-	assert.Exactly(t, expected, sl2[0].Inputs, "should have these inputs")
+	assert.Exactly(t, expected, sl2[0].Inputs)
 
 	assert.Exactly(t, sl1[1], sl2[1], "should not update to input to channel URL not in cfg.Streams.InputUpdateMap")
 
@@ -141,8 +141,8 @@ func TestUpdateInputs(t *testing.T) {
 	r.cfg.Streams.EnableOnInputUpdate = true
 
 	sl2 = r.UpdateInputs(sl1, cl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source streams")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
 	assert.True(t, sl2[0].Enabled, "stream should become enabled as EnableOnInputUpdate = true and it was updated")
 	assert.False(t, sl2[0].MarkDisabled,
@@ -208,11 +208,11 @@ func TestRemoveInputsByUpdateMap(t *testing.T) {
 	cl1Original := copier.TestDeep(t, cl1)
 	sl2 := r.RemoveInputsByUpdateMap(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source streams")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source channels")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
+	assert.Exactly(t, cl1Original, cl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := astra.Stream{
 		Name:           "Known name",
@@ -274,11 +274,11 @@ func TestAddNewInputs(t *testing.T) {
 	r.cfg.Streams.HashCheckOnAddNewInputs = true
 	sl2 := r.AddNewInputs(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source streams")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source channels")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
+	assert.Exactly(t, cl1Original, cl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := astra.Stream{
 		Name:   "Known name",
@@ -294,18 +294,18 @@ func TestAddNewInputs(t *testing.T) {
 		Name:   "Known name 3",
 		Inputs: []string{"http://input/3", "http://input/2", "http://input/1"},
 	}
-	assert.Exactly(t, expected, sl2[2], "should add unknown inputs")
+	assert.Exactly(t, expected, sl2[2])
 
 	assert.Exactly(t, sl1[3], sl2[3], "should not change streams with unknown names")
 
 	r.cfg.Streams.HashCheckOnAddNewInputs = false
 	sl2 = r.AddNewInputs(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source streams")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source channels")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
+	assert.Exactly(t, cl1Original, cl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	assert.Exactly(t, sl1[0], sl2[0], "should not add input which only differ by hash as HashCheckOnAddNewStreamInputs"+
 		" = false")
@@ -316,7 +316,7 @@ func TestAddNewInputs(t *testing.T) {
 		Name:   "Known name 3",
 		Inputs: []string{"http://input/3", "http://input/2", "http://input/1"},
 	}
-	assert.Exactly(t, expected, sl2[2], "should add unknown inputs")
+	assert.Exactly(t, expected, sl2[2])
 
 	assert.Exactly(t, sl1[3], sl2[3], "should not change streams with unknown names")
 
@@ -338,8 +338,8 @@ func TestAddNewInputs(t *testing.T) {
 	r.cfg.Streams.EnableOnInputUpdate = true
 
 	sl2 = r.AddNewInputs(sl1, cl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source streams")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
 	assert.True(t, sl2[0].Enabled, "stream should become enabled as EnableOnInputUpdate = true")
 	assert.False(t, sl2[0].MarkDisabled, "MarkDisabled should become false as EnableOnInputUpdate = true")
@@ -401,15 +401,15 @@ func TestAddNewStreams(t *testing.T) {
 	r.cfg.Streams.AddGroupsToNew = false
 	sl2 := r.AddNewStreams(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source streams")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source channels")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
+	assert.Exactly(t, cl1Original, cl1)
 
-	assert.Len(t, sl2, 3, "should add new stream")
+	assert.Len(t, sl2, 3)
 
-	assert.Exactly(t, sl1[0], sl2[0], "should not change existing streams")
+	assert.Exactly(t, sl1[0], sl2[0])
 
-	assert.Exactly(t, sl1[1], sl2[1], "should not change existing streams")
+	assert.Exactly(t, sl1[1], sl2[1])
 
 	expected := astra.Stream{
 		DisabledInputs: make([]string, 0),
@@ -421,25 +421,25 @@ func TestAddNewStreams(t *testing.T) {
 		Type:           string(r.cfg.Streams.NewType),
 		MarkAdded:      true,
 	}
-	assert.Exactly(t, expected, sl2[2], "should add new stream")
+	assert.Exactly(t, expected, sl2[2])
 
 	r.cfg.Streams.AddNewWithKnownInputs = true
 	r.cfg.Streams.AddGroupsToNew = true
 	sl2 = r.AddNewStreams(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source streams")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source channels")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
+	assert.Exactly(t, cl1Original, cl1)
 
-	assert.Len(t, sl2, 3, "should add new stream")
+	assert.Len(t, sl2, 3)
 
-	assert.Exactly(t, sl1[0], sl2[0], "should not change existing streams")
+	assert.Exactly(t, sl1[0], sl2[0])
 
-	assert.Exactly(t, sl1[1], sl2[1], "should not change existing streams")
+	assert.Exactly(t, sl1[1], sl2[1])
 
 	expected.ID = sl2[2].ID
 	expected.Groups = map[string]string{r.cfg.Streams.GroupsCategoryForNew: "Group"}
-	assert.Exactly(t, expected, sl2[2], "should add new stream")
+	assert.Exactly(t, expected, sl2[2])
 
 	sl1 = []astra.Stream{{Name: "Other name", Inputs: []string{"http://some/url"}}}
 	cl1 = []m3u.Channel{
@@ -464,9 +464,9 @@ func TestAddNewStreams(t *testing.T) {
 	r.cfg.Streams.AddNewWithKnownInputs = false
 	sl2 = r.AddNewStreams(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source streams")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source channels")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
+	assert.Exactly(t, cl1Original, cl1)
 
 	assert.Exactly(t, sl1, sl2, "should not change as AddNewStreamsWithKnownInputs = false and hash difference should"+
 		"be ignored")
@@ -491,10 +491,10 @@ func TestGenerateUID(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		uid := generateUID(sl)
 		// Check length.
-		assert.Len(t, uid, 4, "ID should be 4 characters long")
+		assert.Len(t, uid, 4)
 		// Check if not uppercase.
 		hasUpperCase := strings.ContainsAny(uid, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-		assert.False(t, hasUpperCase, "ID should not contain uppercase characters")
+		assert.False(t, hasUpperCase)
 		// Check if unique.
 		contains := lo.ContainsBy(sl, func(s astra.Stream) bool {
 			return s.ID == uid

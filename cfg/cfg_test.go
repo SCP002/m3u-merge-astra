@@ -24,14 +24,14 @@ func TestSimplifyAliases(t *testing.T) {
 
 	actual := cfg.SimplifyAliases()
 
-	assert.NotSame(t, &cfg.NameAliasList, &actual, "should return copy of aliases")
-	assert.Exactly(t, cfgOriginal, cfg, "should not modify the source config")
+	assert.NotSame(t, &cfg.NameAliasList, &actual)
+	assert.Exactly(t, cfgOriginal, cfg)
 
 	expected := [][]string{
 		{"name1", "name1var2", "name1var3"},
 		{"name2", "name2var2"},
 	}
-	assert.Exactly(t, expected, actual, "should simplify aliases")
+	assert.Exactly(t, expected, actual)
 }
 
 func TestBadRegexpError(t *testing.T) {
@@ -48,18 +48,18 @@ func TestInitDefault(t *testing.T) {
 	// Test creation of the default config.
 	actual, isNewCfg, err := Init(log, path)
 
-	assert.Exactly(t, Root{}, actual, "should return empty config")
-	assert.True(t, isNewCfg, "should return true")
-	assert.NoError(t, err, "should not return error")
+	assert.Exactly(t, Root{}, actual)
+	assert.True(t, isNewCfg)
+	assert.NoError(t, err)
 
 	// Test reading of the default config.
 	actual, isNewCfg, err = Init(log, path)
 
 	expected := NewDefCfg()
 
-	assert.Exactly(t, expected, actual, "should return default config")
-	assert.False(t, isNewCfg, "should return false")
-	assert.NoError(t, err, "should not return error")
+	assert.Exactly(t, expected, actual)
+	assert.False(t, isNewCfg)
+	assert.NoError(t, err)
 }
 
 func TestInitValidateCaptureGroups(t *testing.T) {
@@ -78,8 +78,8 @@ func TestInitValidateCaptureGroups(t *testing.T) {
 		Reason: "Expecting at least one capture group",
 	}
 
-	assert.False(t, isNewCfg, "should return false")
-	assert.Exactly(t, expectedErr, errors.UnwrapAll(err), "should return bad regexp error")
+	assert.False(t, isNewCfg)
+	assert.Exactly(t, expectedErr, errors.UnwrapAll(err))
 }
 
 func TestInitSimplifyAliases(t *testing.T) {
@@ -98,7 +98,7 @@ func TestInitSimplifyAliases(t *testing.T) {
 		{"discoveryid", "discoveryinvestigation"},
 	}
 
-	assert.Exactly(t, expected, actual.General.SimpleNameAliasList, "actual config should contain these aliases")
-	assert.False(t, isNewCfg, "should return false")
-	assert.NoError(t, err, "should not return error")
+	assert.Exactly(t, expected, actual.General.SimpleNameAliasList)
+	assert.False(t, isNewCfg)
+	assert.NoError(t, err)
 }

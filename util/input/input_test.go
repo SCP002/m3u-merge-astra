@@ -35,15 +35,15 @@ func TestAsk(t *testing.T) {
 
 	in := strings.NewReader(" 0 \n")
 	answer := ask(log, in, false, "prompt\n", func(s string) bool {
-		assert.Exactly(t, " 0 \n", s, "callback argument should have this value")
+		assert.Exactly(t, " 0 \n", s)
 		return false
 	})
-	assert.Exactly(t, " 0 \n", answer, "should read this value")
+	assert.Exactly(t, " 0 \n", answer)
 
 	in.Reset(" 0 \n")
 	answer = ask(log, in, true, "prompt\n", func(s string) bool {
-		assert.Exactly(t, "0", s, "callback argument should have trimmed value")
+		assert.Exactly(t, "0", s)
 		return false
 	})
-	assert.Exactly(t, "0", answer, "should read and trim input")
+	assert.Exactly(t, "0", answer)
 }

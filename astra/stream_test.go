@@ -35,23 +35,23 @@ func TestNewStream(t *testing.T) {
 		Type:           string(cfg.NewType),
 		MarkAdded:      true,
 	}
-	assert.Exactly(t, expected, s, "should create this stream")
+	assert.Exactly(t, expected, s)
 
 	cfg.AddGroupsToNew = true
 	s = NewStream(cfg, "0000", "Name", "Group", []string{"http://url"})
 
 	expected.Groups = map[string]string{cfg.GroupsCategoryForNew: "Group"}
-	assert.Exactly(t, expected, s, "should create this stream")
+	assert.Exactly(t, expected, s)
 }
 
 func TestGetName(t *testing.T) {
 	s := Stream{Name: "Name"}
-	assert.Exactly(t, s.Name, s.GetName(), "should return this name")
+	assert.Exactly(t, s.Name, s.GetName())
 }
 
 func TestFirstGroup(t *testing.T) {
 	s := Stream{}
-	assert.Empty(t, s.FirstGroup(), "should return empty group")
+	assert.Empty(t, s.FirstGroup())
 	s = Stream{
 		Groups: map[string]string{
 			"Category 3": "Group 3",
@@ -62,7 +62,7 @@ func TestFirstGroup(t *testing.T) {
 		},
 	}
 	for i := 0; i < 10000; i++ { // Test if logic relies on unstable iteration over maps.
-		if ok := assert.Exactly(t, "Category 1: Group 1", s.FirstGroup(), "should return first group"); !ok {
+		if ok := assert.Exactly(t, "Category 1: Group 1", s.FirstGroup()); !ok {
 			t.FailNow()
 		}
 	}
@@ -85,13 +85,13 @@ func TestUpdateStreamInput(t *testing.T) {
 	s2, updated := s1.UpdateInput(r, "http://update/to/1", func(oldInput string) {
 		oldInputs = append(oldInputs, oldInput)
 	})
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected := []string{
 		"http://irrelevant/from#a", "http://update/to/1", "http://update/url/1#b", "http://update/url/1#c",
 	}
-	assert.Exactly(t, expected, s2.Inputs, "should have these inputs")
+	assert.Exactly(t, expected, s2.Inputs)
 	assert.True(t, updated, "should return true as it was updated")
 
 	s2, updated = s1.UpdateInput(r, "http://update/url/1#b", func(oldInput string) {
@@ -113,8 +113,8 @@ func TestUpdateStreamInput(t *testing.T) {
 	s2, updated = s1.UpdateInput(r, "http://update/url/2", func(oldInput string) {
 		oldInputs = append(oldInputs, oldInput)
 	})
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected = []string{
 		"http://irrelevant/from#a", "http://update/from/1#c", "http://update/url/2#b", "http://update/url/1#c",
@@ -142,7 +142,7 @@ func TestUpdateStreamInput(t *testing.T) {
 		"http://update/url/1#c",
 		"http://update/url/1#b",
 		"http://update/url/1#b",
-	}, oldInputs, "callbacks should return these old iputs")
+	}, oldInputs)
 }
 
 func TestHasInput(t *testing.T) {
@@ -151,24 +151,24 @@ func TestHasInput(t *testing.T) {
 	s := Stream{Inputs: []string{"http://other/input", "http://known/input#a"}}
 
 	assert.False(t, s.HasInput(log, "http://known/input", true), "should not contain URL without hash")
-	assert.True(t, s.HasInput(log, "http://known/input#a", true), "should contain URL")
+	assert.True(t, s.HasInput(log, "http://known/input#a", true))
 
 	assert.True(t, s.HasInput(log, "http://known/input", false), "should contain URL without hash")
 	assert.True(t, s.HasInput(log, "http://known/input#b", false), "should contain URL with different hashes")
 
-	assert.False(t, s.HasInput(log, "http://foreign/input", true), "should not contain URL")
-	assert.False(t, s.HasInput(log, "http://foreign/input#a", true), "should not contain URL")
+	assert.False(t, s.HasInput(log, "http://foreign/input", true))
+	assert.False(t, s.HasInput(log, "http://foreign/input#a", true))
 
-	assert.False(t, s.HasInput(log, "http://foreign/input", false), "should not contain URL")
-	assert.False(t, s.HasInput(log, "http://foreign/input#b", false), "should not contain URL")
+	assert.False(t, s.HasInput(log, "http://foreign/input", false))
+	assert.False(t, s.HasInput(log, "http://foreign/input#b", false))
 
 	s = Stream{Inputs: []string{"http://other/input#a", "http:/other/input/2#b"}}
 
-	assert.False(t, s.HasInput(log, "http://foreign/input", true), "should not contain URL")
-	assert.False(t, s.HasInput(log, "http://foreign/input#a", true), "should not contain URL")
+	assert.False(t, s.HasInput(log, "http://foreign/input", true))
+	assert.False(t, s.HasInput(log, "http://foreign/input#a", true))
 
-	assert.False(t, s.HasInput(log, "http://foreign/input", false), "should not contain URL")
-	assert.False(t, s.HasInput(log, "http://foreign/input#b", false), "should not contain URL")
+	assert.False(t, s.HasInput(log, "http://foreign/input", false))
+	assert.False(t, s.HasInput(log, "http://foreign/input#b", false))
 }
 
 func TestAddInput(t *testing.T) {
@@ -176,11 +176,11 @@ func TestAddInput(t *testing.T) {
 	s1Original := copier.TestDeep(t, s1)
 
 	s2 := s1.AddInput("http://input/3")
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected := []string{"http://input/3", "http://input/1", "http://input/2"}
-	assert.Exactly(t, expected, s2.Inputs, "should have these inputs")
+	assert.Exactly(t, expected, s2.Inputs)
 }
 
 func TestKnownInputs(t *testing.T) {
@@ -195,7 +195,7 @@ func TestKnownInputs(t *testing.T) {
 	ki := s.KnownInputs(config)
 
 	expected := []string{"http://known/input/2#a", "http://known/input/1"}
-	assert.Exactly(t, expected, ki, "should have these inputs")
+	assert.Exactly(t, expected, ki)
 }
 
 func TestInputsUpdateNote(t *testing.T) {
@@ -203,7 +203,7 @@ func TestInputsUpdateNote(t *testing.T) {
 
 	cfg.EnableOnInputUpdate = false
 	s := Stream{Enabled: false}
-	assert.Exactly(t, "Stream is disabled", s.InputsUpdateNote(cfg), "should return this note")
+	assert.Exactly(t, "Stream is disabled", s.InputsUpdateNote(cfg))
 	s = Stream{Enabled: true}
 	assert.Exactly(t, "", s.InputsUpdateNote(cfg), "should not return a note if enabled")
 
@@ -219,38 +219,38 @@ func TestEnableStream(t *testing.T) {
 	s1Original := copier.TestDeep(t, s1)
 
 	s2 := s1.Enable()
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected := Stream{Enabled: true, MarkDisabled: false}
-	assert.Exactly(t, expected, s2, "should set Enabled field to true and MarkDisabled field to false")
+	assert.Exactly(t, expected, s2)
 
 	s1 = Stream{Enabled: false, MarkDisabled: false}
 	s1Original = copier.TestDeep(t, s1)
 
 	s2 = s1.Enable()
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected = Stream{Enabled: true, MarkDisabled: false}
-	assert.Exactly(t, expected, s2, "should set Enabled field to true")
+	assert.Exactly(t, expected, s2)
 
 	s1 = Stream{Enabled: true, MarkDisabled: true}
 	s1Original = copier.TestDeep(t, s1)
 
 	s2 = s1.Enable()
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected = Stream{Enabled: true, MarkDisabled: false}
-	assert.Exactly(t, expected, s2, "should set MarkDisabled field to false")
+	assert.Exactly(t, expected, s2)
 
 	s1 = Stream{Enabled: true, MarkDisabled: false}
 	s1Original = copier.TestDeep(t, s1)
 
 	s2 = s1.Enable()
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	assert.Exactly(t, s1, s2, "should not change enabled stream with MarkDisabled field set to false")
 }
@@ -263,12 +263,12 @@ func TestRemoveInputsCb(t *testing.T) {
 	s2 := s1.RemoveInputsCb("http://input/1", func() {
 		count++
 	})
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected := []string{"http://input/2"}
-	assert.Exactly(t, expected, s2.Inputs, "should have these inputs")
-	assert.Exactly(t, 2, count, "should remove 2 inputs")
+	assert.Exactly(t, expected, s2.Inputs)
+	assert.Exactly(t, 2, count)
 }
 
 func TestRemoveInputs(t *testing.T) {
@@ -281,34 +281,34 @@ func TestDisableStream(t *testing.T) {
 	s1Original := copier.TestDeep(t, s1)
 
 	s2 := s1.disable()
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected := Stream{Enabled: false, MarkDisabled: true}
-	assert.Exactly(t, expected, s2, "should set disabled prefix flag")
+	assert.Exactly(t, expected, s2)
 
 	s1 = Stream{Enabled: true, MarkDisabled: false}
 	s1Original = copier.TestDeep(t, s1)
 
 	s2 = s1.disable()
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected = Stream{Enabled: false, MarkDisabled: true}
-	assert.Exactly(t, expected, s2, "should set disabled prefix flag")
+	assert.Exactly(t, expected, s2)
 
 	s1 = Stream{Enabled: false, MarkDisabled: true}
 
 	s2 = s1.disable()
 
-	assert.Exactly(t, s1, s2, "should not change the stream")
+	assert.Exactly(t, s1, s2)
 
 	s1 = Stream{Enabled: true, MarkDisabled: true}
 
 	s2 = s1.disable()
 
 	expected = Stream{Enabled: false, MarkDisabled: true}
-	assert.Exactly(t, expected, s2, "should disable the stream")
+	assert.Exactly(t, expected, s2)
 }
 
 func TestRemoveDuplicatedInputsByRx(t *testing.T) {
@@ -334,14 +334,14 @@ func TestRemoveDuplicatedInputsByRx(t *testing.T) {
 	s2 := s1.removeDuplicatedInputsByRx(r, func(input string) {
 		removed = append(removed, input)
 	})
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected := []string{"http://host1/path1", "http://host3/path5", ""}
 	assert.Exactly(t, expected, s2.Inputs, "should remove inputs duplicated by host and path")
 
 	expected = []string{"http://host1/path2", "http://host1/path3", "http://host2/path4", "http://host2/path1"}
-	assert.Exactly(t, expected, removed, "callback should return these removed iputs")
+	assert.Exactly(t, expected, removed)
 }
 
 func TestDisableAllButOneInputByRx(t *testing.T) {
@@ -362,15 +362,15 @@ func TestDisableAllButOneInputByRx(t *testing.T) {
 	s2 := s1.disableAllButOneInputByRx(r.cfg.Streams, func(input string) {
 		disabled = append(disabled, input)
 	})
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected := []string{"http://input/1#no_sync&abc"}
 	assert.Exactly(t, expected, s2.Inputs,
 		"should remove all inputs except the first matching first found regular expression")
 
 	expected = []string{"http://input/1#abc", "http://input/1#abc&i_might_stay"}
-	assert.Exactly(t, expected, disabled, "callback should return these disabled iputs")
+	assert.Exactly(t, expected, disabled)
 
 	expected = []string{"http://input/1#def", "http://input/1#abc", "http://input/1#abc&i_might_stay"}
 	assert.Exactly(t, expected, s2.DisabledInputs, "should add all normal removed inputs to the list of disabled ones")
@@ -389,15 +389,15 @@ func TestDisableAllButOneInputByRx(t *testing.T) {
 	s2 = s1.disableAllButOneInputByRx(r.cfg.Streams, func(input string) {
 		disabled = append(disabled, input)
 	})
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected = []string{"http://input/1#abc&i_might_stay"}
 	assert.Exactly(t, expected, s2.Inputs,
 		"should remove all inputs except the first matching first found regular expression")
 
 	expected = []string{"http://input/1#abc&i_might_stay", "http://input/1#abc"}
-	assert.Exactly(t, expected, disabled, "callback should return these disabled iputs")
+	assert.Exactly(t, expected, disabled)
 
 	expected = []string{"http://input/1#abc&i_might_stay", "http://input/1#abc"}
 	assert.Exactly(t, expected, s2.DisabledInputs, "should add all normal removed inputs to the list of disabled ones")
@@ -414,17 +414,17 @@ func TestRemoveDisabledInputs(t *testing.T) {
 	s2 := s1.removeDisabledInputs(func(input string) {
 		removed = append(removed, input)
 	})
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected := []string{"http://input/1"}
-	assert.Exactly(t, expected, s2.Inputs, "should not remove enabled inputs")
+	assert.Exactly(t, expected, s2.Inputs)
 
 	expected = []string{"http://input/2", "http://input/2"}
-	assert.Exactly(t, expected, removed, "callback should return these removed iputs")
+	assert.Exactly(t, expected, removed)
 
 	expected = []string{}
-	assert.Exactly(t, expected, s2.DisabledInputs, "should remove all disabled inputs")
+	assert.Exactly(t, expected, s2.DisabledInputs)
 }
 
 func TestRemoveBlockedInputs(t *testing.T) {
@@ -443,14 +443,14 @@ func TestRemoveBlockedInputs(t *testing.T) {
 		removed = append(removed, input)
 	})
 
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected := []string{"http://input/2"}
-	assert.Exactly(t, expected, s2.Inputs, "should have these inputs")
+	assert.Exactly(t, expected, s2.Inputs)
 
 	expected = []string{"http://input/1", "http://input/1", "http://input/3"}
-	assert.Exactly(t, expected, removed, "callback should return these removed iputs")
+	assert.Exactly(t, expected, removed)
 }
 
 func TestHasNoInputs(t *testing.T) {
@@ -491,11 +491,11 @@ func TestSetPrefix(t *testing.T) {
 	s1Original := copier.TestDeep(t, s1)
 
 	s2 := s1.setPrefix(prefix)
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected := Stream{Name: prefix + "Name"}
-	assert.Exactly(t, expected, s2, "stream name should start with prefix")
+	assert.Exactly(t, expected, s2)
 }
 
 func TestRemovePrefix(t *testing.T) {
@@ -505,8 +505,8 @@ func TestRemovePrefix(t *testing.T) {
 	s1Original := copier.TestDeep(t, s1)
 
 	s2 := s1.removePrefix(prefix)
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	assert.Exactly(t, s1, s2, "should not modify the stream without prefix")
 
@@ -514,11 +514,11 @@ func TestRemovePrefix(t *testing.T) {
 	s1Original = copier.TestDeep(t, s1)
 
 	s2 = s1.removePrefix(prefix)
-	assert.NotSame(t, &s1, &s2, "should return copy of stream")
-	assert.Exactly(t, s1Original, s1, "should not modify the source")
+	assert.NotSame(t, &s1, &s2)
+	assert.Exactly(t, s1Original, s1)
 
 	expected := Stream{Name: "Name"}
-	assert.Exactly(t, expected, s2, "should remove prefix")
+	assert.Exactly(t, expected, s2)
 
 	s1 = Stream{Name: "Na" + prefix + "me"}
 
@@ -542,25 +542,25 @@ func TestAnyHasInput(t *testing.T) {
 		{Inputs: []string{"http://other/input", "http://known/input#a"}},
 	}
 	assert.False(t, r.HasInput(sl, "http://known/input", true), "should not contain URL without hash")
-	assert.True(t, r.HasInput(sl, "http://known/input#a", true), "should contain URL")
+	assert.True(t, r.HasInput(sl, "http://known/input#a", true))
 
 	assert.True(t, r.HasInput(sl, "http://known/input", false), "should contain URL without hash")
 	assert.True(t, r.HasInput(sl, "http://known/input#b", false), "should contain URL with different hashes")
 
-	assert.False(t, r.HasInput(sl, "http://foreign/input", true), "should not contain URL")
-	assert.False(t, r.HasInput(sl, "http://foreign/input#a", true), "should not contain URL")
+	assert.False(t, r.HasInput(sl, "http://foreign/input", true))
+	assert.False(t, r.HasInput(sl, "http://foreign/input#a", true))
 
-	assert.False(t, r.HasInput(sl, "http://foreign/input", false), "should not contain URL")
-	assert.False(t, r.HasInput(sl, "http://foreign/input#b", false), "should not contain URL")
+	assert.False(t, r.HasInput(sl, "http://foreign/input", false))
+	assert.False(t, r.HasInput(sl, "http://foreign/input#b", false))
 
 	sl = []Stream{
 		{Inputs: []string{"http://other/input#a", "http:/other/input/2#b"}},
 	}
-	assert.False(t, r.HasInput(sl, "http://foreign/input", true), "should not contain URL")
-	assert.False(t, r.HasInput(sl, "http://foreign/input#a", true), "should not contain URL")
+	assert.False(t, r.HasInput(sl, "http://foreign/input", true))
+	assert.False(t, r.HasInput(sl, "http://foreign/input#a", true))
 
-	assert.False(t, r.HasInput(sl, "http://foreign/input", false), "should not contain URL")
-	assert.False(t, r.HasInput(sl, "http://foreign/input#b", false), "should not contain URL")
+	assert.False(t, r.HasInput(sl, "http://foreign/input", false))
+	assert.False(t, r.HasInput(sl, "http://foreign/input#b", false))
 }
 
 func TestRemoveNamePrefixes(t *testing.T) {
@@ -580,27 +580,27 @@ func TestRemoveNamePrefixes(t *testing.T) {
 	sl1Original := copier.TestDeep(t, sl1)
 
 	sl2 := r.RemoveNamePrefixes(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	assert.Exactly(t, sl1[0], sl2[0], "should not change the stream without prefixes")
 
 	expected := Stream{Name: "Name 2", MarkAdded: false, MarkDisabled: true}
-	assert.Exactly(t, expected, sl2[1], "should remove disabled prefix")
+	assert.Exactly(t, expected, sl2[1])
 
 	expected = Stream{Name: "Name 3", MarkAdded: false, MarkDisabled: true}
-	assert.Exactly(t, expected, sl2[2], "should remove disabled prefix and set MarkDisabled to true")
+	assert.Exactly(t, expected, sl2[2])
 
 	expected = Stream{Name: "Name 4", MarkAdded: true, MarkDisabled: true}
 	assert.Exactly(t, expected, sl2[3], "should remove added prefix, set MarkAdded to true and ignore MarkDisabled")
 
 	expected = Stream{Name: "Name 5", MarkAdded: true, MarkDisabled: true}
-	assert.Exactly(t, expected, sl2[4], "should remove prefixes")
+	assert.Exactly(t, expected, sl2[4])
 
 	expected = Stream{Name: "Name 6", MarkAdded: true, MarkDisabled: true}
-	assert.Exactly(t, expected, sl2[5], "should remove prefixes and set both MarkAdded and MarkDisabled to true")
+	assert.Exactly(t, expected, sl2[5])
 
 	assert.Exactly(t, sl1[6], sl2[6], "should not change the stream with prefix strings in the middle of the name")
 
@@ -625,11 +625,11 @@ func TestSort(t *testing.T) {
 	sl1Original := copier.TestDeep(t, sl1)
 
 	sl2 := r.Sort(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
 	expected := []Stream{{Name: ""}, {Name: "A"}, {Name: "B"}, {Name: "C"}}
-	assert.Exactly(t, expected, sl2, "should sort streams by name")
+	assert.Exactly(t, expected, sl2)
 }
 
 func TestAllRemoveBlockedInputs(t *testing.T) {
@@ -647,17 +647,17 @@ func TestAllRemoveBlockedInputs(t *testing.T) {
 	sl1Original := copier.TestDeep(t, sl1)
 
 	sl2 := r.RemoveBlockedInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := []string{"http://input/2"}
-	assert.Exactly(t, expected, sl2[0].Inputs, "should have these inputs")
+	assert.Exactly(t, expected, sl2[0].Inputs)
 
-	assert.Len(t, sl2[1].Inputs, 0, "should remove all specified inputs")
+	assert.Len(t, sl2[1].Inputs, 0)
 
-	assert.Len(t, sl2[2].Inputs, 0, "should stay 0")
+	assert.Len(t, sl2[2].Inputs, 0)
 
 	// Test log output.
 	var out syncBuffer
@@ -686,13 +686,13 @@ func TestRemoveDuplicatedInputs(t *testing.T) {
 	sl1Original := copier.TestDeep(t, sl1)
 
 	sl2 := r.RemoveDuplicatedInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := []string{"http://input/2", "http://input/1", "http://input/3"}
-	assert.Exactly(t, expected, sl2[0].Inputs, "should have these inputs")
+	assert.Exactly(t, expected, sl2[0].Inputs)
 
 	assert.Exactly(t, sl1[1], sl2[1], "should not modify streams without inputs")
 
@@ -735,10 +735,10 @@ func TestAllRemoveDuplicatedInputsByRx(t *testing.T) {
 	sl1Original := copier.TestDeep(t, sl1)
 
 	sl2 := r.RemoveDuplicatedInputsByRx(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := []string{"http://host1/path1", "http://host2/path2"}
 	assert.Exactly(t, expected, sl2[0].Inputs, "should remove inputs duplicated by host")
@@ -787,18 +787,18 @@ func TestUniteInputs(t *testing.T) {
 	sl1Original := copier.TestDeep(t, sl1)
 
 	sl2 := r.UniteInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	assert.Exactly(t, sl1[0], sl2[0], "should not modify stream without existing duplicate by name")
 
 	expected := Stream{Name: "Name 3", Inputs: []string{"http://input/c", "http://input/b", "http://input/a"}}
-	assert.Exactly(t, expected, sl2[1], "should be this stream")
+	assert.Exactly(t, expected, sl2[1])
 
 	expected = Stream{Name: "Name 2", Inputs: []string{"http://input/b", "http://input/a"}}
-	assert.Exactly(t, expected, sl2[2], "should be this stream")
+	assert.Exactly(t, expected, sl2[2])
 
 	expected = Stream{Name: "Name_3", Inputs: make([]string, 0), DisabledInputs: make([]string, 0)}
 	assert.Exactly(t, expected, sl2[3], "should remove inputs from subsequent streams duplicated by name")
@@ -827,8 +827,8 @@ func TestUniteInputs(t *testing.T) {
 	r.cfg.Streams.EnableOnInputUpdate = true
 
 	sl2 = r.UniteInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
 	assert.True(t, sl2[0].Enabled, "stream should become enabled as EnableOnInputUpdate = true")
 	assert.False(t, sl2[0].MarkDisabled, "MarkDisabled should become false as EnableOnInputUpdate = true")
@@ -888,10 +888,10 @@ func TestSortInputs(t *testing.T) {
 	sl1Original := copier.TestDeep(t, sl1)
 
 	sl2 := r.SortInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := []string{"http://input/20", "http://other/a", "http://other/b", "http://input/30"}
 	assert.Exactly(t, expected, sl2[0].Inputs, "inputs should have this order")
@@ -912,10 +912,10 @@ func TestSortInputs(t *testing.T) {
 	sl1Original = copier.TestDeep(t, sl1)
 
 	sl2 = r.SortInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected = []string{"http://input/20", "http://other/a", "http://other/b", "http://other/c"}
 	assert.Exactly(t, expected, sl2[0].Inputs, "inputs should have this order")
@@ -932,10 +932,10 @@ func TestSortInputs(t *testing.T) {
 	sl1Original = copier.TestDeep(t, sl1)
 
 	sl2 = r.SortInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Exactly(t, sl1, sl2, "should stay the same")
+	assert.Exactly(t, sl1, sl2)
 }
 
 func TestRemoveDeadInputs(t *testing.T) {
@@ -1004,19 +1004,19 @@ func TestRemoveDeadInputs(t *testing.T) {
 	httpClient := network.NewHttpClient(time.Second * 3)
 	analyzerClient := analyzer.NewFake()
 	sl2 := r.RemoveDeadInputs(httpClient, analyzerClient, sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := []string{"https://127.0.0.1:5656/alive/1"}
-	assert.Exactly(t, expected, sl2[0].Inputs, "should have these inputs")
+	assert.Exactly(t, expected, sl2[0].Inputs)
 
 	expected = []string{"http://127.0.0.1:3434/alive/2", "http://ignore/2"}
-	assert.Exactly(t, expected, sl2[1].Inputs, "should have these inputs")
+	assert.Exactly(t, expected, sl2[1].Inputs)
 
 	expected = []string{"https://ignore/1"}
-	assert.Exactly(t, expected, sl2[2].Inputs, "should have these inputs")
+	assert.Exactly(t, expected, sl2[2].Inputs)
 
 	expected = []string{"rtp://skip/1", "rtsp://skip/2", "file:///skip/3.ts"}
 	assert.Exactly(t, expected, sl2[3].Inputs, "should not remove inputs with unsupported protocols")
@@ -1048,25 +1048,25 @@ func TestRemoveDeadInputs(t *testing.T) {
 
 	for i := 0; i < 10000; i++ {
 		sl2 = r.RemoveDeadInputs(httpClient, analyzerClient, sl1)
-		if ok := assert.NotSame(t, &sl1, &sl2, "should return copy of streams"); !ok {
+		if ok := assert.NotSame(t, &sl1, &sl2); !ok {
 			t.FailNow()
 		}
-		if ok := assert.Exactly(t, sl1Original, sl1, "should not modify the source"); !ok {
+		if ok := assert.Exactly(t, sl1Original, sl1); !ok {
 			t.FailNow()
 		}
-		if ok := assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same"); !ok {
+		if ok := assert.Len(t, sl2, len(sl1)); !ok {
 			t.FailNow()
 		}
 		expected := []string{"rtp://skip/1"}
-		if ok := assert.Exactly(t, expected, sl2[0].Inputs, "should have these inputs"); !ok {
+		if ok := assert.Exactly(t, expected, sl2[0].Inputs); !ok {
 			t.FailNow()
 		}
 		expected = []string{"http://ignore/1"}
-		if ok := assert.Exactly(t, expected, sl2[1].Inputs, "should have these inputs"); !ok {
+		if ok := assert.Exactly(t, expected, sl2[1].Inputs); !ok {
 			t.FailNow()
 		}
 		expected = []string{"rtsp://skip/2", "http://ignore/2", "rtsp://skip/2", "https://127.0.0.1:5656/alive/1"}
-		if ok := assert.Exactly(t, expected, sl2[2].Inputs, "should have these inputs"); !ok {
+		if ok := assert.Exactly(t, expected, sl2[2].Inputs); !ok {
 			t.FailNow()
 		}
 	}
@@ -1153,19 +1153,19 @@ func TestAnalyzerRemoveDeadInputs(t *testing.T) {
 	analyzerClient.AddResult("rtp://alive/pes/30", analyzer.Result{PESErrors: 30, Bitrate: 1000})
 
 	sl2 := r.RemoveDeadInputs(httpClient, analyzerClient, sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := []string{"http://alive/audio/100", "http://alive/cc/10"}
-	assert.Exactly(t, expected, sl2[0].Inputs, "should have these inputs")
+	assert.Exactly(t, expected, sl2[0].Inputs)
 
 	expected = []string{"udp://alive/video/210", "https://alive/pcr/20"}
-	assert.Exactly(t, expected, sl2[1].Inputs, "should have these inputs")
+	assert.Exactly(t, expected, sl2[1].Inputs)
 
 	expected = []string{"rtsp://alive/full/400", "rtp://alive/pes/30"}
-	assert.Exactly(t, expected, sl2[2].Inputs, "should have these inputs")
+	assert.Exactly(t, expected, sl2[2].Inputs)
 
 	assert.Exactly(t, sl1[3].Inputs, sl2[3].Inputs, "should not remove inputs with unsupported protocols or ignored")
 
@@ -1188,10 +1188,10 @@ func TestAnalyzerRemoveDeadInputs(t *testing.T) {
 	analyzerClient.AddResult("http://alive/pes/10", analyzer.Result{PESErrors: 10, Bitrate: 1000})
 
 	sl2 = r.RemoveDeadInputs(httpClient, analyzerClient, sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	assert.Exactly(t, sl1[0].Inputs, sl2[0].Inputs, "should not remove inputs with errors if thresholds are negative")
 
@@ -1322,20 +1322,20 @@ func TestDisableDeadInputs(t *testing.T) {
 	httpClient := network.NewHttpClient(time.Second * 3)
 	analyzerClient := analyzer.NewFake()
 	sl2 := r.DisableDeadInputs(httpClient, analyzerClient, sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := []string{"http://127.0.0.1:3434/alive/1"}
-	assert.Exactly(t, expected, sl2[0].Inputs, "should have these inputs")
+	assert.Exactly(t, expected, sl2[0].Inputs)
 	expected = []string{"http://dead/existing/1", "http://dead/no_such_host/1", "http://dead/no_such_host/2"}
-	assert.Exactly(t, expected, sl2[0].DisabledInputs, "should have these disabled inputs")
+	assert.Exactly(t, expected, sl2[0].DisabledInputs)
 
 	expected = []string{"http://127.0.0.1:3434/alive/2", "http://ignore/1"}
-	assert.Exactly(t, expected, sl2[1].Inputs, "should have these inputs")
+	assert.Exactly(t, expected, sl2[1].Inputs)
 	expected = []string{"http://dead/no_such_host/3"}
-	assert.Exactly(t, expected, sl2[1].DisabledInputs, "should have these disabled inputs")
+	assert.Exactly(t, expected, sl2[1].DisabledInputs)
 
 	// Test log output.
 	var out syncBuffer
@@ -1422,10 +1422,10 @@ func TestAddHashes(t *testing.T) {
 	sl1Original := copier.TestDeep(t, sl1)
 
 	sl2 := r.AddHashes(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := Stream{ // Index 0. Known input 1.
 		Name:   "Other name",
@@ -1536,10 +1536,10 @@ func TestAllDisableAllButOneInputByRx(t *testing.T) {
 	sl1Original := copier.TestDeep(t, sl1)
 
 	sl2 := r.DisableAllButOneInputByRx(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := []Stream{
 		{
@@ -1555,7 +1555,7 @@ func TestAllDisableAllButOneInputByRx(t *testing.T) {
 			DisabledInputs: []string{"http://input/1#abc&i_might_stay", "http://input/1#abc"},
 		},
 	}
-	assert.Exactly(t, expected, sl2, "should return these streams")
+	assert.Exactly(t, expected, sl2)
 
 	// Test log output.
 	var out syncBuffer
@@ -1599,10 +1599,10 @@ func TestAllRemoveDisabledInputs(t *testing.T) {
 	sl1Original := copier.TestDeep(t, sl1)
 
 	sl2 := r.RemoveDisabledInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := []Stream{
 		{
@@ -1618,7 +1618,7 @@ func TestAllRemoveDisabledInputs(t *testing.T) {
 			DisabledInputs: []string{},
 		},
 	}
-	assert.Exactly(t, expected, sl2, "should return these streams")
+	assert.Exactly(t, expected, sl2)
 
 	// Test log output.
 	var out syncBuffer
@@ -1702,10 +1702,10 @@ func TestSetKeepActive(t *testing.T) {
 	sl1Original := copier.TestDeep(t, sl1)
 
 	sl2 := r.SetKeepActive(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	expected := Stream{ // Index 0. Known input 1.
 		Name:           "Other name",
@@ -1713,7 +1713,7 @@ func TestSetKeepActive(t *testing.T) {
 		HTTPKeepActive: "4",
 		Inputs:         []string{"http://known/input/1", "http://other/input/1"},
 	}
-	assert.Exactly(t, expected, sl2[0], "should set HTTPKeepActive")
+	assert.Exactly(t, expected, sl2[0])
 
 	expected = Stream{ // Index 1. Known name 1.
 		Name:           "Known name 1",
@@ -1721,7 +1721,7 @@ func TestSetKeepActive(t *testing.T) {
 		HTTPKeepActive: "0",
 		Inputs:         []string{"http://other/input/1", "http://other/input/2"},
 	}
-	assert.Exactly(t, expected, sl2[1], "should set HTTPKeepActive to 0")
+	assert.Exactly(t, expected, sl2[1])
 
 	expected = Stream{ // Index 2. Known group 2.
 		Name:           "Other name",
@@ -1729,7 +1729,7 @@ func TestSetKeepActive(t *testing.T) {
 		HTTPKeepActive: "3",
 		Inputs:         []string{"http://other/input/1", "http://other/input/2"},
 	}
-	assert.Exactly(t, expected, sl2[2], "should set HTTPKeepActive")
+	assert.Exactly(t, expected, sl2[2])
 
 	expected = Stream{ // Index 3. Known inputs 2 and 1.
 		Name:           "Other name",
@@ -1753,7 +1753,7 @@ func TestSetKeepActive(t *testing.T) {
 		HTTPKeepActive: "2",
 		Inputs:         []string{"http://other/input/1", "http://other/input/2"},
 	}
-	assert.Exactly(t, expected, sl2[5], "should set HTTPKeepActive")
+	assert.Exactly(t, expected, sl2[5])
 
 	// Index 6. No matches.
 	assert.Exactly(t, sl1[6], sl2[6], "should not modify stream with no matches")
@@ -1800,8 +1800,8 @@ func TestRemoveWithoutInputs(t *testing.T) {
 	sl1Original := copier.TestDeep(t, sl1)
 
 	sl2 := r.RemoveWithoutInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
 	expected := []Stream{
 		{Groups: map[string]string{r.cfg.Streams.GroupsCategoryForNew: "Group"}, Remove: true},
@@ -1844,10 +1844,10 @@ func TestDisableWithoutInputs(t *testing.T) {
 	sl1Original := copier.TestDeep(t, sl1)
 
 	sl2 := r.DisableWithoutInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	assert.Exactly(t, sl1[0], sl2[0], "should not modify the stream with inputs")
 
@@ -1856,7 +1856,7 @@ func TestDisableWithoutInputs(t *testing.T) {
 
 	assert.Exactly(t, sl1[2], sl2[2], "should not modify disabled stream or stream with inputs")
 
-	assert.Exactly(t, sl1[3], sl2[3], "should not modify disabled streams")
+	assert.Exactly(t, sl1[3], sl2[3])
 
 	assert.Exactly(t, sl1[4], sl2[4], "should not modify the stream with inputs")
 
@@ -1865,7 +1865,7 @@ func TestDisableWithoutInputs(t *testing.T) {
 
 	assert.Exactly(t, sl1[6], sl2[6], "should not modify disabled stream or stream with inputs")
 
-	assert.Exactly(t, sl1[7], sl2[7], "should not modify disabled streams")
+	assert.Exactly(t, sl1[7], sl2[7])
 
 	// Test log output.
 	var out syncBuffer
@@ -1889,22 +1889,22 @@ func TestAddNamePrefixes(t *testing.T) {
 	sl1Original := copier.TestDeep(t, sl1)
 
 	sl2 := r.AddNamePrefixes(sl1)
-	assert.NotSame(t, &sl1, &sl2, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
+	assert.NotSame(t, &sl1, &sl2)
+	assert.Exactly(t, sl1Original, sl1)
 
-	assert.Len(t, sl2, len(sl1), "amount of output streams should stay the same")
+	assert.Len(t, sl2, len(sl1))
 
 	assert.Exactly(t, sl1[0], sl2[0], "should not modify the stream with MarkAdded and MarkDisabled set to false")
 
 	expected := Stream{MarkAdded: true, MarkDisabled: false, Name: r.cfg.Streams.AddedPrefix + "Name_2"}
-	assert.Exactly(t, expected, sl2[1], "should add added prefix to the name")
+	assert.Exactly(t, expected, sl2[1])
 
 	expected = Stream{MarkAdded: false, MarkDisabled: true, Name: r.cfg.Streams.DisabledPrefix + "Name_3"}
-	assert.Exactly(t, expected, sl2[2], "should add disabled prefix to the name")
+	assert.Exactly(t, expected, sl2[2])
 
 	expected = Stream{MarkAdded: true, MarkDisabled: true,
 		Name: r.cfg.Streams.DisabledPrefix + r.cfg.Streams.AddedPrefix + "Name_4"}
-	assert.Exactly(t, expected, sl2[3], "should add both disabled and added prefixes to the name")
+	assert.Exactly(t, expected, sl2[3])
 
 	// Check if logs are not printed if prefixes are empty.
 	var out syncBuffer
@@ -1963,10 +1963,10 @@ func TestChangedStreams(t *testing.T) {
 
 	actual := r.ChangedStreams(sl1, sl2)
 
-	assert.NotSame(t, &sl1, &actual, "should return copy of streams")
-	assert.NotSame(t, &sl2, &actual, "should return copy of streams")
-	assert.Exactly(t, sl1Original, sl1, "should not modify the source")
-	assert.Exactly(t, sl2Original, sl2, "should not modify the source")
+	assert.NotSame(t, &sl1, &actual)
+	assert.NotSame(t, &sl2, &actual)
+	assert.Exactly(t, sl1Original, sl1)
+	assert.Exactly(t, sl2Original, sl2)
 
 	expected := []Stream{
 		{Name: "Stream 2", ID: "0002", Enabled: false, Inputs: []string{"C2", "D"}},
@@ -1975,7 +1975,7 @@ func TestChangedStreams(t *testing.T) {
 		{Name: "Stream 5*", ID: "0005"},
 		{Name: "Stream 8", ID: "0008", Enabled: false, DisabledInputs: []string{"A", "B"}},
 	}
-	assert.Exactly(t, expected, actual, "should return that changed streams")
+	assert.Exactly(t, expected, actual)
 }
 
 func TestGetInputsAmount(t *testing.T) {
@@ -1987,5 +1987,5 @@ func TestGetInputsAmount(t *testing.T) {
 		{},
 	}
 
-	assert.Exactly(t, 6, getInputsAmount(sl1), "should be 6 inputs in total")
+	assert.Exactly(t, 6, getInputsAmount(sl1))
 }

@@ -13,7 +13,7 @@ import (
 
 func TestGetName(t *testing.T) {
 	ch := Channel{Name: "Name"}
-	assert.Exactly(t, ch.Name, ch.GetName(), "should return this name")
+	assert.Exactly(t, ch.Name, ch.GetName())
 }
 
 func TestReplaceGroup(t *testing.T) {
@@ -31,11 +31,11 @@ func TestReplaceGroup(t *testing.T) {
 		newGroups = append(newGroups, newGroup)
 	})
 
-	assert.NotSame(t, &c1, &c2, "should return copy of channel")
-	assert.Exactly(t, c1Original, c1, "should not modify the source")
+	assert.NotSame(t, &c1, &c2)
+	assert.Exactly(t, c1Original, c1)
 
 	expected := Channel{Name: "From Group 2", Group: "To Group 2", URL: "From Group 2"}
-	assert.Exactly(t, expected, c2, "should replace group")
+	assert.Exactly(t, expected, c2)
 
 	c1 = Channel{Group: "Group 1"}
 	c1Original = copier.TestDeep(t, c1)
@@ -43,35 +43,35 @@ func TestReplaceGroup(t *testing.T) {
 		t.Fail()
 	})
 
-	assert.NotSame(t, &c1, &c2, "should return copy of channel")
-	assert.Exactly(t, c1Original, c1, "should not modify the source")
+	assert.NotSame(t, &c1, &c2)
+	assert.Exactly(t, c1Original, c1)
 
-	assert.Exactly(t, c1, c2, "group should stay the same")
+	assert.Exactly(t, c1, c2)
 
-	assert.Exactly(t, []string{"To Group 2"}, newGroups, "callbacks should return these new groups")
+	assert.Exactly(t, []string{"To Group 2"}, newGroups)
 }
 
 func TestParse(t *testing.T) {
 	r := newDefRepo()
 
 	playlist, err := openuri.Open("test.m3u8")
-	assert.NoError(t, err, "Should read playlist")
+	assert.NoError(t, err)
 
 	cl := r.Parse(playlist)
 
-	assert.Len(t, cl, 5, "should parse this amount of channels")
+	assert.Len(t, cl, 5)
 
 	expected := Channel{Name: ", Channel 1", Group: "Group 1", URL: "http://channel/url/1"}
-	assert.Exactly(t, expected, cl[0], "should have this channel")
+	assert.Exactly(t, expected, cl[0])
 
 	expected = Channel{Name: ",:It,\"s, - a difficult name |", Group: "Ext Group", URL: "ftp://channel/url/2"}
-	assert.Exactly(t, expected, cl[1], "should have this channel with a group from #EXTGRP")
+	assert.Exactly(t, expected, cl[1])
 
 	expected = Channel{Name: "Channel 3", Group: "Group 3", URL: "/path/to/file/3"}
 	assert.Exactly(t, expected, cl[2], "should have this channel, prioritize group-title over #EXTGRP")
 
 	expected = Channel{Name: "Channel 4", Group: "Ext Group", URL: "file:///channel/url/4"}
-	assert.Exactly(t, expected, cl[3], "should have this channel with a group from previous #EXTGRP")
+	assert.Exactly(t, expected, cl[3])
 
 	expected = Channel{Name: "Channel 5", Group: "#EXTGRP: Ext Group 2", URL: "file:///C:/channel/url/5"}
 	assert.Exactly(t, expected, cl[4], "should have this channel, overwrite previous #EXTGRP")
@@ -86,11 +86,11 @@ func TestSort(t *testing.T) {
 	cl1Original := copier.TestDeep(t, cl1)
 
 	cl2 := r.Sort(cl1)
-	assert.NotSame(t, &cl1, &cl2, "should return copy of channels")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source")
+	assert.NotSame(t, &cl1, &cl2)
+	assert.Exactly(t, cl1Original, cl1)
 
 	expected := []Channel{{Name: ""}, {Name: "A"}, {Name: "B"}, {Name: "C"}}
-	assert.Exactly(t, expected, cl2, "should sort channels by name")
+	assert.Exactly(t, expected, cl2)
 }
 
 func TestReplaceGroups(t *testing.T) {
@@ -107,19 +107,19 @@ func TestReplaceGroups(t *testing.T) {
 	cl1Original := copier.TestDeep(t, cl1)
 
 	cl2 := r.ReplaceGroups(cl1)
-	assert.NotSame(t, &cl1, &cl2, "should return copy of channels")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source")
+	assert.NotSame(t, &cl1, &cl2)
+	assert.Exactly(t, cl1Original, cl1)
 
-	assert.Len(t, cl2, len(cl1), "amount of output channels should stay the same")
+	assert.Len(t, cl2, len(cl1))
 
 	expected := Channel{Group: "Other"}
 	assert.Exactly(t, expected, cl2[0], "should not modify channel with unknown group")
 
 	expected = Channel{Group: "To Group 2"}
-	assert.Exactly(t, expected, cl2[1], "should replace known group")
+	assert.Exactly(t, expected, cl2[1])
 
 	expected = Channel{Group: "To Group 1"}
-	assert.Exactly(t, expected, cl2[2], "should replace known group")
+	assert.Exactly(t, expected, cl2[2])
 
 	// Test log output.
 	var out bytes.Buffer
@@ -167,8 +167,8 @@ func TestRemoveBlocked(t *testing.T) {
 
 	r.cfg.General.NameAliases = false
 	cl2 := r.RemoveBlocked(cl1)
-	assert.NotSame(t, &cl1, &cl2, "should return copy of channels")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source")
+	assert.NotSame(t, &cl1, &cl2)
+	assert.Exactly(t, cl1Original, cl1)
 
 	assert.Len(t, cl2, 3, "should remove blocked channels excluding the ones with aliases as NameAliases = false")
 
@@ -178,19 +178,19 @@ func TestRemoveBlocked(t *testing.T) {
 	expected = Channel{Name: "Other", Group: "Other", URL: "Other"}
 	assert.Exactly(t, expected, cl2[1], "should keep channels without any property matching blacklist")
 
-	assert.Exactly(t, Channel{}, cl2[2], "should keep empty channel")
+	assert.Exactly(t, Channel{}, cl2[2])
 
 	r.cfg.General.NameAliases = true
 	cl2 = r.RemoveBlocked(cl1)
-	assert.NotSame(t, &cl1, &cl2, "should return copy of channels")
-	assert.Exactly(t, cl1Original, cl1, "should not modify the source")
+	assert.NotSame(t, &cl1, &cl2)
+	assert.Exactly(t, cl1Original, cl1)
 
 	assert.Len(t, cl2, 2, "should remove blocked channels with the ones with aliases as NameAliases = true")
 
 	expected = Channel{Name: "Other", Group: "Other", URL: "Other"}
 	assert.Exactly(t, expected, cl2[0], "should keep channels without any property matching blacklist")
 
-	assert.Exactly(t, Channel{}, cl2[1], "should keep empty channel")
+	assert.Exactly(t, Channel{}, cl2[1])
 
 	// Test log output.
 	var out bytes.Buffer
@@ -210,22 +210,22 @@ func TestHasUrl(t *testing.T) {
 	cl := []Channel{{URL: "http://other/input"}, {URL: "http://known/input#a"}}
 
 	assert.False(t, r.HasURL(cl, "http://known/input", true), "should not contain URL without hash")
-	assert.True(t, r.HasURL(cl, "http://known/input#a", true), "should contain URL")
+	assert.True(t, r.HasURL(cl, "http://known/input#a", true))
 
 	assert.True(t, r.HasURL(cl, "http://known/input", false), "should contain URL without hash")
 	assert.True(t, r.HasURL(cl, "http://known/input#b", false), "should contain URL with different hashes")
 
-	assert.False(t, r.HasURL(cl, "http://foreign/input", true), "should not contain URL")
-	assert.False(t, r.HasURL(cl, "http://foreign/input#a", true), "should not contain URL")
+	assert.False(t, r.HasURL(cl, "http://foreign/input", true))
+	assert.False(t, r.HasURL(cl, "http://foreign/input#a", true))
 
-	assert.False(t, r.HasURL(cl, "http://foreign/input", false), "should not contain URL")
-	assert.False(t, r.HasURL(cl, "http://foreign/input#b", false), "should not contain URL")
+	assert.False(t, r.HasURL(cl, "http://foreign/input", false))
+	assert.False(t, r.HasURL(cl, "http://foreign/input#b", false))
 
 	cl = []Channel{{URL: "http://other/input#a"}, {URL: "http:/other/input/2#b"}}
 
-	assert.False(t, r.HasURL(cl, "http://foreign/input", true), "should not contain URL")
-	assert.False(t, r.HasURL(cl, "http://foreign/input#a", true), "should not contain URL")
+	assert.False(t, r.HasURL(cl, "http://foreign/input", true))
+	assert.False(t, r.HasURL(cl, "http://foreign/input#a", true))
 
-	assert.False(t, r.HasURL(cl, "http://foreign/input", false), "should not contain URL")
-	assert.False(t, r.HasURL(cl, "http://foreign/input#b", false), "should not contain URL")
+	assert.False(t, r.HasURL(cl, "http://foreign/input", false))
+	assert.False(t, r.HasURL(cl, "http://foreign/input#b", false))
 }

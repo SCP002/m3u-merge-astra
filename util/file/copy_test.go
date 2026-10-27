@@ -9,13 +9,13 @@ import (
 
 func TestCopy(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "m3u-merge-astra-copy-test.txt")
-	
+
 	err := Copy("copy-test.txt", path)
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 
 	// Test overwrite.
 	err = Copy("copy-test.txt", path)
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 
-	assert.FileExists(t, path, "should copy file")
+	assert.FileExists(t, path)
 }

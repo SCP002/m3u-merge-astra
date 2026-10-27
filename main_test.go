@@ -23,7 +23,7 @@ func TestMain(t *testing.T) {
 
 	// Create program config file.
 	_, _, err := cfg.Init(log, programCfgPath)
-	assert.NoError(t, err, "should create default program config")
+	assert.NoError(t, err)
 
 	// Create M3U file.
 	m3uPath := filepath.Join(t.TempDir(), "m3u-merge-astra-main-test.m3u")
@@ -33,18 +33,18 @@ func TestMain(t *testing.T) {
 	#EXTINF:-1 group-title="Group 4",Channel 4
 	http://url/4`)
 	err = os.WriteFile(m3uPath, m3uBytes, 0644)
-	assert.NoError(t, err, "should write m3u file")
+	assert.NoError(t, err)
 
 	apiHttpClient := network.NewHttpClient(time.Second * 10)
 	apiHandler := api.NewHandler(log, apiHttpClient, "http://127.0.0.1:8000", "admin", "admin")
 	astraCfg, err := apiHandler.FetchCfg()
-	assert.NoError(t, err, "should fetch astra config")
+	assert.NoError(t, err)
 
 	// Clean existing streams.
 	for _, stream := range astraCfg.Streams {
 		stream.Remove = true
 		err := apiHandler.SetStream(stream.ID, stream)
-		if ok := assert.NoError(t, err, "should remove stream"); !ok {
+		if ok := assert.NoError(t, err); !ok {
 			t.FailNow()
 		}
 	}
@@ -53,7 +53,7 @@ func TestMain(t *testing.T) {
 	for _, category := range astraCfg.Categories {
 		category.Remove = true
 		err := apiHandler.SetCategory(0, category)
-		if ok := assert.NoError(t, err, "should remove category"); !ok {
+		if ok := assert.NoError(t, err); !ok {
 			t.FailNow()
 		}
 	}
@@ -84,17 +84,17 @@ func TestMain(t *testing.T) {
 
 	// Read modified config.
 	astraCfg, err = apiHandler.FetchCfg()
-	assert.NoError(t, err, "should fetch astra config")
+	assert.NoError(t, err)
 
 	// Check modified config.
 	expectedCategories := []astra.Category{
 		{Name: "Category 1", Groups: []astra.Group{{Name: "Group 1"}, {Name: "Group 2"}}},
 	}
-	assert.Exactly(t, expectedCategories, astraCfg.Categories, "should return that categories")
+	assert.Exactly(t, expectedCategories, astraCfg.Categories)
 
 	// Checking fields separately as new streams contains random ID.
-	assert.Exactly(t, "Channel 1", astraCfg.Streams[0].Name, "should have stream with this name")
-	assert.Exactly(t, "Channel 2", astraCfg.Streams[1].Name, "should have stream with this name")
-	assert.Exactly(t, "_ADDED: Channel 3", astraCfg.Streams[2].Name, "should have stream with this name")
-	assert.Exactly(t, "_ADDED: Channel 4", astraCfg.Streams[3].Name, "should have stream with this name")
+	assert.Exactly(t, "Channel 1", astraCfg.Streams[0].Name)
+	assert.Exactly(t, "Channel 2", astraCfg.Streams[1].Name)
+	assert.Exactly(t, "_ADDED: Channel 3", astraCfg.Streams[2].Name)
+	assert.Exactly(t, "_ADDED: Channel 4", astraCfg.Streams[3].Name)
 }

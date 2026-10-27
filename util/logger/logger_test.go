@@ -27,7 +27,7 @@ func TestNew(t *testing.T) {
 	log.InfoFi("message", "1", 2)
 	log.Warn("message")
 	log.Error("message")
-	assert.Panics(t, func() { log.Panic("message") }, "should panic")
+	assert.Panics(t, func() { log.Panic("message") })
 	out := buf.String()
 	assert.NotRegexp(t, regexp.MustCompile(`TRACE`), out, "should not print trace messages with debug level logger")
 	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message`), out)
@@ -168,7 +168,7 @@ func TestFatal(t *testing.T) {
 	cmd.Env = append(os.Environ(), "TestFatal=1")
 	out, err := cmd.CombinedOutput()
 	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-		assert.Exactly(t, 255, e.ExitCode(), "should exit with that exit code")
+		assert.Exactly(t, 255, e.ExitCode())
 		assert.Regexp(t, regexp.MustCompile(timeRx+` FATAL message`), string(out))
 		return
 	}
@@ -185,7 +185,7 @@ func TestFatalf(t *testing.T) {
 	cmd.Env = append(os.Environ(), "TestFatalf=1")
 	out, err := cmd.CombinedOutput()
 	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-		assert.Exactly(t, 255, e.ExitCode(), "should exit with that exit code")
+		assert.Exactly(t, 255, e.ExitCode())
 		assert.Regexp(t, regexp.MustCompile(timeRx+` FATAL message 1 \+ message 2`), string(out))
 		return
 	}
@@ -202,7 +202,7 @@ func TestFatalFi(t *testing.T) {
 	cmd.Env = append(os.Environ(), "TestFatalFi=1")
 	out, err := cmd.CombinedOutput()
 	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-		assert.Exactly(t, 255, e.ExitCode(), "should exit with that exit code")
+		assert.Exactly(t, 255, e.ExitCode())
 		assert.Regexp(t, regexp.MustCompile(timeRx+` FATAL message: a "b", 1 "2"`), string(out))
 		return
 	}
@@ -212,7 +212,7 @@ func TestFatalFi(t *testing.T) {
 func TestPanic(t *testing.T) {
 	var buf bytes.Buffer
 	log := New(DebugLevel, &buf)
-	assert.Panics(t, func() { log.Panic("message") }, "should panic")
+	assert.Panics(t, func() { log.Panic("message") })
 	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` PANIC message`), out)
 }
@@ -220,7 +220,7 @@ func TestPanic(t *testing.T) {
 func TestPanicf(t *testing.T) {
 	var buf bytes.Buffer
 	log := New(DebugLevel, &buf)
-	assert.Panics(t, func() { log.Panicf("%v + %v", "message 1", "message 2") }, "should panic")
+	assert.Panics(t, func() { log.Panicf("%v + %v", "message 1", "message 2") })
 	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` PANIC message 1 \+ message 2`), out)
 }
@@ -228,7 +228,7 @@ func TestPanicf(t *testing.T) {
 func TestPanicFi(t *testing.T) {
 	var buf bytes.Buffer
 	log := New(DebugLevel, &buf)
-	assert.Panics(t, func() { log.PanicFi("message", "a", "b", 1, 2) }, "should panic")
+	assert.Panics(t, func() { log.PanicFi("message", "a", "b", 1, 2) })
 	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` PANIC message: a "b", 1 "2"`), out)
 }
@@ -242,9 +242,9 @@ func TestAddFileWriter(t *testing.T) {
 	assert.Nil(t, file, "should return nil file for empty file path")
 
 	file, err = log.AddFileWriter(path)
-	assert.NoError(t, err, "should not return error")
-	assert.NotNil(t, file, "should create object")
-	assert.FileExists(t, path, "should create log file at given path")
+	assert.NoError(t, err)
+	assert.NotNil(t, file)
+	assert.FileExists(t, path)
 
 	log.InfoFi("message 1", "field1", "value 1", "field2", 2)
 	log.WarnFi("message 2", "field1", "value 3", "field2", 4)
@@ -252,7 +252,7 @@ func TestAddFileWriter(t *testing.T) {
 	// file.Sync() does not help, content is empty, closing and opening the file again.
 	file.Close()
 	file, err = os.Open(path)
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 	defer file.Close()
 	reader := bufio.NewReader(file)
 
@@ -267,26 +267,26 @@ func TestAddFileWriter(t *testing.T) {
 	var entry logEntry
 
 	line, err := reader.ReadBytes('\n')
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 	err = json.Unmarshal(line, &entry)
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 	_, err = time.Parse(time.RFC3339Nano, entry.Time)
 	assert.NoError(t, err, "time in entry must be in RFC3339 format with millis")
 	assert.Exactly(t, "info", entry.Level, "log severity must be that level")
-	assert.Exactly(t, "value 1", entry.Field1, "field should have this value")
-	assert.Exactly(t, 2, entry.Field2, "field should have this value")
-	assert.Exactly(t, "message 1", entry.Message, "should be that entry message")
+	assert.Exactly(t, "value 1", entry.Field1)
+	assert.Exactly(t, 2, entry.Field2)
+	assert.Exactly(t, "message 1", entry.Message)
 
 	line, err = reader.ReadBytes('\n')
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 	err = json.Unmarshal(line, &entry)
-	assert.NoError(t, err, "should not return error")
+	assert.NoError(t, err)
 	_, err = time.Parse(time.RFC3339Nano, entry.Time)
 	assert.NoError(t, err, "time in entry must be in RFC3339 format with millis")
 	assert.Exactly(t, "warn", entry.Level, "log severity must be that level")
-	assert.Exactly(t, "value 3", entry.Field1, "field should have this value")
-	assert.Exactly(t, 4, entry.Field2, "field should have this value")
-	assert.Exactly(t, "message 2", entry.Message, "should be that entry message")
+	assert.Exactly(t, "value 3", entry.Field1)
+	assert.Exactly(t, 4, entry.Field2)
+	assert.Exactly(t, "message 2", entry.Message)
 }
 
 func TestPrint(t *testing.T) {
@@ -306,5 +306,5 @@ func TestPrint(t *testing.T) {
 func TestNewConsoleFormatter(t *testing.T) {
 	// Tested in TestNew.
 	var formatter func(io.Writer, *pLog.FormatterArgs) (int, error)
-	assert.IsType(t, formatter, newConsoleFormatter(false, ""), "formatter function should have this definition")
+	assert.IsType(t, formatter, newConsoleFormatter(false, ""))
 }
