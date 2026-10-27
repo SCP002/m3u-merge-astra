@@ -77,6 +77,9 @@ func (r repo) Parse(rawChannels io.ReadCloser) (out []Channel) {
 			// #EXTGRP applies to every subsequent channel until overriden. Not clearing lastExtGrp.
 		}
 	}
+	if err := scanner.Err(); err != nil {
+		r.log.Error(err)
+	}
 
 	return
 }
