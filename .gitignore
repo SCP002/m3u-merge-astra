@@ -4,6 +4,9 @@
 # Kilo
 /.kilo/
 
+# ASTRA_BIN for /workspace/.dev mount
+/.env
+
 # OS
 .DS_Store
 Thumbs.db
