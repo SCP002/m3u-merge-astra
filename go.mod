@@ -5,7 +5,6 @@ go 1.27
 toolchain go1.27.3
 
 require (
-	github.com/SCP002/jsonexraw v0.1.0
 	github.com/adampresley/sigint v0.0.0-20150906022118-7e8d2ad16a94
 	github.com/alitto/pond v1.9.2
 	github.com/cockroachdb/errors v1.14.0
@@ -40,7 +39,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.16.0 // indirect
-	github.com/yaegashi/jsonex.go v0.0.0-20191218175351-e6c64c300063 // indirect
 	go.uber.org/atomic v1.12.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/sys v0.48.0 // indirect

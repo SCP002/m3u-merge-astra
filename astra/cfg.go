@@ -20,13 +20,13 @@ type Cfg struct {
 type Category struct {
 	Name   string  `json:"name"`
 	Groups []Group `json:"groups"`
-	Remove bool    `json:"remove,omitempty"` // Used by API to remove category.
+	Remove bool    `json:"remove,omitzero"` // Used by API to remove category.
 }
 
 // Group represents group of astra streams.
 type Group struct {
 	Name   string `json:"name"`
-	Remove bool   `json:"remove,omitempty"` // Used by API to remove group.
+	Remove bool   `json:"remove,omitzero"` // Used by API to remove group.
 }
 
 // UpdateCategories returns deep copy of categories `cats` with new and changed categories and groups from `streams`.

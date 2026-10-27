@@ -1,6 +1,7 @@
 package astra
 
 import (
+	"encoding/json/jsontext"
 	"fmt"
 	"net/http"
 	"sort"
@@ -35,11 +36,11 @@ type Stream struct {
 	ID             string            `json:"id,omitempty"`
 	Inputs         []string          `json:"input,omitempty"`
 	Name           string            `json:"name,omitempty"`
-	Remove         bool              `json:"remove,omitempty"` // Used by API to remove stream.
+	Remove         bool              `json:"remove,omitzero"` // Used by API to remove stream.
 	Type           string            `json:"type,omitempty"`
-	Unknown        map[string]any    `json:"-" jsonex:"true"` // All unknown fields go here.
-	MarkAdded      bool              `json:"-"`               // Set added name prefix after processing?
-	MarkDisabled   bool              `json:"-"`               // Set disabled name prefix after processing?
+	Unknown        jsontext.Value    `json:",embed"` // All unknown fields go here.
+	MarkAdded      bool              `json:"-"`      // Set added name prefix after processing?
+	MarkDisabled   bool              `json:"-"`      // Set disabled name prefix after processing?
 }
 
 // NewStream returns new stream with default config.

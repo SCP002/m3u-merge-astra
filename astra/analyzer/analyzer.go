@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"context"
+	"encoding/json/v2"
 	"net/http"
 	"net/url"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"m3u-merge-astra/util/iter"
 	"m3u-merge-astra/util/logger"
 
-	json "github.com/SCP002/jsonexraw"
 	"github.com/cockroachdb/errors"
 	"github.com/gorilla/websocket"
 	"github.com/samber/lo"

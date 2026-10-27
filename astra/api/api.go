@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,7 +10,6 @@ import (
 	"m3u-merge-astra/astra"
 	"m3u-merge-astra/util/logger"
 
-	json "github.com/SCP002/jsonexraw"
 	"github.com/cockroachdb/errors"
 	"github.com/samber/lo"
 )
