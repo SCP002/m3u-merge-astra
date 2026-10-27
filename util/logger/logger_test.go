@@ -29,8 +29,8 @@ func TestNew(t *testing.T) {
 		assert.Panics(t, func() { log.Panic("message") }, "should panic")
 	})
 	assert.NotRegexp(t, regexp.MustCompile(`TRACE`), out, "should not print trace messages with debug level logger")
-	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG logger\/logger_test\.go:24 message`), out)
-	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG logger\/logger_test\.go:25 message: k "v"`), out)
+	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message`), out)
+	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message: k "v"`), out)
 	assert.Regexp(t, regexp.MustCompile(timeRx+` INFO message: 1 "2"`), out)
 	assert.Regexp(t, regexp.MustCompile(timeRx+` WARN message`), out)
 	assert.Regexp(t, regexp.MustCompile(timeRx+` ERROR message`), out)
@@ -42,7 +42,7 @@ func TestTrace(t *testing.T) {
 		log := New(TraceLevel, os.Stderr)
 		log.Trace("message")
 	})
-	assert.Regexp(t, regexp.MustCompile(timeRx+` TRACE logger\/logger_test\.go:43 message`), out)
+	assert.Regexp(t, regexp.MustCompile(timeRx+` TRACE message`), out)
 }
 
 func TestTracef(t *testing.T) {
@@ -50,7 +50,7 @@ func TestTracef(t *testing.T) {
 		log := New(TraceLevel, os.Stderr)
 		log.Tracef("%v + %v", "message 1", "message 2")
 	})
-	assert.Regexp(t, regexp.MustCompile(timeRx+` TRACE logger\/logger_test\.go:51 message 1 \+ message 2`), out)
+	assert.Regexp(t, regexp.MustCompile(timeRx+` TRACE message 1 \+ message 2`), out)
 }
 
 func TestTraceFi(t *testing.T) {
@@ -58,7 +58,7 @@ func TestTraceFi(t *testing.T) {
 		log := New(TraceLevel, os.Stderr)
 		log.TraceFi("message", "a", "b", 1, 2)
 	})
-	assert.Regexp(t, regexp.MustCompile(timeRx+` TRACE logger\/logger_test\.go:59 message: a "b", 1 "2"`), out)
+	assert.Regexp(t, regexp.MustCompile(timeRx+` TRACE message: a "b", 1 "2"`), out)
 }
 
 func TestDebug(t *testing.T) {
@@ -66,7 +66,7 @@ func TestDebug(t *testing.T) {
 		log := New(DebugLevel, os.Stderr)
 		log.Debug("message")
 	})
-	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG logger\/logger_test\.go:67 message`), out)
+	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message`), out)
 }
 
 func TestDebugf(t *testing.T) {
@@ -74,7 +74,7 @@ func TestDebugf(t *testing.T) {
 		log := New(DebugLevel, os.Stderr)
 		log.Debugf("%v + %v", "message 1", "message 2")
 	})
-	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG logger\/logger_test\.go:75 message 1 \+ message 2`), out)
+	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message 1 \+ message 2`), out)
 }
 
 func TestDebugFi(t *testing.T) {
@@ -82,7 +82,7 @@ func TestDebugFi(t *testing.T) {
 		log := New(DebugLevel, os.Stderr)
 		log.DebugFi("message", "a", "b", 1, 2)
 	})
-	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG logger\/logger_test\.go:83 message: a "b", 1 "2"`), out)
+	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message: a "b", 1 "2"`), out)
 }
 
 func TestInfo(t *testing.T) {
@@ -264,7 +264,7 @@ func TestAddFileWriter(t *testing.T) {
 	}
 
 	var entry logEntry
-	timeRx := regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}\+[0-9]{2}:[0-9]{2}$`)
+	timeRx := regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}(Z|[+-][0-9]{2}:[0-9]{2})$`)
 
 	line, err := reader.ReadBytes('\n')
 	assert.NoError(t, err, "should not return error")
