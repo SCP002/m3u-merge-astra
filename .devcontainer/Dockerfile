@@ -1,4 +1,4 @@
-FROM golang:1.27-bookworm
+FROM golang:1.27.3-bookworm
 
 ENV GOTOOLCHAIN=auto
 

@@ -10,7 +10,6 @@
     "vscode": {
       "settings": {
         "go.gopath": "/go",
-        "go.goroot": "/usr/local/go",
         "go.useLanguageServer": true,
         "go.lintTool": "golangci-lint",
         "go.testFlags": [
@@ -24,7 +23,8 @@
         "terminal.integrated.defaultProfile.linux": "bash"
       },
       "extensions": [
-        "golang.go"
+        "golang.go",
+        "kilocode.kilo-code"
       ]
     }
   },
