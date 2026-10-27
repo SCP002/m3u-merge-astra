@@ -17,7 +17,6 @@ require (
 	github.com/samber/lo v1.53.0
 	github.com/stretchr/testify v1.12.1
 	github.com/utahta/go-openuri v0.1.0
-	github.com/zenizh/go-capturer v0.0.0-20211219060012-52ea6c8fed04
 )
 
 require (

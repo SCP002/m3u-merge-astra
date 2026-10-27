@@ -1,6 +1,7 @@
 package m3u
 
 import (
+	"bytes"
 	"os"
 	"reflect"
 	"testing"
@@ -15,6 +16,11 @@ import (
 // newDefRepo returns new repository initialized with defaults.
 func newDefRepo() repo {
 	return NewRepo(logger.New(logger.DebugLevel, os.Stderr), cfg.NewDefCfg())
+}
+
+// newDefRepoWithWriter returns new repository initialized with defaults and writing logs to `w`.
+func newDefRepoWithWriter(w *bytes.Buffer) repo {
+	return NewRepo(logger.New(logger.DebugLevel, w), cfg.NewDefCfg())
 }
 
 func TestNewRepo(t *testing.T) {

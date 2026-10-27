@@ -1,8 +1,10 @@
 package astra
 
 import (
+	"bytes"
 	"os"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -12,9 +14,41 @@ import (
 	"m3u-merge-astra/util/logger"
 )
 
+// syncBuffer is a concurrency-safe buffer for capturing log output.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+// Write implements io.Writer.
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+// String returns the buffer contents.
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+// Reset empties the buffer.
+func (b *syncBuffer) Reset() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.buf.Reset()
+}
+
 // newDefRepo returns new repository initialized with defaults.
 func newDefRepo() repo {
 	return NewRepo(logger.New(logger.DebugLevel, os.Stderr), cfg.NewDefCfg())
+}
+
+// newDefRepoWithWriter returns new repository initialized with defaults and writing logs to `w`.
+func newDefRepoWithWriter(w *syncBuffer) repo {
+	return NewRepo(logger.New(logger.DebugLevel, w), cfg.NewDefCfg())
 }
 
 func TestNewRepo(t *testing.T) {

@@ -7,7 +7,6 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
-	"github.com/zenizh/go-capturer"
 )
 
 func TestUpdateCategories(t *testing.T) {
@@ -47,16 +46,15 @@ func TestUpdateCategories(t *testing.T) {
 	assert.Exactly(t, expected, cl2, "should add new category with the specified groups")
 
 	// Test log output.
-	out := capturer.CaptureStderr(func() {
-		r := newDefRepo()
+	var out syncBuffer
+	r = newDefRepoWithWriter(&out)
 
-		cl1 := []Category{}
+	cl1 = []Category{}
 
-		sl1 := []Stream{{Groups: map[string]string{"Cat": "Grp"}}}
+	sl1 = []Stream{{Groups: map[string]string{"Cat": "Grp"}}}
 
-		_ = r.UpdateCategories(cl1, sl1)
-	})
-	assert.Contains(t, out, `Updating categories field with: category "Cat", group "Grp"`)
+	_ = r.UpdateCategories(cl1, sl1)
+	assert.Contains(t, out.String(), `Updating categories field with: category "Cat", group "Grp"`)
 }
 
 func TestChangedCategories(t *testing.T) {

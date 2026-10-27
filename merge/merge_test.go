@@ -1,6 +1,7 @@
 package merge
 
 import (
+	"bytes"
 	"fmt"
 	"m3u-merge-astra/astra"
 	"m3u-merge-astra/cfg"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
-	"github.com/zenizh/go-capturer"
 )
 
 func TestRenameStreams(t *testing.T) {
@@ -46,16 +46,15 @@ func TestRenameStreams(t *testing.T) {
 	assert.Exactly(t, expected, sl2[2], "should not rename stream if no channel counterpart name found")
 
 	// Test log output.
-	out := capturer.CaptureStderr(func() {
-		r := newDefRepo()
+	var out bytes.Buffer
+	r = newDefRepoWithWriter(&out)
 
-		sl1 := []astra.Stream{{ID: "0", Name: "Known name", Groups: map[string]string{"Cat": "Grp"}}}
+	sl1 = []astra.Stream{{ID: "0", Name: "Known name", Groups: map[string]string{"Cat": "Grp"}}}
 
-		cl1 := []m3u.Channel{{Name: "Known_Name"}}
+	cl1 = []m3u.Channel{{Name: "Known_Name"}}
 
-		_ = r.RenameStreams(sl1, cl1)
-	})
-	assert.Contains(t, out, `Renaming stream: ID "0", old name "Known name", new name "Known_Name", group "Cat: Grp"`)
+	_ = r.RenameStreams(sl1, cl1)
+	assert.Contains(t, out.String(), `Renaming stream: ID "0", old name "Known name", new name "Known_Name", group "Cat: Grp"`)
 }
 
 func TestUpdateInputs(t *testing.T) {
@@ -156,36 +155,34 @@ func TestUpdateInputs(t *testing.T) {
 		"MarkDisabled should stay true as it's name is not in channel list")
 
 	// Test log output.
-	out := capturer.CaptureStderr(func() {
-		r := newDefRepo()
-		r.cfg.Streams.EnableOnInputUpdate = false
-		r.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
-			{From: *regexp.MustCompile("known/input/1"), To: *regexp.MustCompile("known/input/1")},
-		}
+	var out bytes.Buffer
+	r = newDefRepoWithWriter(&out)
+	r.cfg.Streams.EnableOnInputUpdate = false
+	r.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
+		{From: *regexp.MustCompile("known/input/1"), To: *regexp.MustCompile("known/input/1")},
+	}
 
-		sl1 := []astra.Stream{{ID: "0", Enabled: false, Name: "Known name", Inputs: []string{"http://known/input/1"}}}
+	sl1 = []astra.Stream{{ID: "0", Enabled: false, Name: "Known name", Inputs: []string{"http://known/input/1"}}}
 
-		cl1 := []m3u.Channel{{Name: "Known_Name", URL: "http://new/known/input/1"}}
+	cl1 = []m3u.Channel{{Name: "Known_Name", URL: "http://new/known/input/1"}}
 
-		_ = r.UpdateInputs(sl1, cl1)
-	})
-	assert.Contains(t, out, `Updating input of stream: ID "0", name "Known name", old URL "http://known/input/1", `+
+	_ = r.UpdateInputs(sl1, cl1)
+	assert.Contains(t, out.String(), `Updating input of stream: ID "0", name "Known name", old URL "http://known/input/1", `+
 		`new URL "http://new/known/input/1", note "Stream is disabled"`)
 
-	out = capturer.CaptureStderr(func() {
-		r := newDefRepo()
-		r.cfg.Streams.EnableOnInputUpdate = true
-		r.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
-			{From: *regexp.MustCompile("known/input/1"), To: *regexp.MustCompile("known/input/1")},
-		}
+	out.Reset()
+	r = newDefRepoWithWriter(&out)
+	r.cfg.Streams.EnableOnInputUpdate = true
+	r.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
+		{From: *regexp.MustCompile("known/input/1"), To: *regexp.MustCompile("known/input/1")},
+	}
 
-		sl1 := []astra.Stream{{ID: "0", Enabled: false, Name: "Known name", Inputs: []string{"http://known/input/1"}}}
+	sl1 = []astra.Stream{{ID: "0", Enabled: false, Name: "Known name", Inputs: []string{"http://known/input/1"}}}
 
-		cl1 := []m3u.Channel{{Name: "Known_Name", URL: "http://new/known/input/1"}}
+	cl1 = []m3u.Channel{{Name: "Known_Name", URL: "http://new/known/input/1"}}
 
-		_ = r.UpdateInputs(sl1, cl1)
-	})
-	assert.Contains(t, out, `Enabling the stream (updating inputs of streams, enable_on_input_update is on): `+
+	_ = r.UpdateInputs(sl1, cl1)
+	assert.Contains(t, out.String(), `Enabling the stream (updating inputs of streams, enable_on_input_update is on): `+
 		`ID "0", name "Known name"`)
 }
 
@@ -235,24 +232,23 @@ func TestRemoveInputsByUpdateMap(t *testing.T) {
 	assert.Exactly(t, expected, sl2[2], "known inputs not found in channels should be removed, unknown should stay")
 
 	// Test log output.
-	out := capturer.CaptureStderr(func() {
-		r := newDefRepo()
-		r.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{{From: *regexp.MustCompile("known/input/1")}}
+	var out bytes.Buffer
+	r = newDefRepoWithWriter(&out)
+	r.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{{From: *regexp.MustCompile("known/input/1")}}
 
-		sl1 := []astra.Stream{
-			{
-				ID:     "0",
-				Name:   "Known name",
-				Groups: map[string]string{"Cat": "Grp"},
-				Inputs: []string{"http://known/input/1"},
-			},
-		}
+	sl1 = []astra.Stream{
+		{
+			ID:     "0",
+			Name:   "Known name",
+			Groups: map[string]string{"Cat": "Grp"},
+			Inputs: []string{"http://known/input/1"},
+		},
+	}
 
-		cl1 := []m3u.Channel{{Name: "Known_Name", URL: "http://other/url"}}
+	cl1 = []m3u.Channel{{Name: "Known_Name", URL: "http://other/url"}}
 
-		_ = r.RemoveInputsByUpdateMap(sl1, cl1)
-	})
-	assert.Contains(t, out, `Removing absent input from stream according the update map: ID "0", name "Known name", `+
+	_ = r.RemoveInputsByUpdateMap(sl1, cl1)
+	assert.Contains(t, out.String(), `Removing absent input from stream according the update map: ID "0", name "Known name", `+
 		`group "Cat: Grp", input "http://known/input/1"`)
 }
 
@@ -357,34 +353,32 @@ func TestAddNewInputs(t *testing.T) {
 	assert.Exactly(t, sl1, sl2, "should stay the same because it was not updated")
 
 	// Test log output.
-	out := capturer.CaptureStderr(func() {
-		r := newDefRepo()
-		r.cfg.Streams.EnableOnInputUpdate = false
+	var out bytes.Buffer
+	r = newDefRepoWithWriter(&out)
+	r.cfg.Streams.EnableOnInputUpdate = false
 
-		sl1 := []astra.Stream{
-			{ID: "0", Enabled: false, Name: "Known name", Groups: map[string]string{"Cat": "Grp"}, Inputs: []string{}},
-		}
+	sl1 = []astra.Stream{
+		{ID: "0", Enabled: false, Name: "Known name", Groups: map[string]string{"Cat": "Grp"}, Inputs: []string{}},
+	}
 
-		cl1 := []m3u.Channel{{Name: "Known_Name", URL: "http://url/1"}}
+	cl1 = []m3u.Channel{{Name: "Known_Name", URL: "http://url/1"}}
 
-		_ = r.AddNewInputs(sl1, cl1)
-	})
-	assert.Contains(t, out, `Adding new input to stream: ID "0", name "Known name", group "Cat: Grp", `+
+	_ = r.AddNewInputs(sl1, cl1)
+	assert.Contains(t, out.String(), `Adding new input to stream: ID "0", name "Known name", group "Cat: Grp", `+
 		`URL "http://url/1", note "Stream is disabled"`)
 
-	out = capturer.CaptureStderr(func() {
-		r := newDefRepo()
-		r.cfg.Streams.EnableOnInputUpdate = true
+	out.Reset()
+	r = newDefRepoWithWriter(&out)
+	r.cfg.Streams.EnableOnInputUpdate = true
 
-		sl1 := []astra.Stream{
-			{ID: "0", Enabled: false, Name: "Known name", Groups: map[string]string{"Cat": "Grp"}, Inputs: []string{}},
-		}
+	sl1 = []astra.Stream{
+		{ID: "0", Enabled: false, Name: "Known name", Groups: map[string]string{"Cat": "Grp"}, Inputs: []string{}},
+	}
 
-		cl1 := []m3u.Channel{{Name: "Known_Name", URL: "http://url/1"}}
+	cl1 = []m3u.Channel{{Name: "Known_Name", URL: "http://url/1"}}
 
-		_ = r.AddNewInputs(sl1, cl1)
-	})
-	assert.Contains(t, out, `Enabling the stream (adding new inputs to streams, enable_on_input_update is on): `+
+	_ = r.AddNewInputs(sl1, cl1)
+	assert.Contains(t, out.String(), `Enabling the stream (adding new inputs to streams, enable_on_input_update is on): `+
 		`ID "0", name "Known name"`)
 }
 
@@ -478,17 +472,16 @@ func TestAddNewStreams(t *testing.T) {
 		"be ignored")
 
 	// Test log output.
-	out := capturer.CaptureStderr(func() {
-		r := newDefRepo()
-		r.cfg.Streams.AddGroupsToNew = true
+	var out bytes.Buffer
+	r = newDefRepoWithWriter(&out)
+	r.cfg.Streams.AddGroupsToNew = true
 
-		sl1 := []astra.Stream{}
+	sl1 = []astra.Stream{}
 
-		cl1 := []m3u.Channel{{Name: "Name 1", Group: "Grp", URL: "http://url/1"}}
+	cl1 = []m3u.Channel{{Name: "Name 1", Group: "Grp", URL: "http://url/1"}}
 
-		sl2 = r.AddNewStreams(sl1, cl1)
-	})
-	assert.Contains(t, out, fmt.Sprintf(`Adding new stream: ID "%v", name "Name 1", group "All: Grp", `+
+	sl2 = r.AddNewStreams(sl1, cl1)
+	assert.Contains(t, out.String(), fmt.Sprintf(`Adding new stream: ID "%v", name "Name 1", group "All: Grp", `+
 		`input "http://url/1"`, sl2[0].ID))
 }
 

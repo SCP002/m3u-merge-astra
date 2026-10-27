@@ -2,6 +2,7 @@ package logger
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"io"
 	"os"
@@ -13,22 +14,21 @@ import (
 
 	pLog "github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
-	"github.com/zenizh/go-capturer"
 )
 
 var timeRx = `[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}`
 
 func TestNew(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		log.Trace("message")
-		log.Debug("message")
-		log.DebugFi("message", "k", "v")
-		log.InfoFi("message", "1", 2)
-		log.Warn("message")
-		log.Error("message")
-		assert.Panics(t, func() { log.Panic("message") }, "should panic")
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	log.Trace("message")
+	log.Debug("message")
+	log.DebugFi("message", "k", "v")
+	log.InfoFi("message", "1", 2)
+	log.Warn("message")
+	log.Error("message")
+	assert.Panics(t, func() { log.Panic("message") }, "should panic")
+	out := buf.String()
 	assert.NotRegexp(t, regexp.MustCompile(`TRACE`), out, "should not print trace messages with debug level logger")
 	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message`), out)
 	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message: k "v"`), out)
@@ -39,122 +39,122 @@ func TestNew(t *testing.T) {
 }
 
 func TestTrace(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(TraceLevel, os.Stderr)
-		log.Trace("message")
-	})
+	var buf bytes.Buffer
+	log := New(TraceLevel, &buf)
+	log.Trace("message")
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` TRACE message`), out)
 }
 
 func TestTracef(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(TraceLevel, os.Stderr)
-		log.Tracef("%v + %v", "message 1", "message 2")
-	})
+	var buf bytes.Buffer
+	log := New(TraceLevel, &buf)
+	log.Tracef("%v + %v", "message 1", "message 2")
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` TRACE message 1 \+ message 2`), out)
 }
 
 func TestTraceFi(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(TraceLevel, os.Stderr)
-		log.TraceFi("message", "a", "b", 1, 2)
-	})
+	var buf bytes.Buffer
+	log := New(TraceLevel, &buf)
+	log.TraceFi("message", "a", "b", 1, 2)
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` TRACE message: a "b", 1 "2"`), out)
 }
 
 func TestDebug(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		log.Debug("message")
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	log.Debug("message")
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message`), out)
 }
 
 func TestDebugf(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		log.Debugf("%v + %v", "message 1", "message 2")
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	log.Debugf("%v + %v", "message 1", "message 2")
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message 1 \+ message 2`), out)
 }
 
 func TestDebugFi(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		log.DebugFi("message", "a", "b", 1, 2)
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	log.DebugFi("message", "a", "b", 1, 2)
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message: a "b", 1 "2"`), out)
 }
 
 func TestInfo(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		log.Info("message")
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	log.Info("message")
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` INFO message`), out)
 }
 
 func TestInfof(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		log.Infof("%v + %v", "message 1", "message 2")
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	log.Infof("%v + %v", "message 1", "message 2")
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` INFO message 1 \+ message 2`), out)
 }
 
 func TestInfoFi(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		log.InfoFi("message", "a", "b", 1, 2)
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	log.InfoFi("message", "a", "b", 1, 2)
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` INFO message: a "b", 1 "2"`), out)
 }
 
 func TestWarn(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		log.Warn("message")
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	log.Warn("message")
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` WARN message`), out)
 }
 
 func TestWarnf(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		log.Warnf("%v + %v", "message 1", "message 2")
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	log.Warnf("%v + %v", "message 1", "message 2")
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` WARN message 1 \+ message 2`), out)
 }
 
 func TestWarnFi(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		log.WarnFi("message", "a", "b", 1, 2)
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	log.WarnFi("message", "a", "b", 1, 2)
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` WARN message: a "b", 1 "2"`), out)
 }
 
 func TestError(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		log.Error("message")
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	log.Error("message")
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` ERROR message`), out)
 }
 
 func TestErrorf(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		log.Errorf("%v + %v", "message 1", "message 2")
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	log.Errorf("%v + %v", "message 1", "message 2")
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` ERROR message 1 \+ message 2`), out)
 }
 
 func TestErrorFi(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		log.ErrorFi("message", "a", "b", 1, 2)
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	log.ErrorFi("message", "a", "b", 1, 2)
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` ERROR message: a "b", 1 "2"`), out)
 }
 
@@ -210,26 +210,26 @@ func TestFatalFi(t *testing.T) {
 }
 
 func TestPanic(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		assert.Panics(t, func() { log.Panic("message") }, "should panic")
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	assert.Panics(t, func() { log.Panic("message") }, "should panic")
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` PANIC message`), out)
 }
 
 func TestPanicf(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		assert.Panics(t, func() { log.Panicf("%v + %v", "message 1", "message 2") }, "should panic")
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	assert.Panics(t, func() { log.Panicf("%v + %v", "message 1", "message 2") }, "should panic")
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` PANIC message 1 \+ message 2`), out)
 }
 
 func TestPanicFi(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		assert.Panics(t, func() { log.PanicFi("message", "a", "b", 1, 2) }, "should panic")
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	assert.Panics(t, func() { log.PanicFi("message", "a", "b", 1, 2) }, "should panic")
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` PANIC message: a "b", 1 "2"`), out)
 }
 
@@ -290,16 +290,16 @@ func TestAddFileWriter(t *testing.T) {
 }
 
 func TestPrint(t *testing.T) {
-	out := capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		print(log.Logger.Info(), "message", nil)
-	})
+	var buf bytes.Buffer
+	log := New(DebugLevel, &buf)
+	print(log.Logger.Info(), "message", nil)
+	out := buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` INFO message`), out)
 
-	out = capturer.CaptureStderr(func() {
-		log := New(DebugLevel, os.Stderr)
-		print(log.Logger.Info(), "message", []any{"a", "b", 1, 2})
-	})
+	buf.Reset()
+	log = New(DebugLevel, &buf)
+	print(log.Logger.Info(), "message", []any{"a", "b", 1, 2})
+	out = buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` INFO message: a "b", 1 "2"`), out)
 }
 

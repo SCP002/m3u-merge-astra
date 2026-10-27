@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"testing"
@@ -15,7 +16,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
-	"github.com/zenizh/go-capturer"
 )
 
 func TestNewHandler(t *testing.T) {
@@ -100,21 +100,20 @@ func TestSetCategories(t *testing.T) {
 	assert.Equal(t, expected, config.Categories, "returned config should consist of categories set")
 
 	// Test log output.
-	out := capturer.CaptureStderr(func() {
-		log := logger.New(logger.DebugLevel, os.Stderr)
-		httpClient := network.NewHttpClient(time.Second * 3)
-		apiHandler := NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
-		idxCategoryMap = []lo.Entry[int, astra.Category]{
-			{
-				Key:   -1,
-				Value: astra.Category{Name: "Category 0", Groups: []astra.Group{{Name: "Group 0"}, {Name: "Group 01"}}},
-			},
-		}
-		apiHandler.SetCategories(idxCategoryMap)
-	})
-	assert.Contains(t, out, `Successfully set category: name "Category 0", groups "[{Name:Group 0 Remove:false} `+
+	var out bytes.Buffer
+	log = logger.New(logger.DebugLevel, &out)
+	httpClient = network.NewHttpClient(time.Second * 3)
+	apiHandler = NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
+	idxCategoryMap = []lo.Entry[int, astra.Category]{
+		{
+			Key:   -1,
+			Value: astra.Category{Name: "Category 0", Groups: []astra.Group{{Name: "Group 0"}, {Name: "Group 01"}}},
+		},
+	}
+	apiHandler.SetCategories(idxCategoryMap)
+	assert.Contains(t, out.String(), `Successfully set category: name "Category 0", groups "[{Name:Group 0 Remove:false} `+
 		`{Name:Group 01 Remove:false}]", remove "false"`)
-	assert.NotContains(t, out, "Failed")
+	assert.NotContains(t, out.String(), "Failed")
 }
 
 // Requires a running astra.
@@ -198,17 +197,16 @@ func TestSetStreams(t *testing.T) {
 	assert.Equal(t, streams, config.Streams, "returned config should consist of streams set")
 
 	// Test log output.
-	out := capturer.CaptureStderr(func() {
-		log := logger.New(logger.DebugLevel, os.Stderr)
-		httpClient := network.NewHttpClient(time.Second * 3)
-		apiHandler := NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
-		streams := []astra.Stream{
-			{ID: "0000", Name: "Name 0", Type: string(cfg.SPTS)},
-		}
-		apiHandler.SetStreams(streams)
-	})
-	assert.Contains(t, out, `Successfully set stream: ID "0000", name "Name 0"`)
-	assert.NotContains(t, out, "Failed")
+	var out bytes.Buffer
+	log = logger.New(logger.DebugLevel, &out)
+	httpClient = network.NewHttpClient(time.Second * 3)
+	apiHandler = NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
+	streams = []astra.Stream{
+		{ID: "0000", Name: "Name 0", Type: string(cfg.SPTS)},
+	}
+	apiHandler.SetStreams(streams)
+	assert.Contains(t, out.String(), `Successfully set stream: ID "0000", name "Name 0"`)
+	assert.NotContains(t, out.String(), "Failed")
 }
 
 // Requires a running astra.
