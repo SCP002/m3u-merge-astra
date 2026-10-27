@@ -60,13 +60,6 @@ func TestFilled(t *testing.T) {
 	assert.Exactly(t, []string{"a", "a", "a"}, Filled("a", 3))
 }
 
-func TestContainsAny(t *testing.T) {
-	assert.True(t, ContainsAny("some words", "some"), "should contain element")
-	assert.True(t, ContainsAny("some words", "words"), "should contain element")
-	assert.True(t, ContainsAny("some words", "unknown", "some"), "should contain element")
-	assert.False(t, ContainsAny("some words", "unknown", "unknown 2"), "should not contain any element")
-}
-
 func TestHasAnyPrefix(t *testing.T) {
 	assert.True(t, HasAnyPrefix("some words", "some"), "should have prefix")
 	assert.False(t, HasAnyPrefix("some words", "words"), "should not have prefix")

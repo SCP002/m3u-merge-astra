@@ -54,17 +54,8 @@ func RemoveFirst[T any](inp []T, tElm T) (out []T) {
 
 // Filled returns new slice of `times` amount of `elm`.
 func Filled[T any](elm T, times int) []T {
-	out := []T{}
-	for i := 0; i < times; i++ {
-		out = append(out, elm)
-	}
-	return out
-}
-
-// ContainsAny returns true if `inp` contains any of `elms`.
-func ContainsAny(inp string, elms ...string) bool {
-	return lo.SomeBy(elms, func(elm string) bool {
-		return strings.Contains(inp, elm)
+	return lo.RepeatBy(times, func(int) T {
+		return elm
 	})
 }
 
