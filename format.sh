@@ -11,11 +11,11 @@ for tool in goimports golines golangci-lint; do
 	fi
 done
 
-printf 'Sorting imports with goimports\n'
+printf 'Sorting imports\n'
 goimports -w . || exit $?
 
-printf '\nFormatting and wrapping Go code at 120 columns with golines\n'
+printf '\nFormatting\n'
 golines --base-formatter gofmt -m 120 -w . || exit $?
 
-printf '\nApplying golangci-lint auto-fixes and reporting remaining issues\n'
+printf '\nApplying auto-fixes and reporting remaining issues\n'
 golangci-lint run --fix --issues-exit-code=0 ./...
