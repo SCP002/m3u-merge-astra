@@ -1,8 +1,8 @@
 # Build output
 /build/
 
-# Kilo
-/.kilo/
+# Claude Code (personal settings)
+/.claude/settings.local.json
 
 # ASTRA_BIN for /workspace/.dev mount
 /.env
