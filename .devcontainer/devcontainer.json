@@ -25,7 +25,8 @@
           "editor.formatOnSave": true
         },
         "go.testFlags": [
-          "-v"
+          "-v",
+          "-race"
         ],
         "go.testTimeout": "60s",
         "go.toolsEnvVars": {
@@ -36,7 +37,7 @@
       },
       "extensions": [
         "golang.go",
-        "kilocode.kilo-code"
+        "anthropic.claude-code"
       ]
     }
   },

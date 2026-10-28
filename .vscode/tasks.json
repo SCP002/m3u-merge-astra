@@ -3,7 +3,7 @@
   "tasks": [
     {
       "label": "Go: format, sort imports, lint",
-      "detail": "Runs goimports, golines at 120 columns, then golangci-lint --fix; findings are reported as warnings.",
+      "detail": "Runs goimports, golines at 120 columns, then golangci-lint --fix",
       "type": "shell",
       "command": "./format.sh",
       "options": {
@@ -33,6 +33,25 @@
           "message": 4
         }
       }
+    },
+    {
+      "label": "Go: test all",
+      "detail": "Runs every test with the race detector",
+      "type": "shell",
+      "command": "go test -race -count=1 ./...",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": "$go"
     }
   ]
 }

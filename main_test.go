@@ -3,6 +3,7 @@ package main
 import (
 	"m3u-merge-astra/astra"
 	"m3u-merge-astra/astra/api"
+	"m3u-merge-astra/astra/api/apitest"
 	"m3u-merge-astra/cfg"
 	"m3u-merge-astra/util/logger"
 	"m3u-merge-astra/util/network"
@@ -14,8 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Requires running astra.
-func TestMain(t *testing.T) {
+func TestMainFunc(t *testing.T) {
 	programCfgPath := filepath.Join(t.TempDir(), "m3u-merge-astra-main-test.yaml")
 
 	// Read initial astra config.
@@ -36,27 +36,8 @@ func TestMain(t *testing.T) {
 	assert.NoError(t, err)
 
 	apiHttpClient := network.NewHttpClient(time.Second * 10)
-	apiHandler := api.NewHandler(log, apiHttpClient, "http://127.0.0.1:8000", "admin", "admin")
-	astraCfg, err := apiHandler.FetchCfg()
-	assert.NoError(t, err)
-
-	// Clean existing streams.
-	for _, stream := range astraCfg.Streams {
-		stream.Remove = true
-		err := apiHandler.SetStream(stream.ID, stream)
-		if ok := assert.NoError(t, err); !ok {
-			t.FailNow()
-		}
-	}
-
-	// Clean existing categories.
-	for _, category := range astraCfg.Categories {
-		category.Remove = true
-		err := apiHandler.SetCategory(0, category)
-		if ok := assert.NoError(t, err); !ok {
-			t.FailNow()
-		}
-	}
+	astraAddr := apitest.NewServer(t).URL
+	apiHandler := api.NewHandler(log, apiHttpClient, astraAddr, apitest.User, apitest.Password)
 
 	// Add streams.
 	apiHandler.SetStreams([]astra.Stream{
@@ -79,11 +60,12 @@ func TestMain(t *testing.T) {
 	})
 
 	// Run program.
-	os.Args = []string{"", "-n", "-l", "2", "-c", programCfgPath, "-m", m3uPath, "-u", "admin", "-p", "admin"}
+	os.Args = []string{"", "-n", "-l", "2", "-c", programCfgPath, "-m", m3uPath, "-a", astraAddr,
+		"-u", apitest.User, "-p", apitest.Password}
 	main()
 
 	// Read modified config.
-	astraCfg, err = apiHandler.FetchCfg()
+	astraCfg, err := apiHandler.FetchCfg()
 	assert.NoError(t, err)
 
 	// Check modified config.

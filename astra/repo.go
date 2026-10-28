@@ -1,19 +1,22 @@
 package astra
 
 import (
+	"time"
+
 	"m3u-merge-astra/cfg"
 	"m3u-merge-astra/util/logger"
 )
 
 // repo represents dependencies holder for this package.
 type repo struct {
-	log *logger.Logger
-	cfg cfg.Root
+	log              *logger.Logger
+	cfg              cfg.Root
+	progressInterval time.Duration // How often to log progress of long operations.
 }
 
 // NewRepo returns new dependencies holder for this package.
 func NewRepo(log *logger.Logger, cfg cfg.Root) repo {
-	return repo{log: log, cfg: cfg}
+	return repo{log: log, cfg: cfg, progressInterval: time.Second * 30}
 }
 
 // Log used to satisfy deps.Global interface.

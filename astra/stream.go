@@ -765,7 +765,7 @@ func (r repo) removeDeadInputs(httpClient *http.Client, analyzer analyzer.Analyz
 	}
 
 	progressScheduler := gocron.NewScheduler(time.UTC)
-	_, err := progressScheduler.Every(30).Seconds().Do(func() {
+	_, err := progressScheduler.Every(r.progressInterval).Do(func() {
 		msg := lo.Ternary(disable, "Disabling dead inputs of streams", "Removing dead inputs from streams")
 		r.log.InfoFi(msg, "progress", getProgress())
 	})
@@ -788,10 +788,10 @@ func (r repo) removeDeadInputs(httpClient *http.Client, analyzer analyzer.Analyz
 							"reason", removalReason)
 						mut.Lock()
 						out[sIdx].Inputs = slice.RemoveLast(out[sIdx].Inputs, inp)
-						mut.Unlock()
 						if disable {
 							out[sIdx].DisabledInputs = append(out[sIdx].DisabledInputs, inp)
 						}
+						mut.Unlock()
 					}
 				}
 

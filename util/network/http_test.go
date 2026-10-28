@@ -1,20 +1,21 @@
 package network
 
 import (
+	"net"
 	"net/http"
-	"os"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
-	"m3u-merge-astra/util/logger"
+	"m3u-merge-astra/util/network/nettest"
 
-	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestNewHttpServer(t *testing.T) {
-	log := logger.New(logger.DebugLevel, os.Stderr)
-
+// newTestMux returns handler serving /ok/, /not_found/ and /timeout/ paths.
+func newTestMux() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ok/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
@@ -23,107 +24,70 @@ func TestNewHttpServer(t *testing.T) {
 		w.WriteHeader(404)
 	})
 	mux.HandleFunc("/timeout/", func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(time.Second * 5)
+		<-r.Context().Done() // Hang until the client gives up.
 	})
-
-	// Run http & https servers as subset of current test to be able to fail it from another goroutines (servers) if any
-	// server returns error.
-	var httpSrv, httpsSrv *http.Server
-	t.Run("http_server", func(t *testing.T) {
-		httpSrv, httpsSrv = NewHttpServer(mux, 7878, 9090, func(err error) {
-			if !errors.Is(err, http.ErrServerClosed) {
-				// Not using logging from testing.T or else message will not be displayed.
-				log.Errorf("Test server stopped with non-standard error: %v", err)
-				t.FailNow()
-			}
-		})
-	})
-	defer func() { _ = httpSrv.Close() }()
-	defer func() { _ = httpsSrv.Close() }()
-
-	client := NewHttpClient(time.Second * 3)
-
-	resp, err := client.Get("http://127.0.0.1:7878/ok/1")
-	assert.Exactly(t, 200, resp.StatusCode)
-	assert.NoError(t, err)
-
-	resp, err = client.Get("https://127.0.0.1:9090/ok/1")
-	assert.Exactly(t, 200, resp.StatusCode)
-	assert.NoError(t, err)
-
-	resp, err = client.Get("http://127.0.0.1:1010/ok/1")
-	assert.Nil(t, resp)
-	assert.Exactly(t, Refused, GetErrType(err), "should refuse connections to the wrong port")
-
-	resp, err = client.Get("https://127.0.0.1:1010/ok/1")
-	assert.Nil(t, resp)
-	assert.Exactly(t, Refused, GetErrType(err), "should refuse connections to the wrong port")
-
-	resp, err = client.Get("http://127.0.0.1:9090/ok/1")
-	assert.Exactly(t, 400, resp.StatusCode, "should return Bad Request status (HTTP request to HTTPS server)")
-	assert.NoError(t, err)
-
-	resp, err = client.Get("https://127.0.0.1:7878/ok/1")
-	assert.Nil(t, resp)
-	assert.Exactly(t, HTTPSClientHTTPServer, GetErrType(err), "should return HTTP response to HTTPS client error")
-
-	resp, err = client.Get("http://127.0.0.1:7878/not_found/1")
-	assert.Exactly(t, 404, resp.StatusCode)
-	assert.NoError(t, err)
-
-	resp, err = client.Get("https://127.0.0.1:9090/not_found/1")
-	assert.Exactly(t, 404, resp.StatusCode)
-	assert.NoError(t, err)
-
-	resp, err = client.Get("http://127.0.0.1:1010/not_found/1")
-	assert.Nil(t, resp)
-	assert.Exactly(t, Refused, GetErrType(err), "should refuse connections to the wrong port")
-
-	resp, err = client.Get("https://127.0.0.1:1010/not_found/1")
-	assert.Nil(t, resp)
-	assert.Exactly(t, Refused, GetErrType(err), "should refuse connections to the wrong port")
-
-	resp, err = client.Get("http://127.0.0.1:9090/not_found/1")
-	assert.Exactly(t, 400, resp.StatusCode, "should return Bad Request status (HTTP request to HTTPS server)")
-	assert.NoError(t, err)
-
-	resp, err = client.Get("https://127.0.0.1:7878/not_found/1")
-	assert.Nil(t, resp)
-	assert.Exactly(t, HTTPSClientHTTPServer, GetErrType(err), "should return HTTP response to HTTPS client error")
-
-	resp, err = client.Get("http://dead/no_such_host/1")
-	assert.Nil(t, resp)
-	assert.Exactly(t, NoSuchHost, GetErrType(err), "dead URL's should return DNS lookup error")
-
-	resp, err = client.Get("https://dead/no_such_host/1")
-	assert.Nil(t, resp)
-	assert.Exactly(t, NoSuchHost, GetErrType(err), "dead URL's should return DNS lookup error")
-
-	resp, err = client.Get("http://127.0.0.1:7878/timeout/1")
-	assert.Nil(t, resp)
-	assert.Exactly(t, Timeout, GetErrType(err))
-
-	resp, err = client.Get("https://127.0.0.1:9090/timeout/1")
-	assert.Nil(t, resp)
-	assert.Exactly(t, Timeout, GetErrType(err))
-
-	client = NewFakeHttpClient(time.Second * 3)
-
-	resp, err = client.Get("http://example.com:7878/ok/1")
-	assert.Exactly(t, 200, resp.StatusCode)
-	assert.NoError(t, err)
-
-	resp, err = client.Get("https://example.com:9090/ok/1")
-	assert.Exactly(t, 200, resp.StatusCode)
-	assert.NoError(t, err)
+	return mux
 }
 
 func TestNewHttpClient(t *testing.T) {
-	// Tested in TestNewHttpServer.
-	assert.NotNil(t, NewHttpClient(0))
+	httpSrv := httptest.NewServer(newTestMux())
+	defer httpSrv.Close()
+	httpsSrv := httptest.NewTLSServer(newTestMux())
+	defer httpsSrv.Close()
+
+	// Swap schemes to send requests with the wrong protocol.
+	httpURL := httpSrv.URL
+	httpsURL := httpsSrv.URL
+	httpToHTTPSURL := strings.Replace(httpsURL, "https://", "http://", 1)
+	httpsToHTTPURL := strings.Replace(httpURL, "http://", "https://", 1)
+
+	// Reserve a free port and release it, so connections to it get refused.
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	refusedURL := "http://" + listener.Addr().String()
+	_ = listener.Close()
+
+	client := NewHttpClient(time.Millisecond * 200)
+
+	tests := []struct {
+		name       string
+		url        string
+		wantStatus int
+		wantErr    ErrType
+	}{
+		{name: "http ok", url: httpURL + "/ok/1", wantStatus: 200, wantErr: Nil},
+		{name: "https ok with self-signed cert", url: httpsURL + "/ok/1", wantStatus: 200, wantErr: Nil},
+		{name: "http not found", url: httpURL + "/not_found/1", wantStatus: 404, wantErr: Nil},
+		{name: "https not found", url: httpsURL + "/not_found/1", wantStatus: 404, wantErr: Nil},
+		{name: "http request to https server", url: httpToHTTPSURL + "/ok/1", wantStatus: 400, wantErr: Nil},
+		{name: "https request to http server", url: httpsToHTTPURL + "/ok/1", wantErr: HTTPSClientHTTPServer},
+		{name: "refused", url: refusedURL + "/ok/1", wantErr: Refused},
+		{name: "http timeout", url: httpURL + "/timeout/1", wantErr: Timeout},
+		{name: "https timeout", url: httpsURL + "/timeout/1", wantErr: Timeout},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := client.Get(tt.url)
+			assert.Exactly(t, tt.wantErr, GetErrType(err))
+			if tt.wantStatus == 0 {
+				assert.Nil(t, resp)
+				return
+			}
+			if assert.NotNil(t, resp) {
+				defer func() { _ = resp.Body.Close() }()
+				assert.Exactly(t, tt.wantStatus, resp.StatusCode)
+			}
+		})
+	}
 }
 
-func TestNewFakeHttpClient(t *testing.T) {
-	// Tested in TestNewHttpServer.
-	assert.NotNil(t, NewFakeHttpClient(0))
+func TestGetErrTypeNoSuchHost(t *testing.T) {
+	srv := nettest.NewServers(t, newTestMux())
+	client := srv.Client(time.Second)
+
+	for _, scheme := range []string{"http", "https"} {
+		resp, err := client.Get(scheme + "://" + nettest.UnresolvableHost + "/ok/1")
+		assert.Nil(t, resp)
+		assert.Exactly(t, NoSuchHost, GetErrType(err), scheme)
+	}
 }

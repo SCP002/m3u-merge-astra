@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -14,11 +15,11 @@ import (
 	"m3u-merge-astra/cfg"
 	"m3u-merge-astra/util/copier"
 	"m3u-merge-astra/util/logger"
-	"m3u-merge-astra/util/network"
+	"m3u-merge-astra/util/network/nettest"
 	"m3u-merge-astra/util/slice"
 
-	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewStream(t *testing.T) {
@@ -52,20 +53,12 @@ func TestGetName(t *testing.T) {
 func TestFirstGroup(t *testing.T) {
 	s := Stream{}
 	assert.Empty(t, s.FirstGroup())
-	s = Stream{
-		Groups: map[string]string{
-			"Category 3": "Group 3",
-			"Category 5": "Group 5",
-			"Category 1": "Group 1",
-			"Category 2": "Group 2",
-			"Category 4": "Group 4",
-		},
+	// Many groups make it unlikely to get the right result relying on random iteration order over map.
+	s = Stream{Groups: map[string]string{}}
+	for i := 1000; i < 2000; i++ {
+		s.Groups[fmt.Sprintf("Category %v", i)] = fmt.Sprintf("Group %v", i)
 	}
-	for i := 0; i < 10000; i++ { // Test if logic relies on unstable iteration over maps.
-		if ok := assert.Exactly(t, "Category 1: Group 1", s.FirstGroup()); !ok {
-			t.FailNow()
-		}
-	}
+	assert.Exactly(t, "Category 1000: Group 1000", s.FirstGroup())
 }
 
 func TestUpdateStreamInput(t *testing.T) {
@@ -938,81 +931,77 @@ func TestSortInputs(t *testing.T) {
 	assert.Exactly(t, sl1, sl2)
 }
 
+// newDeadInputsServers returns test servers for dead inputs checks:
+//   - /alive/ responds with 200;
+//   - /dead/404/ responds with 404;
+//   - /dead/timeout/ hangs until the client gives up.
+func newDeadInputsServers(t *testing.T) nettest.Servers {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/alive/", func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(200)
+	})
+	mux.HandleFunc("/dead/404/", func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(404)
+	})
+	mux.HandleFunc("/dead/timeout/", func(w http.ResponseWriter, req *http.Request) {
+		<-req.Context().Done()
+	})
+	return nettest.NewServers(t, mux)
+}
+
 func TestRemoveDeadInputs(t *testing.T) {
 	r := newDefRepo()
 	r.cfg.Streams.InputMaxConns = 100
 	r.cfg.Streams.UseAnalyzer = false
-
-	// Create request handlers.
-	handleAlive := func(w http.ResponseWriter, req *http.Request) {
-		r.log.Debugf("Got request to %v", req.URL)
-		w.WriteHeader(200)
-	}
-	handleTimeout := func(w http.ResponseWriter, req *http.Request) {
-		r.log.Debugf("Got request to %v", req.URL)
-		time.Sleep(time.Second * 5)
-	}
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/alive/", handleAlive)
-	mux.HandleFunc("/dead/timeout/", handleTimeout)
-
-	// Run http & https servers as subset of current test to be able to fail it from another goroutines (servers) if any
-	// server returns error.
-	var httpSrv, httpsSrv *http.Server
-	t.Run("http_server", func(t *testing.T) {
-		httpSrv, httpsSrv = network.NewHttpServer(mux, 3434, 5656, func(err error) {
-			if !errors.Is(err, http.ErrServerClosed) {
-				// Not using logging from testing.T or else message will not be displayed.
-				r.log.Errorf("Test server stopped with non-standard error: %v", err)
-				t.FailNow()
-			}
-		})
-	})
-	defer func() { _ = httpSrv.Close() }()
-	defer func() { _ = httpsSrv.Close() }()
-
-	// Check results.
 	r.cfg.Streams.DeadInputsCheckBlacklist = []regexp.Regexp{
 		*regexp.MustCompile(`ignore/1`),
 		*regexp.MustCompile(`ignore/2`),
 	}
+
+	srv := newDeadInputsServers(t)
+	httpClient := srv.Client(time.Millisecond * 300)
+	analyzerClient := analyzer.NewFake()
+
+	// Check results.
 	sl1 := []Stream{
 		{
 			Name:   "Name 1",
 			Groups: map[string]string{"Cat": "Grp"},
-			Inputs: []string{"https://127.0.0.1:5656/dead/timeout/1", "https://127.0.0.1:5656/alive/1"},
+			Inputs: []string{"https://streams.test/dead/timeout/1", "https://streams.test/alive/1"},
 		},
 		{
 			Name:   "Name 2",
 			Groups: map[string]string{"Cat": "Grp"},
-			Inputs: []string{"http://127.0.0.1:3434/alive/2", "http://dead/no_such_host/1", "http://ignore/2"},
+			Inputs: []string{"http://streams.test/alive/2", "http://no-such-host.test/1", "http://ignore/2"},
 		},
 		{
 			Name:   "Name 3",
 			Groups: map[string]string{"Cat": "Grp"},
-			Inputs: []string{"http://127.0.0.1:3434/dead/timeout/" + strings.Repeat("x", 40), "https://ignore/1"},
+			Inputs: []string{"http://streams.test/dead/timeout/" + strings.Repeat("x", 40), "https://ignore/1"},
 		},
 		{
 			Name:   "Name 4",
 			Groups: map[string]string{"Cat": "Grp"},
-			Inputs: []string{"rtp://skip/1", "rtsp://skip/2", "file:///skip/3.ts", "http://127.0.0.1:3434/dead/404/1"},
+			Inputs: []string{"rtp://skip/1", "rtsp://skip/2", "file:///skip/3.ts", "http://streams.test/dead/404/1"},
+		},
+		{
+			Name:   "Name 5",
+			Groups: map[string]string{"Cat": "Grp"},
+			Inputs: []string{"http://streams.test/dead/404/2", "rtp://skip/1", "http://streams.test/dead/404/2"},
 		},
 	}
 	sl1Original := copier.TestDeep(t, sl1)
 
-	httpClient := network.NewHttpClient(time.Second * 3)
-	analyzerClient := analyzer.NewFake()
 	sl2 := r.RemoveDeadInputs(httpClient, analyzerClient, sl1)
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
 
-	expected := []string{"https://127.0.0.1:5656/alive/1"}
+	expected := []string{"https://streams.test/alive/1"}
 	assert.Exactly(t, expected, sl2[0].Inputs)
 
-	expected = []string{"http://127.0.0.1:3434/alive/2", "http://ignore/2"}
+	expected = []string{"http://streams.test/alive/2", "http://ignore/2"}
 	assert.Exactly(t, expected, sl2[1].Inputs)
 
 	expected = []string{"https://ignore/1"}
@@ -1021,55 +1010,8 @@ func TestRemoveDeadInputs(t *testing.T) {
 	expected = []string{"rtp://skip/1", "rtsp://skip/2", "file:///skip/3.ts"}
 	assert.Exactly(t, expected, sl2[3].Inputs, "should not remove inputs with unsupported protocols")
 
-	// Test concurrency.
-	// On Windows may unexpectedly freeze after ~20 seconds of the test runnning.
-	// Use test_remove_dead_inputs.sh.
-
-	sl1 = []Stream{
-		{
-			Name:   "Name 1",
-			Groups: map[string]string{"Cat": "Grp"},
-			Inputs: []string{"http://127.0.0.1:3434/dead/404/1", "rtp://skip/1", "http://127.0.0.1:3434/dead/404/1"},
-		},
-		{
-			Name:   "Name 2",
-			Groups: map[string]string{"Cat": "Grp"},
-			Inputs: []string{"http://ignore/1", "http://127.0.0.1:3434/dead/404/2", "http://127.0.0.1:3434/dead/404/2"},
-		},
-		{
-			Name:   "Name 3",
-			Groups: map[string]string{"Cat": "Grp"},
-			Inputs: []string{"rtsp://skip/2", "http://ignore/2", "rtsp://skip/2", "https://127.0.0.1:5656/alive/1"},
-		},
-	}
-	sl1Original = copier.TestDeep(t, sl1)
-
-	httpClient = network.NewFakeHttpClient(time.Second * 3)
-
-	for i := 0; i < 10000; i++ {
-		sl2 = r.RemoveDeadInputs(httpClient, analyzerClient, sl1)
-		if ok := assert.NotSame(t, &sl1, &sl2); !ok {
-			t.FailNow()
-		}
-		if ok := assert.Exactly(t, sl1Original, sl1); !ok {
-			t.FailNow()
-		}
-		if ok := assert.Len(t, sl2, len(sl1)); !ok {
-			t.FailNow()
-		}
-		expected := []string{"rtp://skip/1"}
-		if ok := assert.Exactly(t, expected, sl2[0].Inputs); !ok {
-			t.FailNow()
-		}
-		expected = []string{"http://ignore/1"}
-		if ok := assert.Exactly(t, expected, sl2[1].Inputs); !ok {
-			t.FailNow()
-		}
-		expected = []string{"rtsp://skip/2", "http://ignore/2", "rtsp://skip/2", "https://127.0.0.1:5656/alive/1"}
-		if ok := assert.Exactly(t, expected, sl2[2].Inputs); !ok {
-			t.FailNow()
-		}
-	}
+	expected = []string{"rtp://skip/1"}
+	assert.Exactly(t, expected, sl2[4].Inputs, "should remove every copy of duplicated dead input")
 
 	// Test log output.
 	var out syncBuffer
@@ -1080,21 +1022,75 @@ func TestRemoveDeadInputs(t *testing.T) {
 		ID:     "0",
 		Name:   "Name 1",
 		Groups: map[string]string{"Cat": "Grp"},
-		Inputs: []string{"https://127.0.0.1:5656/dead/timeout/1"}},
+		Inputs: []string{"https://streams.test/dead/timeout/1"}},
 	}
 
-	httpClient = network.NewHttpClient(time.Second * 3)
-	analyzerClient = analyzer.NewFake()
 	_ = r.RemoveDeadInputs(httpClient, analyzerClient, sl1)
 	msg := `Start checking input: stream ID "0", stream name "Name 1", stream index "0", ` +
-		`input "https://127.0.0.1:5656/dead/timeout/1"`
+		`input "https://streams.test/dead/timeout/1"`
 	assert.Contains(t, out.String(), msg)
 	msg = `Removing dead input from stream: ID "0", name "Name 1", group "Cat: Grp", ` +
-		`input "https://127.0.0.1:5656/dead/timeout/1", reason "Timeout"`
+		`input "https://streams.test/dead/timeout/1", reason "Timeout"`
 	assert.Contains(t, out.String(), msg)
 	msg = `End checking input: stream ID "0", stream name "Name 1", stream index "0", ` +
-		`input "https://127.0.0.1:5656/dead/timeout/1"`
+		`input "https://streams.test/dead/timeout/1"`
 	assert.Contains(t, out.String(), msg)
+}
+
+// TestDisableDeadInputsConcurrently forces every input check to be in flight at the same time, so results of
+// concurrent checks are written simultaneously.
+func TestDisableDeadInputsConcurrently(t *testing.T) {
+	sl1 := []Stream{
+		{Name: "Name 1", Inputs: []string{"http://a/dead/1", "http://a/alive/1", "http://a/dead/2"}},
+		{Name: "Name 2", Inputs: []string{"https://a/dead/3", "https://a/dead/4", "https://a/dead/5"}},
+		{Name: "Name 3", Inputs: []string{"http://a/alive/2", "https://a/dead/6"}},
+	}
+	inputsAmount := getInputsAmount(sl1)
+
+	// Every request waits until all requests arrive, which is possible only if checks run concurrently.
+	var arrived atomic.Int32
+	allArrived := make(chan struct{})
+	mux := http.NewServeMux()
+	barrier := func(status int) http.HandlerFunc {
+		return func(w http.ResponseWriter, req *http.Request) {
+			if arrived.Add(1) == int32(inputsAmount) {
+				close(allArrived)
+			}
+			select {
+			case <-allArrived:
+				w.WriteHeader(status)
+			case <-req.Context().Done():
+			}
+		}
+	}
+	mux.HandleFunc("/alive/", barrier(200))
+	mux.HandleFunc("/dead/", barrier(404))
+	srv := nettest.NewServers(t, mux)
+
+	r := newDefRepo()
+	r.cfg.Streams.InputMaxConns = inputsAmount
+	r.cfg.Streams.UseAnalyzer = false
+
+	sl1Original := copier.TestDeep(t, sl1)
+	sl2 := r.DisableDeadInputs(srv.Client(time.Second*5), analyzer.NewFake(), sl1)
+	assert.Exactly(t, sl1Original, sl1)
+
+	select {
+	case <-allArrived:
+	default:
+		require.FailNow(t, "input checks did not run concurrently", "%v of %v requests arrived", arrived.Load(),
+			inputsAmount)
+	}
+
+	// Order of disabled inputs depends on the order checks finish in.
+	require.Len(t, sl2, len(sl1))
+	assert.Exactly(t, []string{"http://a/alive/1"}, sl2[0].Inputs)
+	assert.ElementsMatch(t, []string{"http://a/dead/1", "http://a/dead/2"}, sl2[0].DisabledInputs)
+	assert.Empty(t, sl2[1].Inputs)
+	assert.ElementsMatch(t, []string{"https://a/dead/3", "https://a/dead/4", "https://a/dead/5"},
+		sl2[1].DisabledInputs)
+	assert.Exactly(t, []string{"http://a/alive/2"}, sl2[2].Inputs)
+	assert.ElementsMatch(t, []string{"https://a/dead/6"}, sl2[2].DisabledInputs)
 }
 
 func TestAnalyzerRemoveDeadInputs(t *testing.T) {
@@ -1137,7 +1133,6 @@ func TestAnalyzerRemoveDeadInputs(t *testing.T) {
 	}
 	sl1Original := copier.TestDeep(t, sl1)
 
-	httpClient := network.NewFakeHttpClient(time.Second * 3)
 	analyzerClient := analyzer.NewFake()
 	analyzerClient.AddResult("http://dead/audio/50", analyzer.Result{HasAudio: true, Bitrate: 50})
 	analyzerClient.AddResult("http://alive/audio/100", analyzer.Result{HasAudio: true, Bitrate: 100})
@@ -1152,6 +1147,7 @@ func TestAnalyzerRemoveDeadInputs(t *testing.T) {
 	analyzerClient.AddResult("udp://dead/pes/35", analyzer.Result{PESErrors: 35, Bitrate: 1000})
 	analyzerClient.AddResult("rtp://alive/pes/30", analyzer.Result{PESErrors: 30, Bitrate: 1000})
 
+	var httpClient *http.Client
 	sl2 := r.RemoveDeadInputs(httpClient, analyzerClient, sl1)
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
@@ -1208,7 +1204,6 @@ func TestAnalyzerRemoveDeadInputs(t *testing.T) {
 		Inputs: []string{"https://dead/audio/50"}},
 	}
 
-	httpClient = network.NewFakeHttpClient(time.Second * 3)
 	analyzerClient = analyzer.NewFake()
 	analyzerClient.AddResult("https://dead/audio/50", analyzer.Result{HasAudio: true, Bitrate: 50})
 
@@ -1224,117 +1219,95 @@ func TestAnalyzerRemoveDeadInputs(t *testing.T) {
 	assert.Contains(t, out.String(), msg)
 }
 
+// gatedAnalyzer is an analyzer.Analyzer which blocks every check until a value is sent to `release`.
+type gatedAnalyzer struct {
+	release chan struct{}
+}
+
+// Check waits for release and returns a result of alive input.
+func (a gatedAnalyzer) Check(watchTime time.Duration, maxAttempts int, urlToCheck string) (analyzer.Result, error) {
+	<-a.release
+	return analyzer.Result{Bitrate: 1000}, nil
+}
+
 func TestProgressRemoveDeadInputs(t *testing.T) {
-	log := logger.New(logger.DebugLevel, os.Stderr)
-
-	handleSleep2Sec := func(w http.ResponseWriter, req *http.Request) {
-		log.Debugf("Got request to %v", req.URL)
-		time.Sleep(time.Second * 2)
-	}
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/sleep/2sec", handleSleep2Sec)
-
-	// Run http & https servers as subset of current test to be able to fail it from another goroutines (servers) if any
-	// server returns error.
-	var httpSrv, httpsSrv *http.Server
-	t.Run("http_server", func(t *testing.T) {
-		httpSrv, httpsSrv = network.NewHttpServer(mux, 3434, 5656, func(err error) {
-			if !errors.Is(err, http.ErrServerClosed) {
-				// Not using logging from testing.T or else message will not be displayed.
-				log.Errorf("Test server stopped with non-standard error: %v", err)
-				t.FailNow()
-			}
-		})
-	})
-	defer func() { _ = httpSrv.Close() }()
-	defer func() { _ = httpsSrv.Close() }()
-
-	// Test log output.
-	// On Windows may unexpectedly freeze after ~20 seconds of the test runnning.
-	// Use test_progress_remove_dead_inputs.sh.
 	var out syncBuffer
 	r := newDefRepoWithWriter(&out)
+	r.progressInterval = time.Millisecond * 10
 	r.cfg.Streams.InputMaxConns = 1
-	r.cfg.Streams.UseAnalyzer = false
+	r.cfg.Streams.UseAnalyzer = true
 
-	sl1 := []Stream{{Inputs: slice.Filled("http://127.0.0.1:3434/sleep/2sec", 20)}}
+	sl1 := []Stream{{Inputs: slice.Filled("udp://input", 4)}}
+	analyzerClient := gatedAnalyzer{release: make(chan struct{})}
 
-	httpClient := network.NewFakeHttpClient(time.Second * 3)
-	analyzerClient := analyzer.NewFake()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = r.RemoveDeadInputs(nil, analyzerClient, sl1)
+	}()
 
-	_ = r.RemoveDeadInputs(httpClient, analyzerClient, sl1)
-	assert.Contains(t, out.String(), `Removing dead inputs from streams: progress "14 / 20 (70%)"`)
+	waitProgress := func(progress string) {
+		t.Helper()
+		msg := `Removing dead inputs from streams: progress "` + progress + `"`
+		require.Eventually(t, func() bool { return strings.Contains(out.String(), msg) }, time.Second*5,
+			time.Millisecond*5, "progress %v should be logged", progress)
+	}
+
+	waitProgress("0 / 4 (0%)")
+	for _, progress := range []string{"1 / 4 (25%)", "2 / 4 (50%)", "3 / 4 (75%)"} {
+		analyzerClient.release <- struct{}{} // Blocks until the next check is waiting.
+		waitProgress(progress)
+	}
+	analyzerClient.release <- struct{}{}
+	<-done
 }
 
 func TestDisableDeadInputs(t *testing.T) {
 	r := newDefRepo()
-	r.cfg.Streams.InputMaxConns = 1
+	r.cfg.Streams.InputMaxConns = 1 // Keep order of disabled inputs predictable.
 	r.cfg.Streams.UseAnalyzer = false
-
-	// Create request handlers.
-	handleAlive := func(w http.ResponseWriter, req *http.Request) {
-		r.log.Debugf("Got request to %v", req.URL)
-		w.WriteHeader(200)
-	}
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/alive/", handleAlive)
-
-	// Run http & https servers as subset of current test to be able to fail it from another goroutines (servers) if any
-	// server returns error.
-	var httpSrv, httpsSrv *http.Server
-	t.Run("http_server", func(t *testing.T) {
-		httpSrv, httpsSrv = network.NewHttpServer(mux, 3434, 5656, func(err error) {
-			if !errors.Is(err, http.ErrServerClosed) {
-				// Not using logging from testing.T or else message will not be displayed.
-				r.log.Errorf("Test server stopped with non-standard error: %v", err)
-				t.FailNow()
-			}
-		})
-	})
-	defer func() { _ = httpSrv.Close() }()
-	defer func() { _ = httpsSrv.Close() }()
-
-	// Check results.
 	r.cfg.Streams.DeadInputsCheckBlacklist = []regexp.Regexp{
 		*regexp.MustCompile(`ignore/1`),
 	}
+
+	srv := newDeadInputsServers(t)
+	httpClient := srv.Client(time.Second * 3)
+	analyzerClient := analyzer.NewFake()
+
+	// Check results.
 	sl1 := []Stream{
 		{
 			Name:   "Name 1",
 			Groups: map[string]string{"Cat": "Grp"},
 			Inputs: []string{
-				"http://dead/no_such_host/1",
-				"http://dead/no_such_host/2",
-				"http://127.0.0.1:3434/alive/1",
+				"http://no-such-host.test/1",
+				"http://no-such-host.test/2",
+				"http://streams.test/alive/1",
 			},
 			DisabledInputs: []string{"http://dead/existing/1"},
 		},
 		{
 			Name:   "Name 2",
 			Groups: map[string]string{"Cat": "Grp"},
-			Inputs: []string{"http://127.0.0.1:3434/alive/2", "http://dead/no_such_host/3", "http://ignore/1"},
+			Inputs: []string{"http://streams.test/alive/2", "http://no-such-host.test/3", "http://ignore/1"},
 		},
 	}
 	sl1Original := copier.TestDeep(t, sl1)
 
-	httpClient := network.NewHttpClient(time.Second * 3)
-	analyzerClient := analyzer.NewFake()
 	sl2 := r.DisableDeadInputs(httpClient, analyzerClient, sl1)
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
 
-	expected := []string{"http://127.0.0.1:3434/alive/1"}
+	expected := []string{"http://streams.test/alive/1"}
 	assert.Exactly(t, expected, sl2[0].Inputs)
-	expected = []string{"http://dead/existing/1", "http://dead/no_such_host/1", "http://dead/no_such_host/2"}
+	expected = []string{"http://dead/existing/1", "http://no-such-host.test/1", "http://no-such-host.test/2"}
 	assert.Exactly(t, expected, sl2[0].DisabledInputs)
 
-	expected = []string{"http://127.0.0.1:3434/alive/2", "http://ignore/1"}
+	expected = []string{"http://streams.test/alive/2", "http://ignore/1"}
 	assert.Exactly(t, expected, sl2[1].Inputs)
-	expected = []string{"http://dead/no_such_host/3"}
+	expected = []string{"http://no-such-host.test/3"}
 	assert.Exactly(t, expected, sl2[1].DisabledInputs)
 
 	// Test log output.
@@ -1346,14 +1319,12 @@ func TestDisableDeadInputs(t *testing.T) {
 		ID:     "0",
 		Name:   "Name 1",
 		Groups: map[string]string{"Cat": "Grp"},
-		Inputs: []string{"http://dead/no_such_host/1"}},
+		Inputs: []string{"http://no-such-host.test/1"}},
 	}
 
-	httpClient = network.NewHttpClient(time.Second * 3)
-	analyzerClient = analyzer.NewFake()
 	_ = r.DisableDeadInputs(httpClient, analyzerClient, sl1)
 	msg := `Disabling dead input of stream: ID "0", name "Name 1", group "Cat: Grp", ` +
-		`input "http://dead/no_such_host/1", reason "No such host"`
+		`input "http://no-such-host.test/1", reason "No such host"`
 	assert.Contains(t, out.String(), msg)
 }
 

@@ -74,9 +74,10 @@ type Analyzer interface {
 
 // analyzer represents astra analyzer client.
 type analyzer struct {
-	url    string
-	dialer *websocket.Dialer
-	log    *logger.Logger
+	url          string
+	dialer       *websocket.Dialer
+	log          *logger.Logger
+	closeTimeout time.Duration // How long to wait for the server to close the connection after each check.
 }
 
 // New returns new configured astra analyzer client which connects to `address` in format of 'host:port' with
@@ -90,7 +91,8 @@ func New(log *logger.Logger, address string, handshakeTimeout time.Duration) *an
 			Proxy:            http.ProxyFromEnvironment,
 			HandshakeTimeout: handshakeTimeout,
 		},
-		log: log,
+		log:          log,
+		closeTimeout: time.Second,
 	}
 }
 
@@ -109,13 +111,14 @@ func (a analyzer) Check(watchTime time.Duration, maxAttempts int, urlToCheck str
 		}
 		defer func() { _ = conn.Close() }()
 
-		// Read responses.
-		readErrCh := make(chan error)
+		// Read responses until the connection fails or `check` returns.
+		// `done` unblocks a pending response send, the buffer lets the final error send complete without a receiver.
+		done := make(chan struct{})
+		defer close(done)
+		readErrCh := make(chan error, 1)
 		readRespCh := make(chan startResp)
 
 		go func() {
-			defer close(readErrCh)
-			defer close(readRespCh)
 			for {
 				_, respBytes, err := conn.ReadMessage()
 				if err != nil {
@@ -128,7 +131,11 @@ func (a analyzer) Check(watchTime time.Duration, maxAttempts int, urlToCheck str
 					readErrCh <- errors.Wrap(err, "Decode response")
 					return
 				}
-				readRespCh <- resp
+				select {
+				case readRespCh <- resp:
+				case <-done:
+					return
+				}
 			}
 		}()
 
@@ -190,11 +197,19 @@ func (a analyzer) Check(watchTime time.Duration, maxAttempts int, urlToCheck str
 				if err != nil {
 					return Result{}, errors.Wrap(err, "Send close message")
 				}
-				// Wait (with timeout) for the server to close the connection (deferred close).
-				select {
-				case err := <-readErrCh:
-					_ = err
-				case <-time.After(time.Second):
+				// Wait (with timeout) for the server to close the connection (deferred close), discarding responses
+				// still in flight.
+				closeTimeout := time.After(a.closeTimeout)
+			waitClose:
+				for {
+					select {
+					case <-readRespCh:
+					case err := <-readErrCh:
+						_ = err // Connection is closed, as expected.
+						break waitClose
+					case <-closeTimeout:
+						break waitClose
+					}
 				}
 				// Calculate averages and return the result.
 				if totalResponsesCount != 0 {

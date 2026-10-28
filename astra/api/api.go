@@ -102,10 +102,10 @@ func (h handler) SetCategory(idx int, category astra.Category) error {
 		return errors.Wrap(err, "Invalid API response")
 	}
 	if resp.Status != "ok" {
-		return errors.Wrap(err, fmt.Sprintf("API responded with bad status (%v)", resp.Status))
+		return errors.Newf("API responded with bad status (%v)", resp.Status)
 	}
 	if resp.Error != "" {
-		return errors.Wrap(err, fmt.Sprintf("API responded with error (%v)", resp.Error))
+		return errors.Newf("API responded with error (%v)", resp.Error)
 	}
 
 	return nil
@@ -138,10 +138,10 @@ func (h handler) SetStream(id string, stream astra.Stream) error {
 		return errors.Wrap(err, "Invalid API response")
 	}
 	if resp.Status != "ok" {
-		return errors.Wrap(err, fmt.Sprintf("API responded with bad status (%v)", resp.Status))
+		return errors.Newf("API responded with bad status (%v)", resp.Status)
 	}
 	if resp.Error != "" {
-		return errors.Wrap(err, fmt.Sprintf("API responded with error (%v)", resp.Error))
+		return errors.Newf("API responded with error (%v)", resp.Error)
 	}
 
 	return nil

@@ -2,12 +2,17 @@ package api
 
 import (
 	"bytes"
+	"encoding/json/v2"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"m3u-merge-astra/astra"
+	"m3u-merge-astra/astra/api/apitest"
 	"m3u-merge-astra/cfg"
 	"m3u-merge-astra/util/logger"
 	"m3u-merge-astra/util/network"
@@ -16,6 +21,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewHandler(t *testing.T) {
@@ -32,20 +38,11 @@ func TestNewHandler(t *testing.T) {
 	assert.Exactly(t, expected, NewHandler(log, httpClient, "127.0.0.1", "user", "pass"))
 }
 
-// Requires a running astra.
 func TestSetCategories(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
 	httpClient := network.NewHttpClient(time.Second * 3)
-	apiHandler := NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
-
-	// Remove existing categories.
-	config, err := apiHandler.FetchCfg()
-	assert.NoError(t, err)
-	for _, category := range config.Categories {
-		category.Remove = true
-		err := apiHandler.SetCategory(0, category)
-		assert.NoError(t, err)
-	}
+	addr := apitest.NewServer(t).URL
+	apiHandler := NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 
 	// Set.
 	idxCategoryMap := []lo.Entry[int, astra.Category]{
@@ -89,7 +86,7 @@ func TestSetCategories(t *testing.T) {
 	apiHandler.SetCategories(idxCategoryMap)
 
 	// Check.
-	config, err = apiHandler.FetchCfg()
+	config, err := apiHandler.FetchCfg()
 	assert.NoError(t, err)
 	expected := []astra.Category{
 		{Name: "Category 1", Groups: []astra.Group{{Name: "Group 1"}, {Name: "Group 2"}}},
@@ -103,7 +100,7 @@ func TestSetCategories(t *testing.T) {
 	var out bytes.Buffer
 	log = logger.New(logger.DebugLevel, &out)
 	httpClient = network.NewHttpClient(time.Second * 3)
-	apiHandler = NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
+	apiHandler = NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 	idxCategoryMap = []lo.Entry[int, astra.Category]{
 		{
 			Key:   -1,
@@ -112,30 +109,19 @@ func TestSetCategories(t *testing.T) {
 	}
 	apiHandler.SetCategories(idxCategoryMap)
 	assert.Contains(t, out.String(), `Successfully set category: name "Category 0", `+
-		`groups "[{Name:Group 0 Remove:false} {Name:Group 01 Remove:false}]", remove "false"`)
+		`groups "[{Name:Group 0 Remove:false Unknown:null} {Name:Group 01 Remove:false Unknown:null}]", `+
+		`remove "false"`)
 	assert.NotContains(t, out.String(), "Failed")
 }
 
-// Requires a running astra.
 func TestSetCategory(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
 	httpClient := network.NewHttpClient(time.Second * 3)
-	apiHandler := NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
-
-	astraCfg, err := apiHandler.FetchCfg()
-	assert.NoError(t, err)
-
-	// Remove old categories.
-	for _, category := range astraCfg.Categories {
-		category.Remove = true
-		err = apiHandler.SetCategory(0, category)
-		if ok := assert.NoError(t, err); !ok {
-			t.FailNow()
-		}
-	}
+	addr := apitest.NewServer(t).URL
+	apiHandler := NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 
 	// Set new category.
-	err = apiHandler.SetCategory(-1, astra.Category{
+	err := apiHandler.SetCategory(-1, astra.Category{
 		Name:   fmt.Sprintf("Category %v", rnd.String(4, false, true)),
 		Groups: []astra.Group{{Name: "Group name 1"}, {Name: "Group name 2"}, {Name: "Group name 3"}},
 	})
@@ -150,9 +136,6 @@ func TestSetCategory(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	astraCfg, err = apiHandler.FetchCfg()
-	assert.NoError(t, err)
-
 	modifiedCategory := astra.Category{
 		Name: "Category modified",
 		Groups: []astra.Group{
@@ -164,7 +147,7 @@ func TestSetCategory(t *testing.T) {
 	err = apiHandler.SetCategory(0, modifiedCategory)
 	assert.NoError(t, err)
 
-	astraCfg, err = apiHandler.FetchCfg()
+	astraCfg, err := apiHandler.FetchCfg()
 	assert.NoError(t, err)
 	assert.Equal(t, astraCfg.Categories, []astra.Category{modifiedCategory})
 }
@@ -172,15 +155,8 @@ func TestSetCategory(t *testing.T) {
 func TestSetStreams(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
 	httpClient := network.NewHttpClient(time.Second * 3)
-	apiHandler := NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
-
-	// Remove existing streams.
-	config, err := apiHandler.FetchCfg()
-	assert.NoError(t, err)
-	apiHandler.SetStreams(lo.Map(config.Streams, func(s astra.Stream, _ int) astra.Stream {
-		s.Remove = true
-		return s
-	}))
+	addr := apitest.NewServer(t).URL
+	apiHandler := NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 
 	// Set.
 	streams := []astra.Stream{
@@ -191,7 +167,7 @@ func TestSetStreams(t *testing.T) {
 	apiHandler.SetStreams(streams)
 
 	// Check.
-	config, err = apiHandler.FetchCfg()
+	config, err := apiHandler.FetchCfg()
 	assert.NoError(t, err)
 	assert.Equal(t, streams, config.Streams)
 
@@ -199,7 +175,7 @@ func TestSetStreams(t *testing.T) {
 	var out bytes.Buffer
 	log = logger.New(logger.DebugLevel, &out)
 	httpClient = network.NewHttpClient(time.Second * 3)
-	apiHandler = NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
+	apiHandler = NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 	streams = []astra.Stream{
 		{ID: "0000", Name: "Name 0", Type: string(cfg.SPTS)},
 	}
@@ -208,11 +184,11 @@ func TestSetStreams(t *testing.T) {
 	assert.NotContains(t, out.String(), "Failed")
 }
 
-// Requires a running astra.
 func TestSetStream(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
 	httpClient := network.NewHttpClient(time.Second * 3)
-	apiHandler := NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
+	addr := apitest.NewServer(t).URL
+	apiHandler := NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 
 	// Set.
 	streamName := fmt.Sprintf("Stream %v", rnd.String(4, false, true))
@@ -244,21 +220,65 @@ func TestSetStream(t *testing.T) {
 	}))
 }
 
-// Requires a running astra.
 func TestFetchCfg(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
 	httpClient := network.NewHttpClient(time.Second * 3)
-	apiHandler := NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
+	addr := apitest.NewServer(t).URL
+	apiHandler := NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
+	err := apiHandler.SetStream("0001", astra.Stream{ID: "0001", Name: "Name 1", Type: string(cfg.SPTS)})
+	require.NoError(t, err)
+
 	astraCfg, err := apiHandler.FetchCfg()
-	assert.NotEmpty(t, astraCfg)
 	assert.NoError(t, err)
+	assert.True(t, lo.ContainsBy(astraCfg.Streams, func(s astra.Stream) bool {
+		return s.ID == "0001" && s.Name == "Name 1"
+	}))
+
+	// Wrong credentials.
+	apiHandler = NewHandler(log, httpClient, addr, apitest.User, "wrong")
+	_, err = apiHandler.FetchCfg()
+	assert.ErrorContains(t, err, "API responded with status code 403")
 }
 
-// Requires a running astra.
+func TestSetErrors(t *testing.T) {
+	log := logger.New(logger.DebugLevel, os.Stderr)
+	httpClient := network.NewHttpClient(time.Second * 3)
+
+	tests := []struct {
+		name    string
+		resp    string // "CMD" is replaced with requested command.
+		wantErr string
+	}{
+		{name: "bad status", resp: `{"CMD": "er"}`, wantErr: "API responded with bad status (er)"},
+		{name: "error", resp: `{"CMD": "ok", "error": "oops"}`, wantErr: "API responded with error (oops)"},
+		{name: "invalid", resp: `not json`, wantErr: "Invalid API response"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var req struct {
+					Cmd string `json:"cmd"`
+				}
+				_ = json.UnmarshalRead(r.Body, &req)
+				_, _ = w.Write([]byte(strings.ReplaceAll(tt.resp, "CMD", req.Cmd)))
+			}))
+			defer srv.Close()
+			apiHandler := NewHandler(log, httpClient, srv.URL, apitest.User, apitest.Password)
+
+			err := apiHandler.SetStream("0001", astra.Stream{ID: "0001"})
+			assert.ErrorContains(t, err, tt.wantErr)
+
+			err = apiHandler.SetCategory(-1, astra.Category{Name: "Category 1"})
+			assert.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
 func TestRequest(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
 	httpClient := network.NewHttpClient(time.Second * 3)
-	apiHandler := NewHandler(log, httpClient, "http://127.0.0.1:8000", "admin", "admin")
+	addr := apitest.NewServer(t).URL
+	apiHandler := NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 	resp, err := apiHandler.request("POST", "/control/", loadReq{Cmd: "sessions"})
 	assert.Contains(t, string(resp), "sessions")
 	assert.NoError(t, err)
