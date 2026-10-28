@@ -250,10 +250,10 @@ func TestAddFileWriter(t *testing.T) {
 	log.WarnFi("message 2", "field1", "value 3", "field2", 4)
 
 	// file.Sync() does not help, content is empty, closing and opening the file again.
-	file.Close()
+	_ = file.Close()
 	file, err = os.Open(path)
 	assert.NoError(t, err)
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	reader := bufio.NewReader(file)
 
 	type logEntry struct {

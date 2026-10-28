@@ -969,8 +969,8 @@ func TestRemoveDeadInputs(t *testing.T) {
 			}
 		})
 	})
-	defer httpSrv.Close()
-	defer httpsSrv.Close()
+	defer func() { _ = httpSrv.Close() }()
+	defer func() { _ = httpsSrv.Close() }()
 
 	// Check results.
 	r.cfg.Streams.DeadInputsCheckBlacklist = []regexp.Regexp{
@@ -1247,8 +1247,8 @@ func TestProgressRemoveDeadInputs(t *testing.T) {
 			}
 		})
 	})
-	defer httpSrv.Close()
-	defer httpsSrv.Close()
+	defer func() { _ = httpSrv.Close() }()
+	defer func() { _ = httpsSrv.Close() }()
 
 	// Test log output.
 	// On Windows may unexpectedly freeze after ~20 seconds of the test runnning.
@@ -1293,8 +1293,8 @@ func TestDisableDeadInputs(t *testing.T) {
 			}
 		})
 	})
-	defer httpSrv.Close()
-	defer httpsSrv.Close()
+	defer func() { _ = httpSrv.Close() }()
+	defer func() { _ = httpsSrv.Close() }()
 
 	// Check results.
 	r.cfg.Streams.DeadInputsCheckBlacklist = []regexp.Regexp{

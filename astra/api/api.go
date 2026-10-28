@@ -181,7 +181,7 @@ func (h handler) request(method string, path string, cmd any) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Send HTTP request to API")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {

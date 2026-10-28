@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -75,7 +76,7 @@ func NewFakeHttpClient(timeout time.Duration) *http.Client {
 	}
 	client.Transport = &http.Transport{
 		TLSClientConfig: tlsCfg,
-		Dial: func(network, addr string) (net.Conn, error) {
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			// Replace request destination host with localhost:port (same as :port).
 			port := strings.Split(addr, ":")[1]
 			return net.Dial(network, fmt.Sprintf(":%v", port))

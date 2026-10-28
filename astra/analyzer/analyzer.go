@@ -107,7 +107,7 @@ func (a analyzer) Check(watchTime time.Duration, maxAttempts int, urlToCheck str
 		if err != nil {
 			return Result{}, errors.Wrap(err, "Dial")
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		// Read responses.
 		readErrCh := make(chan error)
@@ -192,7 +192,8 @@ func (a analyzer) Check(watchTime time.Duration, maxAttempts int, urlToCheck str
 				}
 				// Wait (with timeout) for the server to close the connection (deferred close).
 				select {
-				case <-readErrCh:
+				case err := <-readErrCh:
+					_ = err
 				case <-time.After(time.Second):
 				}
 				// Calculate averages and return the result.

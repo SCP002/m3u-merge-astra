@@ -38,8 +38,8 @@ func TestNewHttpServer(t *testing.T) {
 			}
 		})
 	})
-	defer httpSrv.Close()
-	defer httpsSrv.Close()
+	defer func() { _ = httpSrv.Close() }()
+	defer func() { _ = httpsSrv.Close() }()
 
 	client := NewHttpClient(time.Second * 3)
 

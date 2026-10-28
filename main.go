@@ -46,7 +46,7 @@ func main() {
 	logFile, err := log.AddFileWriter(flags.LogFile)
 	if err == nil {
 		// Closing nil file does not panic.
-		defer logFile.Close()
+		defer func() { _ = logFile.Close() }()
 	} else {
 		log.Error(err)
 	}
@@ -86,7 +86,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer m3uResp.Close()
+	defer func() { _ = m3uResp.Close() }()
 
 	// Parse and preprocess M3U channels.
 	m3uRepo := m3u.NewRepo(log, cfg)

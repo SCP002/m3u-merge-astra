@@ -735,7 +735,7 @@ func (r repo) removeDeadInputs(httpClient *http.Client, analyzer analyzer.Analyz
 		} else {
 			resp, err := httpClient.Get(inp)
 			if err == nil {
-				defer resp.Body.Close()
+				defer func() { _ = resp.Body.Close() }()
 			}
 			// Not checking Content-Type header as server can return text/html but stream still will be playable.
 			// Not checking response body as some streams can periodically respond with no content but still be
