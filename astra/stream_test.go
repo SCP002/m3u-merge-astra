@@ -612,8 +612,8 @@ func TestRemoveNamePrefixes(t *testing.T) {
 	sl1 = []Stream{{ID: "0", Name: addedPrefix + "Name 1", Groups: map[string]string{"Cat": "Grp"}}}
 
 	_ = r.RemoveNamePrefixes(sl1)
-	assert.Contains(t, out.String(), `Temporarily removing name prefix from stream: ID "0", old name "_ADDED: Name 1", `+
-		`new name "Name 1", group "Cat: Grp"`)
+	assert.Contains(t, out.String(), `Temporarily removing name prefix from stream: ID "0", old name `+
+		`"_ADDED: Name 1", new name "Name 1", group "Cat: Grp"`)
 }
 
 func TestSort(t *testing.T) {
@@ -769,8 +769,8 @@ func TestAllRemoveDuplicatedInputsByRx(t *testing.T) {
 	}
 
 	_ = r.RemoveDuplicatedInputsByRx(sl1)
-	assert.Contains(t, out.String(), `Removing duplicated input per stream by regular expressions: ID "0", name "Name 1", `+
-		`group "Cat: Grp", input "http://input/1"`)
+	assert.Contains(t, out.String(), `Removing duplicated input per stream by regular expressions: ID "0", `+
+		`name "Name 1", group "Cat: Grp", input "http://input/1"`)
 }
 
 func TestUniteInputs(t *testing.T) {
@@ -854,8 +854,8 @@ func TestUniteInputs(t *testing.T) {
 	}
 
 	_ = r.UniteInputs(sl1)
-	assert.Contains(t, out.String(), `Uniting inputs of streams: from ID "1", from name "Name_1", input "http://input/b", `+
-		`to ID "0", to name "Name 1", note "Stream is disabled"`)
+	assert.Contains(t, out.String(), `Uniting inputs of streams: from ID "1", from name "Name_1", `+
+		`input "http://input/b", to ID "0", to name "Name 1", note "Stream is disabled"`)
 
 	out.Reset()
 	r = newDefRepoWithWriter(&out)
@@ -1499,8 +1499,8 @@ func TestAddHashes(t *testing.T) {
 	}
 
 	_ = r.AddHashes(sl1)
-	assert.Contains(t, out.String(), `Adding hash to input of stream: ID "0", name "Name 1", group "Cat: Grp", hash "a", `+
-		`result "http://input/1#a"`)
+	assert.Contains(t, out.String(), `Adding hash to input of stream: ID "0", name "Name 1", `+
+		`group "Cat: Grp", hash "a", result "http://input/1#a"`)
 }
 
 func TestAllDisableAllButOneInputByRx(t *testing.T) {
@@ -1634,7 +1634,8 @@ func TestAllRemoveDisabledInputs(t *testing.T) {
 	}
 
 	_ = r.RemoveDisabledInputs(sl1)
-	assert.Contains(t, out.String(), `Removing disabled input: ID "0", name "Name 1", group "Cat: Grp", input "http://input/1"`)
+	assert.Contains(t, out.String(), `Removing disabled input: ID "0", name "Name 1", `+
+		`group "Cat: Grp", input "http://input/1"`)
 }
 
 func TestSetKeepActive(t *testing.T) {
@@ -1784,7 +1785,8 @@ func TestSetKeepActive(t *testing.T) {
 	sl1 = []Stream{{ID: "0", Name: "Name 1", Groups: map[string]string{"Cat": "Grp"}}}
 
 	_ = r.SetKeepActive(sl1)
-	assert.Contains(t, out.String(), `Setting keep active on stream: ID "0", name "Name 1", group "Cat: Grp", keep active "1"`)
+	assert.Contains(t, out.String(), `Setting keep active on stream: ID "0", name "Name 1", `+
+		`group "Cat: Grp", keep active "1"`)
 }
 
 func TestRemoveWithoutInputs(t *testing.T) {

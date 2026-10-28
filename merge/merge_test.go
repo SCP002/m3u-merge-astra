@@ -54,7 +54,8 @@ func TestRenameStreams(t *testing.T) {
 	cl1 = []m3u.Channel{{Name: "Known_Name"}}
 
 	_ = r.RenameStreams(sl1, cl1)
-	assert.Contains(t, out.String(), `Renaming stream: ID "0", old name "Known name", new name "Known_Name", group "Cat: Grp"`)
+	assert.Contains(t, out.String(), `Renaming stream: ID "0", old name "Known name", `+
+		`new name "Known_Name", group "Cat: Grp"`)
 }
 
 func TestUpdateInputs(t *testing.T) {
@@ -167,8 +168,8 @@ func TestUpdateInputs(t *testing.T) {
 	cl1 = []m3u.Channel{{Name: "Known_Name", URL: "http://new/known/input/1"}}
 
 	_ = r.UpdateInputs(sl1, cl1)
-	assert.Contains(t, out.String(), `Updating input of stream: ID "0", name "Known name", old URL "http://known/input/1", `+
-		`new URL "http://new/known/input/1", note "Stream is disabled"`)
+	assert.Contains(t, out.String(), `Updating input of stream: ID "0", name "Known name", `+
+		`old URL "http://known/input/1", new URL "http://new/known/input/1", note "Stream is disabled"`)
 
 	out.Reset()
 	r = newDefRepoWithWriter(&out)
@@ -196,7 +197,10 @@ func TestRemoveInputsByUpdateMap(t *testing.T) {
 	sl1 := []astra.Stream{
 		{Name: "Known name", Inputs: []string{"http://other/input", "http://known/input/2", "http://known/input/1#a"}},
 		{Name: "Known name 2", Inputs: []string{"http://known/input/2#a"}},
-		{Name: "Other name A", Inputs: []string{"http://known/input/1#a", "http://known/input/2", "http://other/input"}},
+		{
+			Name:   "Other name A",
+			Inputs: []string{"http://known/input/1#a", "http://known/input/2", "http://other/input"},
+		},
 	}
 	sl1Original := copier.TestDeep(t, sl1)
 	cl1 := []m3u.Channel{
@@ -248,8 +252,8 @@ func TestRemoveInputsByUpdateMap(t *testing.T) {
 	cl1 = []m3u.Channel{{Name: "Known_Name", URL: "http://other/url"}}
 
 	_ = r.RemoveInputsByUpdateMap(sl1, cl1)
-	assert.Contains(t, out.String(), `Removing absent input from stream according the update map: ID "0", name "Known name", `+
-		`group "Cat: Grp", input "http://known/input/1"`)
+	assert.Contains(t, out.String(), `Removing absent input from stream according the update map: ID "0", `+
+		`name "Known name", group "Cat: Grp", input "http://known/input/1"`)
 }
 
 func TestAddNewInputs(t *testing.T) {
@@ -378,8 +382,8 @@ func TestAddNewInputs(t *testing.T) {
 	cl1 = []m3u.Channel{{Name: "Known_Name", URL: "http://url/1"}}
 
 	_ = r.AddNewInputs(sl1, cl1)
-	assert.Contains(t, out.String(), `Enabling the stream (adding new inputs to streams, enable_on_input_update is on): `+
-		`ID "0", name "Known name"`)
+	assert.Contains(t, out.String(), `Enabling the stream (adding new inputs to streams, `+
+		`enable_on_input_update is on): ID "0", name "Known name"`)
 }
 
 func TestAddNewStreams(t *testing.T) {

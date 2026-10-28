@@ -111,8 +111,8 @@ func TestSetCategories(t *testing.T) {
 		},
 	}
 	apiHandler.SetCategories(idxCategoryMap)
-	assert.Contains(t, out.String(), `Successfully set category: name "Category 0", groups "[{Name:Group 0 Remove:false} `+
-		`{Name:Group 01 Remove:false}]", remove "false"`)
+	assert.Contains(t, out.String(), `Successfully set category: name "Category 0", `+
+		`groups "[{Name:Group 0 Remove:false} {Name:Group 01 Remove:false}]", remove "false"`)
 	assert.NotContains(t, out.String(), "Failed")
 }
 

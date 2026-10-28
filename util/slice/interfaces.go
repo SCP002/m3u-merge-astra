@@ -7,7 +7,7 @@ type Named interface {
 
 // Interface for testing purposes.
 type TestNamedStruct struct {
-	Name string
+	Name  string
 	Slice []int
 }
 
