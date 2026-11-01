@@ -1,13 +1,11 @@
 package analyzer
 
 import (
-	"bytes"
 	"encoding/json/v2"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"runtime/pprof"
 	"strings"
 	"sync"
 	"testing"
@@ -18,7 +16,12 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
+
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m)
+}
 
 func TestNew(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
@@ -27,6 +30,26 @@ func TestNew(t *testing.T) {
 	assert.Exactly(t, "ws://127.0.0.1/api/", analyzer.url)
 	assert.Exactly(t, time.Second, analyzer.dialer.HandshakeTimeout)
 	assert.Exactly(t, time.Second, analyzer.closeTimeout)
+}
+
+// newHandlerServer starts analyzer server closed on `t` cleanup, which runs `handle` for every connection and closes
+// the connection afterwards. Like real analyzer, it does not reply to close message, so `handle` can keep sending
+// responses after it.
+func newHandlerServer(t *testing.T, handle func(conn *websocket.Conn)) *httptest.Server {
+	upgrader := websocket.Upgrader{}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer func() { _ = conn.Close() }()
+		conn.SetCloseHandler(func(int, string) error { return nil })
+		handle(conn)
+	})
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+	return server
 }
 
 // fakeServer emulates astra analyzer websocket API (astra --analyze).
@@ -44,17 +67,7 @@ type fakeServer struct {
 // newFakeServer starts fake analyzer server closed on `t` cleanup.
 func newFakeServer(t *testing.T, respond func(address string) []byte) *fakeServer {
 	s := &fakeServer{respond: respond, starts: map[string]int{}, stops: map[string]int{}}
-	upgrader := websocket.Upgrader{}
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
-		conn, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			return
-		}
-		defer func() { _ = conn.Close() }()
-		conn.SetCloseHandler(func(int, string) error { return nil }) // Do not reply to close message.
-
+	s.Server = newHandlerServer(t, func(conn *websocket.Conn) {
 		var req startReq
 		_, reqBytes, err := conn.ReadMessage()
 		if err != nil || json.Unmarshal(reqBytes, &req) != nil || req.Cmd != "start" {
@@ -102,9 +115,6 @@ func newFakeServer(t *testing.T, respond func(address string) []byte) *fakeServe
 			}
 		}
 	})
-
-	s.Server = httptest.NewServer(mux)
-	t.Cleanup(s.Close)
 	return s
 }
 
@@ -190,12 +200,47 @@ func TestCheck(t *testing.T) {
 			assert.Exactly(t, Result{}, result)
 		})
 	})
+}
 
-	// Every check should clean up its goroutines.
-	var leaks bytes.Buffer
-	leakProfile := pprof.Lookup("goroutineleak")
-	require.NoError(t, leakProfile.WriteTo(&leaks, 1))
-	assert.Zero(t, leakProfile.Count(), "goroutines leaked:\n%s", leaks.String())
+func TestCheckInFlightResponses(t *testing.T) {
+	log := logger.New(logger.DebugLevel, os.Stderr)
+	response := []byte(`{"total": {"bitrate": 1}}`)
+	watchTime := time.Millisecond
+
+	t.Run("should be discarded to notice that server closed the connection", func(t *testing.T) {
+		// Responses are sent after close message, when the client no longer collects them.
+		server := newHandlerServer(t, func(conn *websocket.Conn) {
+			for {
+				if _, _, err := conn.ReadMessage(); err != nil {
+					break
+				}
+			}
+			for range 100 {
+				_ = conn.WriteMessage(websocket.TextMessage, response)
+			}
+		})
+
+		analyzer := New(log, server.Listener.Addr().String(), time.Second)
+		analyzer.closeTimeout = time.Second * 5
+		start := time.Now()
+		_, err := analyzer.Check(watchTime, 1, "http://url")
+		assert.NoError(t, err)
+		assert.Less(t, time.Since(start), analyzer.closeTimeout, "should not wait for close timeout")
+	})
+
+	t.Run("should not block the reader after close timeout", func(t *testing.T) {
+		// Responses are sent non-stop, so reader always has the next one when the client stops collecting them.
+		server := newHandlerServer(t, func(conn *websocket.Conn) {
+			for conn.WriteMessage(websocket.TextMessage, response) == nil {
+			}
+		})
+
+		analyzer := New(log, server.Listener.Addr().String(), time.Second)
+		analyzer.closeTimeout = time.Millisecond
+		// Blocked reader is reported by goleak in TestMain.
+		_, err := analyzer.Check(watchTime, 1, "http://url")
+		assert.NoError(t, err)
+	})
 }
 
 func TestNewFake(t *testing.T) {
