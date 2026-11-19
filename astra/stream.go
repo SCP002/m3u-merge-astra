@@ -22,7 +22,6 @@ import (
 	urlUtil "m3u-merge-astra/util/url"
 
 	"github.com/alitto/pond"
-	"github.com/go-co-op/gocron"
 	"github.com/google/go-cmp/cmp"
 	"github.com/samber/lo"
 )
@@ -750,29 +749,13 @@ func (r repo) removeDeadInputs(httpClient *http.Client, analyzer analyzer.Analyz
 		return ""
 	}
 
+	msg := lo.Ternary(disable, "Disabling dead inputs of streams", "Removing dead inputs from streams")
 	pool := pond.New(r.cfg.Streams.InputMaxConns, 0, pond.MinWorkers(0))
 	var mut sync.Mutex
+	start := time.Now()
+	var lastProgress time.Time
 	inputsAmount := getInputsAmount(streams)
-	inputsDone := 0
-
-	// getProgress returns formatted progress of inputs processed.
-	getProgress := func() string {
-		mut.Lock()
-		percent := (inputsDone * 100) / inputsAmount
-		progress := fmt.Sprintf("%v / %v (%v%%)", inputsDone, inputsAmount, percent)
-		mut.Unlock()
-		return progress
-	}
-
-	progressScheduler := gocron.NewScheduler(time.UTC)
-	_, err := progressScheduler.Every(r.progressInterval).Do(func() {
-		msg := lo.Ternary(disable, "Disabling dead inputs of streams", "Removing dead inputs from streams")
-		r.log.InfoFi(msg, "progress", getProgress())
-	})
-	if err != nil {
-		r.log.Errorf("Failed to print progress of removing dead inputs: %v", err)
-	}
-	progressScheduler.StartAsync()
+	inputsDone, inputsChecked, inputsDead := 0, 0, 0
 
 	out = copier.MustDeep(streams)
 	for sIdx, s := range out {
@@ -780,23 +763,35 @@ func (r repo) removeDeadInputs(httpClient *http.Client, analyzer analyzer.Analyz
 			pool.Submit(func() {
 				r.log.DebugFi("Start checking input", "stream ID", s.ID, "stream name", s.Name, "stream index", sIdx,
 					"input", inp)
-				if canCheck(inp) {
-					removalReason := getRemovalReason(inp)
-					if removalReason != "" {
-						msg := lo.Ternary(disable, "Disabling dead input of stream", "Removing dead input from stream")
-						r.log.WarnFi(msg, "ID", s.ID, "name", s.Name, "group", s.FirstGroup(), "input", inp,
-							"reason", removalReason)
-						mut.Lock()
-						out[sIdx].Inputs = slice.RemoveLast(out[sIdx].Inputs, inp)
-						if disable {
-							out[sIdx].DisabledInputs = append(out[sIdx].DisabledInputs, inp)
-						}
-						mut.Unlock()
-					}
+				checked := canCheck(inp)
+				removalReason := ""
+				if checked {
+					removalReason = getRemovalReason(inp)
+				}
+				if removalReason != "" {
+					inpMsg := lo.Ternary(disable, "Disabling dead input of stream", "Removing dead input from stream")
+					r.log.WarnFi(inpMsg, "ID", s.ID, "name", s.Name, "group", s.FirstGroup(), "input", inp,
+						"reason", removalReason)
 				}
 
 				mut.Lock()
+				if removalReason != "" {
+					out[sIdx].Inputs = slice.RemoveLast(out[sIdx].Inputs, inp)
+					if disable {
+						out[sIdx].DisabledInputs = append(out[sIdx].DisabledInputs, inp)
+					}
+					inputsDead++
+				}
+				if checked {
+					inputsChecked++
+				}
 				inputsDone++
+				// Log progress on check completion, but not more often than once per interval and always at the end.
+				if time.Since(lastProgress) >= r.progressInterval || inputsDone == inputsAmount {
+					lastProgress = time.Now()
+					percent := (inputsDone * 100) / inputsAmount
+					r.log.InfoFi(msg, "progress", fmt.Sprintf("%v / %v (%v%%)", inputsDone, inputsAmount, percent))
+				}
 				mut.Unlock()
 				r.log.DebugFi("End checking input", "stream ID", s.ID, "stream name", s.Name, "stream index", sIdx,
 					"input", inp)
@@ -805,7 +800,8 @@ func (r repo) removeDeadInputs(httpClient *http.Client, analyzer analyzer.Analyz
 	}
 
 	pool.StopAndWait()
-	progressScheduler.Stop()
+	r.log.InfoFi(msg+" finished", "checked", inputsChecked, "skipped", inputsAmount-inputsChecked,
+		lo.Ternary(disable, "disabled", "removed"), inputsDead, "took", time.Since(start).Round(time.Second).String())
 
 	return
 }

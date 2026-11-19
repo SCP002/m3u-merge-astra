@@ -16,7 +16,6 @@ import (
 	"m3u-merge-astra/util/copier"
 	"m3u-merge-astra/util/logger"
 	"m3u-merge-astra/util/network/nettest"
-	"m3u-merge-astra/util/slice"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1224,47 +1223,49 @@ func TestAnalyzerRemoveDeadInputs(t *testing.T) {
 	assert.Contains(t, out.String(), msg)
 }
 
-// gatedAnalyzer is an analyzer.Analyzer which blocks every check until a value is sent to `release`.
-type gatedAnalyzer struct {
-	release chan struct{}
-}
-
-// Check waits for release and returns a result of alive input.
-func (a gatedAnalyzer) Check(watchTime time.Duration, maxAttempts int, urlToCheck string) (analyzer.Result, error) {
-	<-a.release
-	return analyzer.Result{Bitrate: 1000}, nil
-}
-
 func TestProgressRemoveDeadInputs(t *testing.T) {
 	var out syncBuffer
 	r := newDefRepoWithWriter(&out)
-	r.progressInterval = time.Millisecond * 10
 	r.cfg.Streams.InputMaxConns = 1
-	r.cfg.Streams.UseAnalyzer = true
+	r.cfg.Streams.UseAnalyzer = false
 
-	sl1 := []Stream{{Inputs: slice.Filled("udp://input", 4)}}
-	analyzerClient := gatedAnalyzer{release: make(chan struct{})}
+	srv := newDeadInputsServers(t)
+	httpClient := srv.Client(time.Second * 3)
+	analyzerClient := analyzer.NewFake()
 
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		_ = r.RemoveDeadInputs(nil, analyzerClient, sl1)
-	}()
+	sl1 := []Stream{{Inputs: []string{
+		"http://streams.test/alive/1",
+		"http://streams.test/dead/404/1",
+		"udp://unsupported/1",
+		"http://streams.test/dead/404/2",
+	}}}
 
-	waitProgress := func(progress string) {
-		t.Helper()
-		msg := `Removing dead inputs from streams: progress "` + progress + `"`
-		require.Eventually(t, func() bool { return strings.Contains(out.String(), msg) }, time.Second*5,
-			time.Millisecond*5, "progress %v should be logged", progress)
+	// Log every check.
+	r.progressInterval = 0
+	_ = r.RemoveDeadInputs(httpClient, analyzerClient, sl1)
+	for _, progress := range []string{"1 / 4 (25%)", "2 / 4 (50%)", "3 / 4 (75%)", "4 / 4 (100%)"} {
+		assert.Contains(t, out.String(), `Removing dead inputs from streams: progress "`+progress+`"`)
 	}
+	assert.Contains(t, out.String(), `Removing dead inputs from streams finished: checked "3", skipped "1", `+
+		`removed "2", took "`)
 
-	waitProgress("0 / 4 (0%)")
-	for _, progress := range []string{"1 / 4 (25%)", "2 / 4 (50%)", "3 / 4 (75%)"} {
-		analyzerClient.release <- struct{}{} // Blocks until the next check is waiting.
-		waitProgress(progress)
-	}
-	analyzerClient.release <- struct{}{}
-	<-done
+	// Log first check as nothing is logged yet, then wait for interval, but log the last check anyway.
+	out.Reset()
+	r.progressInterval = time.Hour
+	_ = r.DisableDeadInputs(httpClient, analyzerClient, sl1)
+	assert.Contains(t, out.String(), `Disabling dead inputs of streams: progress "1 / 4 (25%)"`)
+	assert.NotContains(t, out.String(), `progress "2 / 4 (50%)"`)
+	assert.NotContains(t, out.String(), `progress "3 / 4 (75%)"`)
+	assert.Contains(t, out.String(), `Disabling dead inputs of streams: progress "4 / 4 (100%)"`)
+	assert.Contains(t, out.String(), `Disabling dead inputs of streams finished: checked "3", skipped "1", `+
+		`disabled "2", took "`)
+
+	// Log summary without progress if there are no inputs.
+	out.Reset()
+	_ = r.RemoveDeadInputs(httpClient, analyzerClient, []Stream{{}})
+	assert.NotContains(t, out.String(), "progress")
+	assert.Contains(t, out.String(), `Removing dead inputs from streams finished: checked "0", skipped "0", `+
+		`removed "0", took "`)
 }
 
 func TestDisableDeadInputs(t *testing.T) {
