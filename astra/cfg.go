@@ -34,8 +34,8 @@ type Group struct {
 }
 
 // UpdateCategories returns deep copy of categories `cats` with new and changed categories and groups from `streams`.
-func (r repo) UpdateCategories(cats []Category, streams []Stream) []Category {
-	r.log.Info("Updating categories field with new and changed categories and groups from streams")
+func (p Processor) UpdateCategories(cats []Category, streams []Stream) []Category {
+	p.log.Info("Updating categories field with new and changed categories and groups from streams")
 
 	cats = copier.MustDeep(cats)
 
@@ -53,7 +53,7 @@ func (r repo) UpdateCategories(cats []Category, streams []Stream) []Category {
 			return c.Name == sCat.Name
 		})
 		cats[idx].Groups = slice.AppendNew(cats[idx].Groups, func(g Group) {
-			r.log.InfoFi("Updating categories field with", "category", sCat.Name, "group", g.Name)
+			p.log.InfoFi("Updating categories field with", "category", sCat.Name, "group", g.Name)
 		}, sCat.Groups...)
 	}
 
@@ -63,8 +63,8 @@ func (r repo) UpdateCategories(cats []Category, streams []Stream) []Category {
 // ChangedCategories returns new and changed categories and groups from `newCats`, which are not in `oldCats`.
 //
 // Key (index) in `out` is negative for new categories and actual indexes for changed categories.
-func (r repo) ChangedCategories(oldCats, newCats []Category) (out []lo.Entry[int, Category]) {
-	r.log.Info("Building changed categories list")
+func (p Processor) ChangedCategories(oldCats, newCats []Category) (out []lo.Entry[int, Category]) {
+	p.log.Info("Building changed categories list")
 
 	for _, newCat := range newCats {
 		oldCat, oldCatIdx, found := lo.FindIndexOf(oldCats, func(oldCat Category) bool {
@@ -97,8 +97,8 @@ func (r repo) ChangedCategories(oldCats, newCats []Category) (out []lo.Entry[int
 // the same name.
 //
 // Categories to be removed has Remove field set to true.
-func (r repo) MergeCategories(cats []Category) []Category {
-	r.log.Info("Merging categories")
+func (p Processor) MergeCategories(cats []Category) []Category {
+	p.log.Info("Merging categories")
 
 	groupUniqFn := func(g Group) string {
 		return g.Name

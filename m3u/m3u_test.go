@@ -52,12 +52,12 @@ func TestReplaceGroup(t *testing.T) {
 }
 
 func TestParse(t *testing.T) {
-	r := newDefRepo()
+	p := newDefProcessor()
 
 	playlist, err := openuri.Open("test.m3u8")
 	assert.NoError(t, err)
 
-	cl := r.Parse(playlist)
+	cl := p.Parse(playlist)
 
 	assert.Len(t, cl, 5)
 
@@ -78,14 +78,14 @@ func TestParse(t *testing.T) {
 }
 
 func TestSort(t *testing.T) {
-	r := newDefRepo()
+	p := newDefProcessor()
 
 	cl1 := []Channel{
 		{Name: "C"}, {Name: "A"}, {}, {Name: "B"},
 	}
 	cl1Original := copier.TestDeep(t, cl1)
 
-	cl2 := r.Sort(cl1)
+	cl2 := p.Sort(cl1)
 	assert.NotSame(t, &cl1, &cl2)
 	assert.Exactly(t, cl1Original, cl1)
 
@@ -94,9 +94,9 @@ func TestSort(t *testing.T) {
 }
 
 func TestReplaceGroups(t *testing.T) {
-	r := newDefRepo()
+	p := newDefProcessor()
 
-	r.cfg.M3U.ChannGroupMap = map[string]string{
+	p.cfg.M3U.ChannGroupMap = map[string]string{
 		"From Group 1": "To Group 1",
 		"From Group 2": "To Group 2",
 	}
@@ -106,7 +106,7 @@ func TestReplaceGroups(t *testing.T) {
 	}
 	cl1Original := copier.TestDeep(t, cl1)
 
-	cl2 := r.ReplaceGroups(cl1)
+	cl2 := p.ReplaceGroups(cl1)
 	assert.NotSame(t, &cl1, &cl2)
 	assert.Exactly(t, cl1Original, cl1)
 
@@ -123,33 +123,33 @@ func TestReplaceGroups(t *testing.T) {
 
 	// Test log output.
 	var out bytes.Buffer
-	r = newDefRepoWithWriter(&out)
+	p = newDefProcessorWithWriter(&out)
 
-	r.cfg.M3U.ChannGroupMap = map[string]string{"From Group 1": "To Group 1"}
+	p.cfg.M3U.ChannGroupMap = map[string]string{"From Group 1": "To Group 1"}
 
 	cl1 = []Channel{{Name: "Name 1", Group: "From Group 1"}}
 
-	_ = r.ReplaceGroups(cl1)
+	_ = p.ReplaceGroups(cl1)
 	assert.Contains(t, out.String(), `Replacing group of M3U channel: name "Name 1", old group "From Group 1", `+
 		`new group "To Group 1"`)
 }
 
 func TestRemoveBlocked(t *testing.T) {
-	r := newDefRepo()
+	p := newDefProcessor()
 
-	r.cfg.General.NameAliasList = [][]string{
+	p.cfg.General.NameAliasList = [][]string{
 		{"Name 3", "Name 3 Var 2"},
 		{"Name 2", "Name 2 Var 2"},
 	}
-	r.cfg.M3U.ChannNameBlacklist = []regexp.Regexp{
+	p.cfg.M3U.ChannNameBlacklist = []regexp.Regexp{
 		*regexp.MustCompile("Name 1"),
 		*regexp.MustCompile("(?i)^NAME 2$"),
 	}
-	r.cfg.M3U.ChannGroupBlacklist = []regexp.Regexp{
+	p.cfg.M3U.ChannGroupBlacklist = []regexp.Regexp{
 		*regexp.MustCompile("Group 1"),
 		*regexp.MustCompile("Group 2"),
 	}
-	r.cfg.M3U.ChannURLBlacklist = []regexp.Regexp{
+	p.cfg.M3U.ChannURLBlacklist = []regexp.Regexp{
 		*regexp.MustCompile("url/1"),
 		*regexp.MustCompile("url/2"),
 	}
@@ -165,8 +165,8 @@ func TestRemoveBlocked(t *testing.T) {
 	}
 	cl1Original := copier.TestDeep(t, cl1)
 
-	r.cfg.General.NameAliases = false
-	cl2 := r.RemoveBlocked(cl1)
+	p.cfg.General.NameAliases = false
+	cl2 := p.RemoveBlocked(cl1)
 	assert.NotSame(t, &cl1, &cl2)
 	assert.Exactly(t, cl1Original, cl1)
 
@@ -180,8 +180,8 @@ func TestRemoveBlocked(t *testing.T) {
 
 	assert.Exactly(t, Channel{}, cl2[2])
 
-	r.cfg.General.NameAliases = true
-	cl2 = r.RemoveBlocked(cl1)
+	p.cfg.General.NameAliases = true
+	cl2 = p.RemoveBlocked(cl1)
 	assert.NotSame(t, &cl1, &cl2)
 	assert.Exactly(t, cl1Original, cl1)
 
@@ -194,38 +194,38 @@ func TestRemoveBlocked(t *testing.T) {
 
 	// Test log output.
 	var out bytes.Buffer
-	r = newDefRepoWithWriter(&out)
+	p = newDefProcessorWithWriter(&out)
 
-	r.cfg.M3U.ChannNameBlacklist = []regexp.Regexp{*regexp.MustCompile("Name 1")}
+	p.cfg.M3U.ChannNameBlacklist = []regexp.Regexp{*regexp.MustCompile("Name 1")}
 
 	cl1 = []Channel{{Name: "Name 1", Group: "Group 1", URL: "http://url/1"}}
 
-	_ = r.RemoveBlocked(cl1)
+	_ = p.RemoveBlocked(cl1)
 	assert.Contains(t, out.String(), `Removing blocked channel: name "Name 1", group "Group 1", URL "http://url/1"`)
 }
 
 func TestHasUrl(t *testing.T) {
-	r := newDefRepo()
+	p := newDefProcessor()
 
 	cl := []Channel{{URL: "http://other/input"}, {URL: "http://known/input#a"}}
 
-	assert.False(t, r.HasURL(cl, "http://known/input", true), "should not contain URL without hash")
-	assert.True(t, r.HasURL(cl, "http://known/input#a", true))
+	assert.False(t, HasURL(p.log, cl, "http://known/input", true), "should not contain URL without hash")
+	assert.True(t, HasURL(p.log, cl, "http://known/input#a", true))
 
-	assert.True(t, r.HasURL(cl, "http://known/input", false), "should contain URL without hash")
-	assert.True(t, r.HasURL(cl, "http://known/input#b", false), "should contain URL with different hashes")
+	assert.True(t, HasURL(p.log, cl, "http://known/input", false), "should contain URL without hash")
+	assert.True(t, HasURL(p.log, cl, "http://known/input#b", false), "should contain URL with different hashes")
 
-	assert.False(t, r.HasURL(cl, "http://foreign/input", true))
-	assert.False(t, r.HasURL(cl, "http://foreign/input#a", true))
+	assert.False(t, HasURL(p.log, cl, "http://foreign/input", true))
+	assert.False(t, HasURL(p.log, cl, "http://foreign/input#a", true))
 
-	assert.False(t, r.HasURL(cl, "http://foreign/input", false))
-	assert.False(t, r.HasURL(cl, "http://foreign/input#b", false))
+	assert.False(t, HasURL(p.log, cl, "http://foreign/input", false))
+	assert.False(t, HasURL(p.log, cl, "http://foreign/input#b", false))
 
 	cl = []Channel{{URL: "http://other/input#a"}, {URL: "http:/other/input/2#b"}}
 
-	assert.False(t, r.HasURL(cl, "http://foreign/input", true))
-	assert.False(t, r.HasURL(cl, "http://foreign/input#a", true))
+	assert.False(t, HasURL(p.log, cl, "http://foreign/input", true))
+	assert.False(t, HasURL(p.log, cl, "http://foreign/input#a", true))
 
-	assert.False(t, r.HasURL(cl, "http://foreign/input", false))
-	assert.False(t, r.HasURL(cl, "http://foreign/input#b", false))
+	assert.False(t, HasURL(p.log, cl, "http://foreign/input", false))
+	assert.False(t, HasURL(p.log, cl, "http://foreign/input#b", false))
 }

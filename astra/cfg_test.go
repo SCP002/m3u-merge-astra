@@ -10,7 +10,7 @@ import (
 )
 
 func TestUpdateCategories(t *testing.T) {
-	r := newDefRepo()
+	p := newDefProcessor()
 
 	cl1 := []Category{
 		{Name: "Category 1", Groups: []Group{{Name: "A"}, {Name: "A"}, {Name: "B"}}},
@@ -32,7 +32,7 @@ func TestUpdateCategories(t *testing.T) {
 	}
 	sl1Original := copier.TestDeep(t, sl1)
 
-	cl2 := r.UpdateCategories(cl1, sl1)
+	cl2 := p.UpdateCategories(cl1, sl1)
 
 	assert.NotSame(t, &cl1, &cl2)
 	assert.Exactly(t, cl1Original, cl1)
@@ -47,18 +47,18 @@ func TestUpdateCategories(t *testing.T) {
 
 	// Test log output.
 	var out syncBuffer
-	r = newDefRepoWithWriter(&out)
+	p = newDefProcessorWithWriter(&out)
 
 	cl1 = []Category{}
 
 	sl1 = []Stream{{Groups: map[string]string{"Cat": "Grp"}}}
 
-	_ = r.UpdateCategories(cl1, sl1)
+	_ = p.UpdateCategories(cl1, sl1)
 	assert.Contains(t, out.String(), `Updating categories field with: category "Cat", group "Grp"`)
 }
 
 func TestChangedCategories(t *testing.T) {
-	r := newDefRepo()
+	p := newDefProcessor()
 
 	// Test with changes, categories to remove in the end of cl1.
 	cl1 := []Category{
@@ -80,7 +80,7 @@ func TestChangedCategories(t *testing.T) {
 	}
 	cl2Original := copier.TestDeep(t, cl2)
 
-	changed := r.ChangedCategories(cl1, cl2)
+	changed := p.ChangedCategories(cl1, cl2)
 	assert.Exactly(t, cl1Original, cl1)
 	assert.Exactly(t, cl2Original, cl2)
 
@@ -114,7 +114,7 @@ func TestChangedCategories(t *testing.T) {
 	}
 	cl2Original = copier.TestDeep(t, cl2)
 
-	changed = r.ChangedCategories(cl1, cl2)
+	changed = p.ChangedCategories(cl1, cl2)
 	assert.Exactly(t, cl1Original, cl1)
 	assert.Exactly(t, cl2Original, cl2)
 
@@ -141,7 +141,7 @@ func TestChangedCategories(t *testing.T) {
 	}
 	cl2Original = copier.TestDeep(t, cl2)
 
-	changed = r.ChangedCategories(cl1, cl2)
+	changed = p.ChangedCategories(cl1, cl2)
 	assert.Exactly(t, cl1Original, cl1)
 	assert.Exactly(t, cl2Original, cl2)
 
@@ -150,7 +150,7 @@ func TestChangedCategories(t *testing.T) {
 }
 
 func TestMergeCategories(t *testing.T) {
-	r := newDefRepo()
+	p := newDefProcessor()
 
 	cl1 := []Category{
 		{Name: "Category 1", Groups: []Group{{Name: "A"}, {Name: "A"}, {Name: "B"}}},
@@ -162,7 +162,7 @@ func TestMergeCategories(t *testing.T) {
 	}
 	cl1Original := copier.TestDeep(t, cl1)
 
-	cl2 := r.MergeCategories(cl1)
+	cl2 := p.MergeCategories(cl1)
 
 	assert.NotSame(t, &cl1, &cl2)
 	assert.Exactly(t, cl1Original, cl1)

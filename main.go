@@ -89,96 +89,96 @@ func main() {
 	defer func() { _ = m3uResp.Close() }()
 
 	// Parse and preprocess M3U channels.
-	m3uRepo := m3u.NewRepo(log, cfg)
+	m3uProcessor := m3u.NewProcessor(log, cfg)
 
-	m3uChannels := m3uRepo.Parse(m3uResp)
-	m3uChannels = m3uRepo.Sort(m3uChannels)
+	m3uChannels := m3uProcessor.Parse(m3uResp)
+	m3uChannels = m3uProcessor.Sort(m3uChannels)
 	if len(cfg.M3U.ChannGroupMap) > 0 {
-		m3uChannels = m3uRepo.ReplaceGroups(m3uChannels)
+		m3uChannels = m3uProcessor.ReplaceGroups(m3uChannels)
 	}
 	if !slice.IsAllEmpty(cfg.M3U.ChannNameBlacklist, cfg.M3U.ChannGroupBlacklist, cfg.M3U.ChannURLBlacklist) {
-		m3uChannels = m3uRepo.RemoveBlocked(m3uChannels)
+		m3uChannels = m3uProcessor.RemoveBlocked(m3uChannels)
 	}
 
 	// Update astra streams with data from M3U channels and run extra operations such as sorting or disabling streams
 	// without inputs.
-	astraRepo := astra.NewRepo(log, cfg)
-	mergeRepo := merge.NewRepo(log, cfg)
+	astraProcessor := astra.NewProcessor(log, cfg)
+	mergeProcessor := merge.NewProcessor(log, cfg)
 
 	modifiedStreams := copier.MustDeep(astraCfg.Streams)
 	gid := astraCfg.GID
-	modifiedStreams = astraRepo.RemoveNamePrefixes(modifiedStreams)
-	modifiedStreams = astraRepo.Sort(modifiedStreams)
+	modifiedStreams = astraProcessor.RemoveNamePrefixes(modifiedStreams)
+	modifiedStreams = astraProcessor.Sort(modifiedStreams)
 	if cfg.Streams.Rename {
-		modifiedStreams = mergeRepo.RenameStreams(modifiedStreams, m3uChannels)
+		modifiedStreams = mergeProcessor.RenameStreams(modifiedStreams, m3uChannels)
 	}
 	if len(cfg.Streams.InputBlacklist) > 0 {
-		modifiedStreams = astraRepo.RemoveBlockedInputs(modifiedStreams)
+		modifiedStreams = astraProcessor.RemoveBlockedInputs(modifiedStreams)
 	}
 	if cfg.Streams.RemoveDuplicatedInputs {
-		modifiedStreams = astraRepo.RemoveDuplicatedInputs(modifiedStreams)
+		modifiedStreams = astraProcessor.RemoveDuplicatedInputs(modifiedStreams)
 	}
 	if len(cfg.Streams.RemoveDuplicatedInputsByRxList) > 0 {
-		modifiedStreams = astraRepo.RemoveDuplicatedInputsByRx(modifiedStreams)
+		modifiedStreams = astraProcessor.RemoveDuplicatedInputsByRx(modifiedStreams)
 	}
 	if cfg.Streams.RemoveDisabledInputs {
-		modifiedStreams = astraRepo.RemoveDisabledInputs(modifiedStreams)
+		modifiedStreams = astraProcessor.RemoveDisabledInputs(modifiedStreams)
 	}
 	if cfg.Streams.UpdateInputs {
-		modifiedStreams = mergeRepo.UpdateInputs(modifiedStreams, m3uChannels)
+		modifiedStreams = mergeProcessor.UpdateInputs(modifiedStreams, m3uChannels)
 	}
 	if cfg.Streams.RemoveInputsByUpdateMap {
-		modifiedStreams = mergeRepo.RemoveInputsByUpdateMap(modifiedStreams, m3uChannels)
+		modifiedStreams = mergeProcessor.RemoveInputsByUpdateMap(modifiedStreams, m3uChannels)
 	}
 	if cfg.Streams.AddNewInputs {
-		modifiedStreams = mergeRepo.AddNewInputs(modifiedStreams, m3uChannels)
+		modifiedStreams = mergeProcessor.AddNewInputs(modifiedStreams, m3uChannels)
 	}
 	if cfg.Streams.UniteInputs {
-		modifiedStreams = astraRepo.UniteInputs(modifiedStreams)
+		modifiedStreams = astraProcessor.UniteInputs(modifiedStreams)
 	}
 	if cfg.Streams.SortInputs {
-		modifiedStreams = astraRepo.SortInputs(modifiedStreams)
+		modifiedStreams = astraProcessor.SortInputs(modifiedStreams)
 	}
 	if cfg.Streams.AddNew {
-		modifiedStreams, gid = mergeRepo.AddNewStreams(modifiedStreams, m3uChannels, gid)
+		modifiedStreams, gid = mergeProcessor.AddNewStreams(modifiedStreams, m3uChannels, gid)
 	}
 	if cfg.Streams.RemoveDeadInputs {
 		httpClient := network.NewHttpClient(cfg.Streams.InputRespTimeout)
 		analyzer := analyzer.New(log, cfg.Streams.AnalyzerAddr, cfg.Streams.InputRespTimeout)
-		modifiedStreams = astraRepo.RemoveDeadInputs(httpClient, analyzer, modifiedStreams)
+		modifiedStreams = astraProcessor.RemoveDeadInputs(httpClient, analyzer, modifiedStreams)
 	} else if cfg.Streams.DisableDeadInputs {
 		httpClient := network.NewHttpClient(cfg.Streams.InputRespTimeout)
 		analyzer := analyzer.New(log, cfg.Streams.AnalyzerAddr, cfg.Streams.InputRespTimeout)
-		modifiedStreams = astraRepo.DisableDeadInputs(httpClient, analyzer, modifiedStreams)
+		modifiedStreams = astraProcessor.DisableDeadInputs(httpClient, analyzer, modifiedStreams)
 	}
 	if !slice.IsAllEmpty(cfg.Streams.NameToInputHashMap, cfg.Streams.GroupToInputHashMap,
 		cfg.Streams.InputToInputHashMap) {
-		modifiedStreams = astraRepo.AddHashes(modifiedStreams)
+		modifiedStreams = astraProcessor.AddHashes(modifiedStreams)
 	}
 	if len(cfg.Streams.DisableAllButOneInputByRxList) > 0 {
-		modifiedStreams = astraRepo.DisableAllButOneInputByRx(modifiedStreams)
+		modifiedStreams = astraProcessor.DisableAllButOneInputByRx(modifiedStreams)
 	}
 	if !slice.IsAllEmpty(cfg.Streams.NameToKeepActiveMap, cfg.Streams.GroupToKeepActiveMap,
 		cfg.Streams.InputToKeepActiveMap) {
-		modifiedStreams = astraRepo.SetKeepActive(modifiedStreams)
+		modifiedStreams = astraProcessor.SetKeepActive(modifiedStreams)
 	}
 	if cfg.Streams.RemoveWithoutInputs {
-		modifiedStreams = astraRepo.RemoveWithoutInputs(modifiedStreams)
+		modifiedStreams = astraProcessor.RemoveWithoutInputs(modifiedStreams)
 	} else if cfg.Streams.DisableWithoutInputs {
-		modifiedStreams = astraRepo.DisableWithoutInputs(modifiedStreams)
+		modifiedStreams = astraProcessor.DisableWithoutInputs(modifiedStreams)
 	}
-	modifiedStreams = astraRepo.AddNamePrefixes(modifiedStreams)
+	modifiedStreams = astraProcessor.AddNamePrefixes(modifiedStreams)
 
 	// Update astra categories.
 	modifiedCats := copier.MustDeep(astraCfg.Categories)
 	if cfg.General.MergeCategories {
-		modifiedCats = astraRepo.MergeCategories(modifiedCats)
+		modifiedCats = astraProcessor.MergeCategories(modifiedCats)
 	}
-	modifiedCats = astraRepo.UpdateCategories(modifiedCats, modifiedStreams)
+	modifiedCats = astraProcessor.UpdateCategories(modifiedCats, modifiedStreams)
 
 	// Search for changes.
-	changedCatMap := astraRepo.ChangedCategories(astraCfg.Categories, modifiedCats)
-	changedStreams := astraRepo.ChangedStreams(astraCfg.Streams, modifiedStreams)
+	changedCatMap := astraProcessor.ChangedCategories(astraCfg.Categories, modifiedCats)
+	changedStreams := astraProcessor.ChangedStreams(astraCfg.Streams, modifiedStreams)
 
 	// Sending changes to astra.
 	sendChangesAllowed := true

@@ -14,7 +14,7 @@ import (
 )
 
 func TestRenameStreams(t *testing.T) {
-	r := newDefRepo()
+	p := newDefProcessor()
 
 	sl1 := []astra.Stream{
 		{Name: "Known name 2"}, {Name: "Known name"}, {Name: "Other name A"},
@@ -25,7 +25,7 @@ func TestRenameStreams(t *testing.T) {
 	}
 	cl1Original := copier.TestDeep(t, cl1)
 
-	sl2 := r.RenameStreams(sl1, cl1)
+	sl2 := p.RenameStreams(sl1, cl1)
 
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
@@ -44,20 +44,20 @@ func TestRenameStreams(t *testing.T) {
 
 	// Test log output.
 	var out bytes.Buffer
-	r = newDefRepoWithWriter(&out)
+	p = newDefProcessorWithWriter(&out)
 
 	sl1 = []astra.Stream{{ID: "0", Name: "Known name", Groups: map[string]string{"Cat": "Grp"}}}
 
 	cl1 = []m3u.Channel{{Name: "Known_Name"}}
 
-	_ = r.RenameStreams(sl1, cl1)
+	_ = p.RenameStreams(sl1, cl1)
 	assert.Contains(t, out.String(), `Renaming stream: ID "0", old name "Known name", `+
 		`new name "Known_Name", group "Cat: Grp"`)
 }
 
 func TestUpdateInputs(t *testing.T) {
-	r := newDefRepo()
-	r.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
+	p := newDefProcessor()
+	p.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
 		{From: *regexp.MustCompile("known/input/2"), To: *regexp.MustCompile("known/input/2")},
 		{From: *regexp.MustCompile("known/input/1"), To: *regexp.MustCompile("known/input/1")},
 	}
@@ -79,8 +79,8 @@ func TestUpdateInputs(t *testing.T) {
 	}
 	cl1Original := copier.TestDeep(t, cl1)
 
-	r.cfg.Streams.KeepInputHash = false
-	sl2 := r.UpdateInputs(sl1, cl1)
+	p.cfg.Streams.KeepInputHash = false
+	sl2 := p.UpdateInputs(sl1, cl1)
 
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
@@ -97,8 +97,8 @@ func TestUpdateInputs(t *testing.T) {
 
 	assert.Exactly(t, sl1[2], sl2[2], "only streams with known names should be updated")
 
-	r.cfg.Streams.KeepInputHash = true
-	sl2 = r.UpdateInputs(sl1, cl1)
+	p.cfg.Streams.KeepInputHash = true
+	sl2 = p.UpdateInputs(sl1, cl1)
 
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
@@ -116,7 +116,7 @@ func TestUpdateInputs(t *testing.T) {
 	assert.Exactly(t, sl1[2], sl2[2], "only streams with known names should be updated")
 
 	// Test Streams.EnableOnInputUpdate.
-	r.cfg.Streams.EnableOnInputUpdate = false
+	p.cfg.Streams.EnableOnInputUpdate = false
 	sl1 = []astra.Stream{
 		{Enabled: false, MarkDisabled: true, Name: "Known name", Inputs: []string{"http://known/input/1"}},
 		{Enabled: false, MarkDisabled: true, Name: "Known name", Inputs: []string{"http://other/input/1"}},
@@ -127,7 +127,7 @@ func TestUpdateInputs(t *testing.T) {
 		{Name: "Known name", URL: "http://new/known/input/1"},
 	}
 
-	sl2 = r.UpdateInputs(sl1, cl1)
+	sl2 = p.UpdateInputs(sl1, cl1)
 
 	assert.False(t, sl2[0].Enabled, "stream should stay disabled as EnableOnInputUpdate = false")
 	assert.True(t, sl2[0].MarkDisabled, "MarkDisabled should stay disabled as EnableOnInputUpdate = false")
@@ -136,9 +136,9 @@ func TestUpdateInputs(t *testing.T) {
 	assert.False(t, sl2[2].Enabled, "stream should stay disabled as EnableOnInputUpdate = false")
 	assert.True(t, sl2[2].MarkDisabled, "MarkDisabled should stay disabled as EnableOnInputUpdate = false")
 
-	r.cfg.Streams.EnableOnInputUpdate = true
+	p.cfg.Streams.EnableOnInputUpdate = true
 
-	sl2 = r.UpdateInputs(sl1, cl1)
+	sl2 = p.UpdateInputs(sl1, cl1)
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
@@ -154,9 +154,9 @@ func TestUpdateInputs(t *testing.T) {
 
 	// Test log output.
 	var out bytes.Buffer
-	r = newDefRepoWithWriter(&out)
-	r.cfg.Streams.EnableOnInputUpdate = false
-	r.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
+	p = newDefProcessorWithWriter(&out)
+	p.cfg.Streams.EnableOnInputUpdate = false
+	p.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
 		{From: *regexp.MustCompile("known/input/1"), To: *regexp.MustCompile("known/input/1")},
 	}
 
@@ -164,14 +164,14 @@ func TestUpdateInputs(t *testing.T) {
 
 	cl1 = []m3u.Channel{{Name: "Known_Name", URL: "http://new/known/input/1"}}
 
-	_ = r.UpdateInputs(sl1, cl1)
+	_ = p.UpdateInputs(sl1, cl1)
 	assert.Contains(t, out.String(), `Updating input of stream: ID "0", name "Known name", `+
 		`old URL "http://known/input/1", new URL "http://new/known/input/1", note "Stream is disabled"`)
 
 	out.Reset()
-	r = newDefRepoWithWriter(&out)
-	r.cfg.Streams.EnableOnInputUpdate = true
-	r.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
+	p = newDefProcessorWithWriter(&out)
+	p.cfg.Streams.EnableOnInputUpdate = true
+	p.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
 		{From: *regexp.MustCompile("known/input/1"), To: *regexp.MustCompile("known/input/1")},
 	}
 
@@ -179,14 +179,14 @@ func TestUpdateInputs(t *testing.T) {
 
 	cl1 = []m3u.Channel{{Name: "Known_Name", URL: "http://new/known/input/1"}}
 
-	_ = r.UpdateInputs(sl1, cl1)
+	_ = p.UpdateInputs(sl1, cl1)
 	assert.Contains(t, out.String(), `Enabling the stream (updating inputs of streams, enable_on_input_update is on): `+
 		`ID "0", name "Known name"`)
 }
 
 func TestRemoveInputsByUpdateMap(t *testing.T) {
-	r := newDefRepo()
-	r.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
+	p := newDefProcessor()
+	p.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
 		{From: *regexp.MustCompile("known/input/1")},
 		{From: *regexp.MustCompile("known/input/2")},
 	}
@@ -207,7 +207,7 @@ func TestRemoveInputsByUpdateMap(t *testing.T) {
 		{Name: "Known_Name_2", URL: "http://known/input/2"},
 	}
 	cl1Original := copier.TestDeep(t, cl1)
-	sl2 := r.RemoveInputsByUpdateMap(sl1, cl1)
+	sl2 := p.RemoveInputsByUpdateMap(sl1, cl1)
 
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
@@ -234,8 +234,8 @@ func TestRemoveInputsByUpdateMap(t *testing.T) {
 
 	// Test log output.
 	var out bytes.Buffer
-	r = newDefRepoWithWriter(&out)
-	r.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{{From: *regexp.MustCompile("known/input/1")}}
+	p = newDefProcessorWithWriter(&out)
+	p.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{{From: *regexp.MustCompile("known/input/1")}}
 
 	sl1 = []astra.Stream{
 		{
@@ -248,13 +248,13 @@ func TestRemoveInputsByUpdateMap(t *testing.T) {
 
 	cl1 = []m3u.Channel{{Name: "Known_Name", URL: "http://other/url"}}
 
-	_ = r.RemoveInputsByUpdateMap(sl1, cl1)
+	_ = p.RemoveInputsByUpdateMap(sl1, cl1)
 	assert.Contains(t, out.String(), `Removing absent input from stream according the update map: ID "0", `+
 		`name "Known name", group "Cat: Grp", input "http://known/input/1"`)
 }
 
 func TestAddNewInputs(t *testing.T) {
-	r := newDefRepo()
+	p := newDefProcessor()
 
 	sl1 := []astra.Stream{
 		{Name: "Known name", Inputs: []string{"http://input/1#a", "http://input/2"}},
@@ -272,8 +272,8 @@ func TestAddNewInputs(t *testing.T) {
 	}
 	cl1Original := copier.TestDeep(t, cl1)
 
-	r.cfg.Streams.HashCheckOnAddNewInputs = true
-	sl2 := r.AddNewInputs(sl1, cl1)
+	p.cfg.Streams.HashCheckOnAddNewInputs = true
+	sl2 := p.AddNewInputs(sl1, cl1)
 
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
@@ -299,8 +299,8 @@ func TestAddNewInputs(t *testing.T) {
 
 	assert.Exactly(t, sl1[3], sl2[3], "should not change streams with unknown names")
 
-	r.cfg.Streams.HashCheckOnAddNewInputs = false
-	sl2 = r.AddNewInputs(sl1, cl1)
+	p.cfg.Streams.HashCheckOnAddNewInputs = false
+	sl2 = p.AddNewInputs(sl1, cl1)
 
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
@@ -322,7 +322,7 @@ func TestAddNewInputs(t *testing.T) {
 	assert.Exactly(t, sl1[3], sl2[3], "should not change streams with unknown names")
 
 	// Test Streams.EnableOnInputUpdate.
-	r.cfg.Streams.EnableOnInputUpdate = false
+	p.cfg.Streams.EnableOnInputUpdate = false
 	sl1 = []astra.Stream{
 		{Enabled: false, MarkDisabled: true, Name: "Known name", Inputs: []string{"http://input/1"}},
 	}
@@ -331,14 +331,14 @@ func TestAddNewInputs(t *testing.T) {
 		{Name: "Known name", URL: "http://input/2"},
 	}
 
-	sl2 = r.AddNewInputs(sl1, cl1)
+	sl2 = p.AddNewInputs(sl1, cl1)
 
 	assert.False(t, sl2[0].Enabled, "stream should stay disabled as EnableOnInputUpdate = false")
 	assert.True(t, sl2[0].MarkDisabled, "MarkDisabled should stay true as EnableOnInputUpdate = false")
 
-	r.cfg.Streams.EnableOnInputUpdate = true
+	p.cfg.Streams.EnableOnInputUpdate = true
 
-	sl2 = r.AddNewInputs(sl1, cl1)
+	sl2 = p.AddNewInputs(sl1, cl1)
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
@@ -349,14 +349,14 @@ func TestAddNewInputs(t *testing.T) {
 		{Enabled: false, MarkDisabled: true, Name: "Other name", Inputs: []string{"http://input/1"}},
 	}
 
-	sl2 = r.AddNewInputs(sl1, cl1)
+	sl2 = p.AddNewInputs(sl1, cl1)
 
 	assert.Exactly(t, sl1, sl2, "should stay the same because it was not updated")
 
 	// Test log output.
 	var out bytes.Buffer
-	r = newDefRepoWithWriter(&out)
-	r.cfg.Streams.EnableOnInputUpdate = false
+	p = newDefProcessorWithWriter(&out)
+	p.cfg.Streams.EnableOnInputUpdate = false
 
 	sl1 = []astra.Stream{
 		{ID: "0", Enabled: false, Name: "Known name", Groups: map[string]string{"Cat": "Grp"}, Inputs: []string{}},
@@ -364,13 +364,13 @@ func TestAddNewInputs(t *testing.T) {
 
 	cl1 = []m3u.Channel{{Name: "Known_Name", URL: "http://url/1"}}
 
-	_ = r.AddNewInputs(sl1, cl1)
+	_ = p.AddNewInputs(sl1, cl1)
 	assert.Contains(t, out.String(), `Adding new input to stream: ID "0", name "Known name", group "Cat: Grp", `+
 		`URL "http://url/1", note "Stream is disabled"`)
 
 	out.Reset()
-	r = newDefRepoWithWriter(&out)
-	r.cfg.Streams.EnableOnInputUpdate = true
+	p = newDefProcessorWithWriter(&out)
+	p.cfg.Streams.EnableOnInputUpdate = true
 
 	sl1 = []astra.Stream{
 		{ID: "0", Enabled: false, Name: "Known name", Groups: map[string]string{"Cat": "Grp"}, Inputs: []string{}},
@@ -378,13 +378,13 @@ func TestAddNewInputs(t *testing.T) {
 
 	cl1 = []m3u.Channel{{Name: "Known_Name", URL: "http://url/1"}}
 
-	_ = r.AddNewInputs(sl1, cl1)
+	_ = p.AddNewInputs(sl1, cl1)
 	assert.Contains(t, out.String(), `Enabling the stream (adding new inputs to streams, `+
 		`enable_on_input_update is on): ID "0", name "Known name"`)
 }
 
 func TestAddNewStreams(t *testing.T) {
-	r := newDefRepo()
+	p := newDefProcessor()
 
 	sl1 := []astra.Stream{
 		{Name: "Known name", Inputs: []string{"http://some/url"}},
@@ -398,9 +398,9 @@ func TestAddNewStreams(t *testing.T) {
 	}
 	cl1Original := copier.TestDeep(t, cl1)
 
-	r.cfg.Streams.AddNewWithKnownInputs = true
-	r.cfg.Streams.AddGroupsToNew = false
-	sl2, gid := r.AddNewStreams(sl1, cl1, 0)
+	p.cfg.Streams.AddNewWithKnownInputs = true
+	p.cfg.Streams.AddGroupsToNew = false
+	sl2, gid := p.AddNewStreams(sl1, cl1, 0)
 
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
@@ -414,20 +414,20 @@ func TestAddNewStreams(t *testing.T) {
 
 	expected := astra.Stream{
 		DisabledInputs: make([]string, 0),
-		Enabled:        r.cfg.Streams.MakeNewEnabled,
-		HTTPKeepActive: strconv.Itoa(r.cfg.Streams.NewKeepActive),
+		Enabled:        p.cfg.Streams.MakeNewEnabled,
+		HTTPKeepActive: strconv.Itoa(p.cfg.Streams.NewKeepActive),
 		ID:             "a001",
 		Inputs:         []string{"http://some/url/2"},
 		Name:           "Other name B",
-		Type:           string(r.cfg.Streams.NewType),
+		Type:           string(p.cfg.Streams.NewType),
 		MarkAdded:      true,
 	}
 	assert.Exactly(t, expected, sl2[2])
 	assert.Exactly(t, 466561, gid)
 
-	r.cfg.Streams.AddNewWithKnownInputs = true
-	r.cfg.Streams.AddGroupsToNew = true
-	sl2, gid = r.AddNewStreams(sl1, cl1, gid)
+	p.cfg.Streams.AddNewWithKnownInputs = true
+	p.cfg.Streams.AddGroupsToNew = true
+	sl2, gid = p.AddNewStreams(sl1, cl1, gid)
 
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
@@ -440,7 +440,7 @@ func TestAddNewStreams(t *testing.T) {
 	assert.Exactly(t, sl1[1], sl2[1])
 
 	expected.ID = "a002"
-	expected.Groups = map[string]string{r.cfg.Streams.GroupsCategoryForNew: "Group"}
+	expected.Groups = map[string]string{p.cfg.Streams.GroupsCategoryForNew: "Group"}
 	assert.Exactly(t, expected, sl2[2])
 	assert.Exactly(t, 466562, gid)
 
@@ -449,7 +449,7 @@ func TestAddNewStreams(t *testing.T) {
 		{Name: "Other name", URL: "http://some/url"},
 		{Name: "Other name", URL: "http://some/url/2"},
 	}
-	sl2, gid = r.AddNewStreams(sl1, cl1, 466562)
+	sl2, gid = p.AddNewStreams(sl1, cl1, 466562)
 
 	assert.Exactly(t, sl1, sl2, "should not change as M3U channels does not contain any new name")
 	assert.Exactly(t, 466562, gid, "should not change as no IDs generated")
@@ -465,8 +465,8 @@ func TestAddNewStreams(t *testing.T) {
 	}
 	cl1Original = copier.TestDeep(t, cl1)
 
-	r.cfg.Streams.AddNewWithKnownInputs = false
-	sl2, _ = r.AddNewStreams(sl1, cl1, 0)
+	p.cfg.Streams.AddNewWithKnownInputs = false
+	sl2, _ = p.AddNewStreams(sl1, cl1, 0)
 
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
@@ -477,14 +477,14 @@ func TestAddNewStreams(t *testing.T) {
 
 	// Test log output.
 	var out bytes.Buffer
-	r = newDefRepoWithWriter(&out)
-	r.cfg.Streams.AddGroupsToNew = true
+	p = newDefProcessorWithWriter(&out)
+	p.cfg.Streams.AddGroupsToNew = true
 
 	sl1 = []astra.Stream{}
 
 	cl1 = []m3u.Channel{{Name: "Name 1", Group: "Grp", URL: "http://url/1"}}
 
-	_, _ = r.AddNewStreams(sl1, cl1, 0)
+	_, _ = p.AddNewStreams(sl1, cl1, 0)
 	assert.Contains(t, out.String(), `Adding new stream: ID "a001", name "Name 1", group "All: Grp", `+
 		`input "http://url/1"`)
 }

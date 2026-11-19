@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"m3u-merge-astra/cfg"
+	"m3u-merge-astra/util/logger"
 	"m3u-merge-astra/util/slice"
 	urlUtil "m3u-merge-astra/util/url"
 
@@ -36,8 +37,8 @@ func (ch Channel) replaceGroup(cfg cfg.M3U, callback func(string)) Channel {
 }
 
 // Parse parses `rawChannels` into []Channel.
-func (r repo) Parse(rawChannels io.ReadCloser) (out []Channel) {
-	r.log.Info("Parsing M3U channels")
+func (p Processor) Parse(rawChannels io.ReadCloser) (out []Channel) {
+	p.log.Info("Parsing M3U channels")
 
 	nameRx := regexp.MustCompile(`^#EXTINF:.*?,(.*)`)
 	groupTitleRx := regexp.MustCompile(`^#EXTINF:.*group-title="(.*?)"`)
@@ -78,15 +79,15 @@ func (r repo) Parse(rawChannels io.ReadCloser) (out []Channel) {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		r.log.Error(err)
+		p.log.Error(err)
 	}
 
 	return
 }
 
 // Sort returns deep copy of `channels` sorted by name.
-func (r repo) Sort(channels []Channel) (out []Channel) {
-	r.log.Info("Sorting M3U channels")
+func (p Processor) Sort(channels []Channel) (out []Channel) {
+	p.log.Info("Sorting M3U channels")
 
 	out = slice.Sort(channels)
 
@@ -94,12 +95,12 @@ func (r repo) Sort(channels []Channel) (out []Channel) {
 }
 
 // ReplaceGroups returns shallow copy of `channels` with groups taken from map in config.
-func (r repo) ReplaceGroups(channels []Channel) (out []Channel) {
-	r.log.Info("Replacing groups of M3U channels")
+func (p Processor) ReplaceGroups(channels []Channel) (out []Channel) {
+	p.log.Info("Replacing groups of M3U channels")
 
 	for _, ch := range channels {
-		out = append(out, ch.replaceGroup(r.cfg.M3U, func(newGroup string) {
-			r.log.InfoFi("Replacing group of M3U channel", "name", ch.Name, "old group", ch.Group,
+		out = append(out, ch.replaceGroup(p.cfg.M3U, func(newGroup string) {
+			p.log.InfoFi("Replacing group of M3U channel", "name", ch.Name, "old group", ch.Group,
 				"new group", newGroup)
 		}))
 	}
@@ -108,12 +109,12 @@ func (r repo) ReplaceGroups(channels []Channel) (out []Channel) {
 }
 
 // RemoveBlocked returns shallow copy of `channels` without blocked ones.
-func (r repo) RemoveBlocked(channels []Channel) (out []Channel) {
-	r.log.Info("Removing blocked channels")
+func (p Processor) RemoveBlocked(channels []Channel) (out []Channel) {
+	p.log.Info("Removing blocked channels")
 
 	// getAliases returns aliases for the `name` or slice of a single `name` if not found.
 	getAliases := func(name string) []string {
-		aliases, found := lo.Find(r.cfg.General.NameAliasList, func(set []string) bool {
+		aliases, found := lo.Find(p.cfg.General.NameAliasList, func(set []string) bool {
 			return lo.Contains(set, name)
 		})
 		return lo.Ternary(found, aliases, []string{name})
@@ -121,14 +122,14 @@ func (r repo) RemoveBlocked(channels []Channel) (out []Channel) {
 
 	out = lo.Reject(channels, func(ch Channel, _ int) bool {
 		names := []string{ch.Name}
-		if r.cfg.General.NameAliases {
+		if p.cfg.General.NameAliases {
 			names = getAliases(ch.Name)
 		}
-		reject := slice.AnyRxMatchAny(r.cfg.M3U.ChannNameBlacklist, names...) ||
-			slice.AnyRxMatch(r.cfg.M3U.ChannGroupBlacklist, ch.Group) ||
-			slice.AnyRxMatch(r.cfg.M3U.ChannURLBlacklist, ch.URL)
+		reject := slice.AnyRxMatchAny(p.cfg.M3U.ChannNameBlacklist, names...) ||
+			slice.AnyRxMatch(p.cfg.M3U.ChannGroupBlacklist, ch.Group) ||
+			slice.AnyRxMatch(p.cfg.M3U.ChannURLBlacklist, ch.URL)
 		if reject {
-			r.log.InfoFi("Removing blocked channel", "name", ch.Name, "group", ch.Group, "URL", ch.URL)
+			p.log.InfoFi("Removing blocked channel", "name", ch.Name, "group", ch.Group, "URL", ch.URL)
 		}
 		return reject
 	})
@@ -139,11 +140,11 @@ func (r repo) RemoveBlocked(channels []Channel) (out []Channel) {
 // HasURL returns true if `channels` contain `url`.
 //
 // If `withHash` is false, ignore hashes (everything after #) during the search.
-func (r repo) HasURL(channels []Channel, url string, withHash bool) bool {
+func HasURL(log *logger.Logger, channels []Channel, url string, withHash bool) bool {
 	return lo.ContainsBy(channels, func(ch Channel) bool {
 		equal, err := urlUtil.Equal(ch.URL, url, withHash)
 		if err != nil {
-			r.log.Debug(err)
+			log.Debug(err)
 		}
 		return equal
 	})

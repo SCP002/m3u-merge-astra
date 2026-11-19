@@ -41,17 +41,17 @@ func (b *syncBuffer) Reset() {
 	b.buf.Reset()
 }
 
-// newDefRepo returns new repository initialized with defaults.
-func newDefRepo() repo {
-	return NewRepo(logger.New(logger.DebugLevel, os.Stderr), cfg.NewDefCfg())
+// newDefProcessor returns new processor initialized with defaults.
+func newDefProcessor() Processor {
+	return NewProcessor(logger.New(logger.DebugLevel, os.Stderr), cfg.NewDefCfg())
 }
 
-// newDefRepoWithWriter returns new repository initialized with defaults and writing logs to `w`.
-func newDefRepoWithWriter(w *syncBuffer) repo {
-	return NewRepo(logger.New(logger.DebugLevel, w), cfg.NewDefCfg())
+// newDefProcessorWithWriter returns new processor initialized with defaults and writing logs to `w`.
+func newDefProcessorWithWriter(w *syncBuffer) Processor {
+	return NewProcessor(logger.New(logger.DebugLevel, w), cfg.NewDefCfg())
 }
 
-func TestNewRepo(t *testing.T) {
+func TestNewProcessor(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
 	cfg := cfg.NewDefCfg()
 
@@ -61,21 +61,6 @@ func TestNewRepo(t *testing.T) {
 	exportedOpt := cmp.Exporter(func(t reflect.Type) bool {
 		return true
 	})
-	reposEqual := cmp.Equal(newDefRepo(), NewRepo(log, cfg), compareOpt, exportedOpt)
-	assert.True(t, reposEqual)
-}
-
-func TestLog(t *testing.T) {
-	compareOpt := cmp.FilterPath(func(p cmp.Path) bool {
-		return p.Last().String() == ".Formatter"
-	}, cmp.Ignore())
-	exportedOpt := cmp.Exporter(func(t reflect.Type) bool {
-		return true
-	})
-	loggersEqual := cmp.Equal(logger.New(logger.DebugLevel, os.Stderr), newDefRepo().Log(), compareOpt, exportedOpt)
-	assert.True(t, loggersEqual)
-}
-
-func TestCfg(t *testing.T) {
-	assert.Exactly(t, cfg.NewDefCfg(), newDefRepo().Cfg())
+	processorsEqual := cmp.Equal(newDefProcessor(), NewProcessor(log, cfg), compareOpt, exportedOpt)
+	assert.True(t, processorsEqual)
 }
