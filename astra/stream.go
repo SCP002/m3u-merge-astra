@@ -21,7 +21,7 @@ import (
 	"m3u-merge-astra/util/slice/find"
 	urlUtil "m3u-merge-astra/util/url"
 
-	"github.com/alitto/pond"
+	"github.com/alitto/pond/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/samber/lo"
 )
@@ -750,7 +750,8 @@ func (r repo) removeDeadInputs(httpClient *http.Client, analyzer analyzer.Analyz
 	}
 
 	msg := lo.Ternary(disable, "Disabling dead inputs of streams", "Removing dead inputs from streams")
-	pool := pond.New(r.cfg.Streams.InputMaxConns, 0, pond.MinWorkers(0))
+	// At least 1 worker as 0 means unbounded for pond.
+	pool := pond.NewPool(max(r.cfg.Streams.InputMaxConns, 1), pond.WithoutPanicRecovery())
 	var mut sync.Mutex
 	start := time.Now()
 	var lastProgress time.Time

@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/adampresley/sigint v0.0.0-20150906022118-7e8d2ad16a94
-	github.com/alitto/pond v1.9.2
+	github.com/alitto/pond/v2 v2.7.3
 	github.com/cockroachdb/errors v1.14.0
 	github.com/fatih/color v1.19.0
 	github.com/goccy/go-yaml v1.19.2
