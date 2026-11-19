@@ -243,19 +243,6 @@ func TestCheckInFlightResponses(t *testing.T) {
 	})
 }
 
-func TestNewFake(t *testing.T) {
-	assert.Exactly(t, &fakeAnalyzer{urlResultMap: map[string]Result{}}, NewFake())
-}
-
-func TestAddResult(t *testing.T) {
-	analyzer := NewFake()
-	analyzer.AddResult("url1", Result{Bitrate: 1})
-	analyzer.AddResult("url2", Result{Bitrate: 2})
-
-	expected := map[string]Result{"url1": {Bitrate: 1}, "url2": {Bitrate: 2}}
-	assert.Exactly(t, expected, analyzer.urlResultMap)
-}
-
 func TestFakeCheck(t *testing.T) {
 	analyzer := NewFake()
 	analyzer.AddResult("url1", Result{Bitrate: 1})

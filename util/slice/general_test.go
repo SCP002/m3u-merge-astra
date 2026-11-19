@@ -14,14 +14,13 @@ func TestPrepend(t *testing.T) {
 
 func TestAppendNew(t *testing.T) {
 	ol1 := []int{0, 1}
-	ol1Original := copier.TestDeep(t, ol1)
+	ol1Original := copier.MustDeep(ol1)
 
 	cbCounter := 0
 	ol2 := AppendNew(ol1, func(_ int) {
 		cbCounter++
 	}, []int{1, 2, 3}...)
 
-	assert.NotSame(t, &ol1, &ol2)
 	assert.Exactly(t, ol1Original, ol1)
 
 	assert.Exactly(t, []int{0, 1, 2, 3}, ol2)
@@ -32,10 +31,9 @@ func TestAppendNew(t *testing.T) {
 
 func TestRemoveLast(t *testing.T) {
 	ol1 := []string{"C", "A", "", "A", "B"}
-	ol1Original := copier.TestDeep(t, ol1)
+	ol1Original := copier.MustDeep(ol1)
 
 	ol2 := RemoveLast(ol1, "A")
-	assert.NotSame(t, &ol1, &ol2)
 	assert.Exactly(t, ol1Original, ol1)
 
 	expected := []string{"C", "A", "", "B"}
@@ -44,10 +42,9 @@ func TestRemoveLast(t *testing.T) {
 
 func TestRemoveFirst(t *testing.T) {
 	ol1 := []string{"C", "A", "", "A", "B"}
-	ol1Original := copier.TestDeep(t, ol1)
+	ol1Original := copier.MustDeep(ol1)
 
 	ol2 := RemoveFirst(ol1, "A")
-	assert.NotSame(t, &ol1, &ol2)
 	assert.Exactly(t, ol1Original, ol1)
 
 	expected := []string{"C", "", "A", "B"}
@@ -84,7 +81,7 @@ func TestMapFindDuplBy(t *testing.T) {
 	}
 
 	ol1 := []Struct{{Str: "A", Int: 0}, {Str: "B", Int: 0}, {Str: "A", Int: 0}, {Str: "B", Int: 0}, {Str: "C", Int: 0}}
-	ol1Original := copier.TestDeep(t, ol1)
+	ol1Original := copier.MustDeep(ol1)
 
 	// Map to same type.
 	ol2Structs := MapFindDuplBy(ol1, func(elm Struct) string {
@@ -95,7 +92,6 @@ func TestMapFindDuplBy(t *testing.T) {
 		}
 		return elm
 	})
-	assert.NotSame(t, &ol1, &ol2Structs)
 	assert.Exactly(t, ol1Original, ol1)
 
 	expectedStructs := []Struct{
@@ -116,7 +112,6 @@ func TestMapFindDuplBy(t *testing.T) {
 		}
 		return 0
 	})
-	assert.NotSame(t, &ol1, &ol2Ints)
 	assert.Exactly(t, ol1Original, ol1)
 
 	expectedInts := []int{0, 0, 1, 1, 0}

@@ -19,15 +19,14 @@ func TestRenameStreams(t *testing.T) {
 	sl1 := []astra.Stream{
 		{Name: "Known name 2"}, {Name: "Known name"}, {Name: "Other name A"},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 	cl1 := []m3u.Channel{
 		{Name: "Other_Name_B"}, {Name: "Known_Name_2"}, {Name: "Known_Name"},
 	}
-	cl1Original := copier.TestDeep(t, cl1)
+	cl1Original := copier.MustDeep(cl1)
 
 	sl2 := p.RenameStreams(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 	assert.Exactly(t, cl1Original, cl1)
 
@@ -69,7 +68,7 @@ func TestUpdateInputs(t *testing.T) {
 		{Name: "Known name 2", Inputs: []string{"http://known/input/2#b"}},
 		{Name: "Other name A", Inputs: []string{"http://known/input/1#a"}},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 	cl1 := []m3u.Channel{
 		{Name: "Other_Name_B", URL: "http://new/known/input/1#a"},
 		{Name: "Known_Name", URL: "http://new/known/input/2#b"},
@@ -77,12 +76,11 @@ func TestUpdateInputs(t *testing.T) {
 		{Name: "Known-Name", URL: "http://new/known/input/1"},
 		{Name: "KnownName", URL: "http://_other_/input"},
 	}
-	cl1Original := copier.TestDeep(t, cl1)
+	cl1Original := copier.MustDeep(cl1)
 
 	p.cfg.Streams.KeepInputHash = false
 	sl2 := p.UpdateInputs(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 	assert.Exactly(t, cl1Original, cl1)
 
@@ -100,7 +98,6 @@ func TestUpdateInputs(t *testing.T) {
 	p.cfg.Streams.KeepInputHash = true
 	sl2 = p.UpdateInputs(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 	assert.Exactly(t, cl1Original, cl1)
 
@@ -122,7 +119,7 @@ func TestUpdateInputs(t *testing.T) {
 		{Enabled: false, MarkDisabled: true, Name: "Known name", Inputs: []string{"http://other/input/1"}},
 		{Enabled: false, MarkDisabled: true, Name: "Other name", Inputs: []string{"http://known/input/1"}},
 	}
-	sl1Original = copier.TestDeep(t, sl1)
+	sl1Original = copier.MustDeep(sl1)
 	cl1 = []m3u.Channel{
 		{Name: "Known name", URL: "http://new/known/input/1"},
 	}
@@ -139,7 +136,6 @@ func TestUpdateInputs(t *testing.T) {
 	p.cfg.Streams.EnableOnInputUpdate = true
 
 	sl2 = p.UpdateInputs(sl1, cl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.True(t, sl2[0].Enabled, "stream should become enabled as EnableOnInputUpdate = true and it was updated")
@@ -199,17 +195,16 @@ func TestRemoveInputsByUpdateMap(t *testing.T) {
 			Inputs: []string{"http://known/input/1#a", "http://known/input/2", "http://other/input"},
 		},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 	cl1 := []m3u.Channel{
 		{Name: "Other_Name_B", URL: "http://other/url"},
 		{Name: "Known_Name", URL: "http://known/input/1#b"},
 		{Name: "Known_Name_2", URL: "http://other/url"},
 		{Name: "Known_Name_2", URL: "http://known/input/2"},
 	}
-	cl1Original := copier.TestDeep(t, cl1)
+	cl1Original := copier.MustDeep(cl1)
 	sl2 := p.RemoveInputsByUpdateMap(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 	assert.Exactly(t, cl1Original, cl1)
 
@@ -262,7 +257,7 @@ func TestAddNewInputs(t *testing.T) {
 		{Name: "Known name 3", Inputs: []string{"http://input/1"}},
 		{Name: "Other name A", Inputs: []string{"http://input/1#b"}},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 	cl1 := []m3u.Channel{
 		{Name: "Known_Name_2", URL: "http://input/1"},
 		{Name: "Known_Name", URL: "http://input/2#a"},
@@ -270,12 +265,11 @@ func TestAddNewInputs(t *testing.T) {
 		{Name: "Other_Name_B", URL: "http://input/1#c"},
 		{Name: "Known-Name-3", URL: "http://input/3"},
 	}
-	cl1Original := copier.TestDeep(t, cl1)
+	cl1Original := copier.MustDeep(cl1)
 
 	p.cfg.Streams.HashCheckOnAddNewInputs = true
 	sl2 := p.AddNewInputs(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 	assert.Exactly(t, cl1Original, cl1)
 
@@ -302,7 +296,6 @@ func TestAddNewInputs(t *testing.T) {
 	p.cfg.Streams.HashCheckOnAddNewInputs = false
 	sl2 = p.AddNewInputs(sl1, cl1)
 
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 	assert.Exactly(t, cl1Original, cl1)
 
@@ -326,7 +319,7 @@ func TestAddNewInputs(t *testing.T) {
 	sl1 = []astra.Stream{
 		{Enabled: false, MarkDisabled: true, Name: "Known name", Inputs: []string{"http://input/1"}},
 	}
-	sl1Original = copier.TestDeep(t, sl1)
+	sl1Original = copier.MustDeep(sl1)
 	cl1 = []m3u.Channel{
 		{Name: "Known name", URL: "http://input/2"},
 	}
@@ -339,7 +332,6 @@ func TestAddNewInputs(t *testing.T) {
 	p.cfg.Streams.EnableOnInputUpdate = true
 
 	sl2 = p.AddNewInputs(sl1, cl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.True(t, sl2[0].Enabled, "stream should become enabled as EnableOnInputUpdate = true")
@@ -390,19 +382,18 @@ func TestAddNewStreams(t *testing.T) {
 		{Name: "Known name", Inputs: []string{"http://some/url"}},
 		{Name: "Other name A", Inputs: []string{"http://some/url/2"}},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 	cl1 := []m3u.Channel{
 		{Name: "Other name B", Group: "Group", URL: "http://some/url/2"},
 		{Name: "Known name", URL: "http://some/url"},
 		{Name: "Other name B", Group: "Group", URL: "http://some/url/3"},
 	}
-	cl1Original := copier.TestDeep(t, cl1)
+	cl1Original := copier.MustDeep(cl1)
 
 	p.cfg.Streams.AddNewWithKnownInputs = true
 	p.cfg.Streams.AddGroupsToNew = false
 	sl2, gid := p.AddNewStreams(sl1, cl1, 0)
 
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 	assert.Exactly(t, cl1Original, cl1)
 
@@ -429,7 +420,6 @@ func TestAddNewStreams(t *testing.T) {
 	p.cfg.Streams.AddGroupsToNew = true
 	sl2, gid = p.AddNewStreams(sl1, cl1, gid)
 
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 	assert.Exactly(t, cl1Original, cl1)
 
@@ -458,17 +448,16 @@ func TestAddNewStreams(t *testing.T) {
 		{Name: "Known name", Inputs: []string{"http://some/url#a"}},
 		{Name: "Other name A", Inputs: []string{"http://known/url#b"}},
 	}
-	sl1Original = copier.TestDeep(t, sl1)
+	sl1Original = copier.MustDeep(sl1)
 	cl1 = []m3u.Channel{
 		{Name: "Other name B", URL: "http://known/url#c"},
 		{Name: "Known name", URL: "http://some/url/2#a"},
 	}
-	cl1Original = copier.TestDeep(t, cl1)
+	cl1Original = copier.MustDeep(cl1)
 
 	p.cfg.Streams.AddNewWithKnownInputs = false
 	sl2, _ = p.AddNewStreams(sl1, cl1, 0)
 
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 	assert.Exactly(t, cl1Original, cl1)
 

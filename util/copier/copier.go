@@ -1,19 +1,9 @@
 package copier
 
 import (
-	"testing"
-
 	"github.com/cockroachdb/errors"
 	"github.com/jinzhu/copier"
-	"github.com/stretchr/testify/assert"
 )
-
-// TestDeep returns deep copy of `inp`, failing the test `t` if copier fails.
-func TestDeep[V any](t *testing.T, inp V) V {
-	out, err := deep(inp)
-	assert.NoError(t, err, "should copy the source")
-	return out
-}
 
 // MustDeep returns deep copy of `inp`, panicking if copier fails.
 func MustDeep[T any](inp T) T {

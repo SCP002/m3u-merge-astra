@@ -94,8 +94,6 @@ func (s *Server) handleControl(w http.ResponseWriter, r *http.Request) {
 			cfg["gid"] = s.gid
 		}
 		s.respond(w, cfg)
-	case "sessions":
-		s.respond(w, map[string]any{"sessions": []any{}})
 	case "set-stream":
 		s.setStream(w, req)
 	case "set-category":

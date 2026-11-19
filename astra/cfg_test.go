@@ -16,7 +16,7 @@ func TestUpdateCategories(t *testing.T) {
 		{Name: "Category 1", Groups: []Group{{Name: "A"}, {Name: "A"}, {Name: "B"}}},
 		{Name: "Category 2", Groups: []Group{{Name: "C"}, {Name: "D"}, {Name: "D"}}},
 	}
-	cl1Original := copier.TestDeep(t, cl1)
+	cl1Original := copier.MustDeep(cl1)
 	sl1 := []Stream{
 		{Groups: map[string]string{"Category 3": "A"}},
 		{Groups: map[string]string{"Category 3": "B"}},
@@ -30,11 +30,10 @@ func TestUpdateCategories(t *testing.T) {
 		{Groups: map[string]string{"Category 2": "B"}},
 		{Groups: map[string]string{"Category 2": "A"}},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	cl2 := p.UpdateCategories(cl1, sl1)
 
-	assert.NotSame(t, &cl1, &cl2)
 	assert.Exactly(t, cl1Original, cl1)
 	assert.Exactly(t, sl1Original, sl1)
 
@@ -68,7 +67,7 @@ func TestChangedCategories(t *testing.T) {
 		{Name: "Category 4", Groups: []Group{{Name: "D"}}}, // 3
 		{Name: "Category 5", Groups: []Group{{Name: "E"}}}, // 4
 	}
-	cl1Original := copier.TestDeep(t, cl1)
+	cl1Original := copier.MustDeep(cl1)
 
 	cl2 := []Category{
 		{Name: "Category 2", Groups: []Group{{Name: "C"}, {Name: "D"}}},
@@ -78,7 +77,7 @@ func TestChangedCategories(t *testing.T) {
 		{Name: "Category 3", Groups: []Group{{Name: "D"}, {Name: "E"}}},
 		{Name: "Category 7", Groups: []Group{{Name: "A"}, {Name: "B"}}},
 	}
-	cl2Original := copier.TestDeep(t, cl2)
+	cl2Original := copier.MustDeep(cl2)
 
 	changed := p.ChangedCategories(cl1, cl2)
 	assert.Exactly(t, cl1Original, cl1)
@@ -102,7 +101,7 @@ func TestChangedCategories(t *testing.T) {
 		{Name: "Category 4", Groups: []Group{{Name: "D"}}}, // 3
 		{Name: "Category 5", Groups: []Group{{Name: "E"}}}, // 4
 	}
-	cl1Original = copier.TestDeep(t, cl1)
+	cl1Original = copier.MustDeep(cl1)
 
 	cl2 = []Category{
 		{Name: "Category 1", Groups: []Group{{Name: "A"}}, Remove: true},
@@ -112,7 +111,7 @@ func TestChangedCategories(t *testing.T) {
 		{Name: "Category 3", Groups: []Group{{Name: "D"}, {Name: "E"}}},
 		{Name: "Category 7", Groups: []Group{{Name: "A"}, {Name: "B"}}},
 	}
-	cl2Original = copier.TestDeep(t, cl2)
+	cl2Original = copier.MustDeep(cl2)
 
 	changed = p.ChangedCategories(cl1, cl2)
 	assert.Exactly(t, cl1Original, cl1)
@@ -133,13 +132,13 @@ func TestChangedCategories(t *testing.T) {
 		{Name: "Category 1", Groups: []Group{{Name: "A"}}},
 		{Name: "Category 2", Groups: []Group{{Name: "B"}}},
 	}
-	cl1Original = copier.TestDeep(t, cl1)
+	cl1Original = copier.MustDeep(cl1)
 
 	cl2 = []Category{
 		{Name: "Category 1", Groups: []Group{{Name: "A"}}},
 		{Name: "Category 2", Groups: []Group{{Name: "B"}}},
 	}
-	cl2Original = copier.TestDeep(t, cl2)
+	cl2Original = copier.MustDeep(cl2)
 
 	changed = p.ChangedCategories(cl1, cl2)
 	assert.Exactly(t, cl1Original, cl1)
@@ -160,11 +159,10 @@ func TestMergeCategories(t *testing.T) {
 		{Name: "Category 2", Groups: []Group{{Name: "D"}, {Name: "E"}}},
 		{Name: "Category 3", Groups: []Group{{Name: "X"}}},
 	}
-	cl1Original := copier.TestDeep(t, cl1)
+	cl1Original := copier.MustDeep(cl1)
 
 	cl2 := p.MergeCategories(cl1)
 
-	assert.NotSame(t, &cl1, &cl2)
 	assert.Exactly(t, cl1Original, cl1)
 
 	expected := []Category{

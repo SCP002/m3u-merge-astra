@@ -49,11 +49,6 @@ func TestNewStream(t *testing.T) {
 	assert.Exactly(t, expected, s)
 }
 
-func TestGetName(t *testing.T) {
-	s := Stream{Name: "Name"}
-	assert.Exactly(t, s.Name, s.GetName())
-}
-
 func TestFirstGroup(t *testing.T) {
 	s := Stream{}
 	assert.Empty(t, s.FirstGroup())
@@ -75,14 +70,13 @@ func TestUpdateStreamInput(t *testing.T) {
 	s1 := Stream{Inputs: []string{
 		"http://irrelevant/from#a", "http://update/from/1#c", "http://update/url/1#b", "http://update/url/1#c",
 	}}
-	s1Original := copier.TestDeep(t, s1)
+	s1Original := copier.MustDeep(s1)
 
 	oldInputs := []string{}
 	p.cfg.Streams.KeepInputHash = false
 	s2, updated := s1.UpdateInput(p.log, p.cfg.Streams, "http://update/to/1", func(oldInput string) {
 		oldInputs = append(oldInputs, oldInput)
 	})
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected := []string{
@@ -110,7 +104,6 @@ func TestUpdateStreamInput(t *testing.T) {
 	s2, updated = s1.UpdateInput(p.log, p.cfg.Streams, "http://update/url/2", func(oldInput string) {
 		oldInputs = append(oldInputs, oldInput)
 	})
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected = []string{
@@ -170,10 +163,9 @@ func TestHasInput(t *testing.T) {
 
 func TestAddInput(t *testing.T) {
 	s1 := Stream{Inputs: []string{"http://input/1", "http://input/2"}}
-	s1Original := copier.TestDeep(t, s1)
+	s1Original := copier.MustDeep(s1)
 
 	s2 := s1.AddInput("http://input/3")
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected := []string{"http://input/3", "http://input/1", "http://input/2"}
@@ -213,40 +205,36 @@ func TestInputsUpdateNote(t *testing.T) {
 
 func TestEnableStream(t *testing.T) {
 	s1 := Stream{Enabled: false, MarkDisabled: true}
-	s1Original := copier.TestDeep(t, s1)
+	s1Original := copier.MustDeep(s1)
 
 	s2 := s1.Enable()
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected := Stream{Enabled: true, MarkDisabled: false}
 	assert.Exactly(t, expected, s2)
 
 	s1 = Stream{Enabled: false, MarkDisabled: false}
-	s1Original = copier.TestDeep(t, s1)
+	s1Original = copier.MustDeep(s1)
 
 	s2 = s1.Enable()
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected = Stream{Enabled: true, MarkDisabled: false}
 	assert.Exactly(t, expected, s2)
 
 	s1 = Stream{Enabled: true, MarkDisabled: true}
-	s1Original = copier.TestDeep(t, s1)
+	s1Original = copier.MustDeep(s1)
 
 	s2 = s1.Enable()
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected = Stream{Enabled: true, MarkDisabled: false}
 	assert.Exactly(t, expected, s2)
 
 	s1 = Stream{Enabled: true, MarkDisabled: false}
-	s1Original = copier.TestDeep(t, s1)
+	s1Original = copier.MustDeep(s1)
 
 	s2 = s1.Enable()
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	assert.Exactly(t, s1, s2, "should not change enabled stream with MarkDisabled field set to false")
@@ -254,13 +242,12 @@ func TestEnableStream(t *testing.T) {
 
 func TestRemoveInputsCb(t *testing.T) {
 	s1 := Stream{Inputs: []string{"http://input/1", "http://input/2", "http://input/1"}}
-	s1Original := copier.TestDeep(t, s1)
+	s1Original := copier.MustDeep(s1)
 
 	count := 0
 	s2 := s1.RemoveInputsCb("http://input/1", func() {
 		count++
 	})
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected := []string{"http://input/2"}
@@ -275,20 +262,18 @@ func TestRemoveInputs(t *testing.T) {
 
 func TestDisableStream(t *testing.T) {
 	s1 := Stream{Enabled: false, MarkDisabled: false}
-	s1Original := copier.TestDeep(t, s1)
+	s1Original := copier.MustDeep(s1)
 
 	s2 := s1.disable()
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected := Stream{Enabled: false, MarkDisabled: true}
 	assert.Exactly(t, expected, s2)
 
 	s1 = Stream{Enabled: true, MarkDisabled: false}
-	s1Original = copier.TestDeep(t, s1)
+	s1Original = copier.MustDeep(s1)
 
 	s2 = s1.disable()
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected = Stream{Enabled: false, MarkDisabled: true}
@@ -325,13 +310,12 @@ func TestRemoveDuplicatedInputsByRx(t *testing.T) {
 		"http://host3/path5",
 		"",
 	}}
-	s1Original := copier.TestDeep(t, s1)
+	s1Original := copier.MustDeep(s1)
 
 	removed := []string{}
 	s2 := s1.removeDuplicatedInputsByRx(p.log, p.cfg.Streams, func(input string) {
 		removed = append(removed, input)
 	})
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected := []string{"http://host1/path1", "http://host3/path5", ""}
@@ -353,13 +337,12 @@ func TestDisableAllButOneInputByRx(t *testing.T) {
 		Inputs:         []string{"http://input/1#abc", "http://input/1#no_sync&abc", "http://input/1#abc&i_might_stay"},
 		DisabledInputs: []string{"http://input/1#def"},
 	}
-	s1Original := copier.TestDeep(t, s1)
+	s1Original := copier.MustDeep(s1)
 
 	disabled := []string{}
 	s2 := s1.disableAllButOneInputByRx(p.cfg.Streams, func(input string) {
 		disabled = append(disabled, input)
 	})
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected := []string{"http://input/1#no_sync&abc"}
@@ -380,13 +363,12 @@ func TestDisableAllButOneInputByRx(t *testing.T) {
 		},
 		DisabledInputs: []string{},
 	}
-	s1Original = copier.TestDeep(t, s1)
+	s1Original = copier.MustDeep(s1)
 
 	disabled = []string{}
 	s2 = s1.disableAllButOneInputByRx(p.cfg.Streams, func(input string) {
 		disabled = append(disabled, input)
 	})
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected = []string{"http://input/1#abc&i_might_stay"}
@@ -405,13 +387,12 @@ func TestRemoveDisabledInputs(t *testing.T) {
 		Inputs:         []string{"http://input/1"},
 		DisabledInputs: []string{"http://input/2", "http://input/2"},
 	}
-	s1Original := copier.TestDeep(t, s1)
+	s1Original := copier.MustDeep(s1)
 
 	removed := []string{}
 	s2 := s1.removeDisabledInputs(func(input string) {
 		removed = append(removed, input)
 	})
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected := []string{"http://input/1"}
@@ -433,14 +414,13 @@ func TestRemoveBlockedInputs(t *testing.T) {
 	}
 
 	s1 := Stream{Inputs: []string{"http://input/1", "http://input/2", "http://input/1", "http://input/3"}}
-	s1Original := copier.TestDeep(t, s1)
+	s1Original := copier.MustDeep(s1)
 
 	removed := []string{}
 	s2 := s1.removeBlockedInputs(cfg, func(input string) {
 		removed = append(removed, input)
 	})
 
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected := []string{"http://input/2"}
@@ -485,10 +465,9 @@ func TestSetPrefix(t *testing.T) {
 	prefix := "prefix: "
 
 	s1 := Stream{Name: "Name"}
-	s1Original := copier.TestDeep(t, s1)
+	s1Original := copier.MustDeep(s1)
 
 	s2 := s1.setPrefix(prefix)
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected := Stream{Name: prefix + "Name"}
@@ -499,19 +478,17 @@ func TestRemovePrefix(t *testing.T) {
 	prefix := "prefix: "
 
 	s1 := Stream{Name: "Name"}
-	s1Original := copier.TestDeep(t, s1)
+	s1Original := copier.MustDeep(s1)
 
 	s2 := s1.removePrefix(prefix)
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	assert.Exactly(t, s1, s2, "should not modify the stream without prefix")
 
 	s1 = Stream{Name: prefix + "Name"}
-	s1Original = copier.TestDeep(t, s1)
+	s1Original = copier.MustDeep(s1)
 
 	s2 = s1.removePrefix(prefix)
-	assert.NotSame(t, &s1, &s2)
 	assert.Exactly(t, s1Original, s1)
 
 	expected := Stream{Name: "Name"}
@@ -574,10 +551,9 @@ func TestRemoveNamePrefixes(t *testing.T) {
 		/* 5 */ {Name: addedPrefix + disabledPrefix + "Name 6", MarkAdded: false, MarkDisabled: false},
 		/* 6 */ {Name: "Na" + addedPrefix + disabledPrefix + "me 7", MarkAdded: false, MarkDisabled: false},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.RemoveNamePrefixes(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -619,10 +595,9 @@ func TestSort(t *testing.T) {
 	sl1 := []Stream{
 		{Name: "C"}, {Name: "A"}, {}, {Name: "B"},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.Sort(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	expected := []Stream{{Name: ""}, {Name: "A"}, {Name: "B"}, {Name: "C"}}
@@ -641,10 +616,9 @@ func TestAllRemoveBlockedInputs(t *testing.T) {
 		{Inputs: []string{"http://input/1"}},
 		{},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.RemoveBlockedInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -680,10 +654,9 @@ func TestRemoveDuplicatedInputs(t *testing.T) {
 		{Inputs: []string{"http://input/4", "http://input/5", "http://input/1"}},
 		{Inputs: []string{"http://input/2", "http://input/4", "http://input/6"}},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.RemoveDuplicatedInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -729,10 +702,9 @@ func TestAllRemoveDuplicatedInputsByRx(t *testing.T) {
 		/* 2 */ {Inputs: []string{"http://host1/path1", "http://host2/path2"}},
 		/* 3 */ {Inputs: []string{"http://host1/path1", "http://host2/path1"}},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.RemoveDuplicatedInputsByRx(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -781,10 +753,9 @@ func TestUniteInputs(t *testing.T) {
 		/* 4 */ {Name: "Name-3", Inputs: []string{"http://input/c"}},
 		/* 5 */ {Name: "Name_2", Inputs: []string{"http://input/b", "http://input/a"}},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.UniteInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -812,7 +783,7 @@ func TestUniteInputs(t *testing.T) {
 		{Enabled: false, MarkDisabled: true, Name: "Name", Inputs: []string{"http://input/a"}},
 		{Enabled: false, MarkDisabled: true, Name: "Name", Inputs: []string{"http://input/b"}},
 	}
-	sl1Original = copier.TestDeep(t, sl1)
+	sl1Original = copier.MustDeep(sl1)
 
 	sl2 = p.UniteInputs(sl1)
 
@@ -824,7 +795,6 @@ func TestUniteInputs(t *testing.T) {
 	p.cfg.Streams.EnableOnInputUpdate = true
 
 	sl2 = p.UniteInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.True(t, sl2[0].Enabled, "stream should become enabled as EnableOnInputUpdate = true")
@@ -882,10 +852,9 @@ func TestSortInputs(t *testing.T) {
 		{},
 		{Inputs: []string{"http://other/c", "http://other/d"}},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.SortInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -906,10 +875,9 @@ func TestSortInputs(t *testing.T) {
 		{Inputs: []string{"http://other/a", "http://other/b", "http://other/c", "http://input/20"}},
 		{Inputs: []string{"http://other/d", "http://other/e"}},
 	}
-	sl1Original = copier.TestDeep(t, sl1)
+	sl1Original = copier.MustDeep(sl1)
 
 	sl2 = p.SortInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -926,10 +894,9 @@ func TestSortInputs(t *testing.T) {
 		{Inputs: []string{"http://other/d", "http://other/c", "http://other/b", "http://other/a"}},
 		{Inputs: []string{"http://other/f", "http://other/e"}},
 	}
-	sl1Original = copier.TestDeep(t, sl1)
+	sl1Original = copier.MustDeep(sl1)
 
 	sl2 = p.SortInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Exactly(t, sl1, sl2)
@@ -994,10 +961,9 @@ func TestRemoveDeadInputs(t *testing.T) {
 			Inputs: []string{"http://streams.test/dead/404/2", "rtp://skip/1", "http://streams.test/dead/404/2"},
 		},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.RemoveDeadInputs(httpClient, analyzerClient, sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -1075,7 +1041,7 @@ func TestDisableDeadInputsConcurrently(t *testing.T) {
 	p.cfg.Streams.InputMaxConns = inputsAmount
 	p.cfg.Streams.UseAnalyzer = false
 
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 	sl2 := p.DisableDeadInputs(srv.Client(time.Second*5), analyzer.NewFake(), sl1)
 	assert.Exactly(t, sl1Original, sl1)
 
@@ -1134,7 +1100,7 @@ func TestAnalyzerRemoveDeadInputs(t *testing.T) {
 			Inputs: []string{"dvb://0000#pnr=0000&cam=0000", "xxx://unknown/1", "http://ignore/1"},
 		},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	analyzerClient := analyzer.NewFake()
 	analyzerClient.AddResult("http://dead/audio/50", analyzer.Result{HasAudio: true, Bitrate: 50})
@@ -1152,7 +1118,6 @@ func TestAnalyzerRemoveDeadInputs(t *testing.T) {
 
 	var httpClient *http.Client
 	sl2 := p.RemoveDeadInputs(httpClient, analyzerClient, sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -1180,14 +1145,13 @@ func TestAnalyzerRemoveDeadInputs(t *testing.T) {
 			Inputs: []string{"http://alive/cc/0", "http://alive/pcr/1", "http://alive/pes/10"},
 		},
 	}
-	sl1Original = copier.TestDeep(t, sl1)
+	sl1Original = copier.MustDeep(sl1)
 
 	analyzerClient.AddResult("http://alive/cc/0", analyzer.Result{CCErrors: 0, Bitrate: 1000})
 	analyzerClient.AddResult("http://alive/pcr/1", analyzer.Result{PCRErrors: 1, Bitrate: 1000})
 	analyzerClient.AddResult("http://alive/pes/10", analyzer.Result{PESErrors: 10, Bitrate: 1000})
 
 	sl2 = p.RemoveDeadInputs(httpClient, analyzerClient, sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -1297,10 +1261,9 @@ func TestDisableDeadInputs(t *testing.T) {
 			Inputs: []string{"http://streams.test/alive/2", "http://no-such-host.test/3", "http://ignore/1"},
 		},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.DisableDeadInputs(httpClient, analyzerClient, sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -1395,10 +1358,9 @@ func TestAddHashes(t *testing.T) {
 			Inputs: []string{"http://known/input/1", "http://other/input/1"},
 		},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.AddHashes(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -1509,10 +1471,9 @@ func TestAllDisableAllButOneInputByRx(t *testing.T) {
 			DisabledInputs: []string{},
 		},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.DisableAllButOneInputByRx(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -1572,10 +1533,9 @@ func TestAllRemoveDisabledInputs(t *testing.T) {
 			DisabledInputs: []string{},
 		},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.RemoveDisabledInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -1676,10 +1636,9 @@ func TestSetKeepActive(t *testing.T) {
 			Inputs: []string{"http://known/input/1", "http://other/input/1"},
 		},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.SetKeepActive(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -1775,10 +1734,9 @@ func TestRemoveWithoutInputs(t *testing.T) {
 		{Enabled: false, Name: p.cfg.Streams.DisabledPrefix + "Name"},
 		{Inputs: []string{"http://input"}},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.RemoveWithoutInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	expected := []Stream{
@@ -1819,10 +1777,9 @@ func TestDisableWithoutInputs(t *testing.T) {
 		/* 6 */ {MarkDisabled: true, Enabled: false, Name: "Name", Inputs: []string{"http://input"}},
 		/* 7 */ {MarkDisabled: true, Enabled: false, Name: "Name"},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.DisableWithoutInputs(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -1864,10 +1821,9 @@ func TestAddNamePrefixes(t *testing.T) {
 		/* 2 */ {MarkAdded: false, MarkDisabled: true, Name: "Name_3"},
 		/* 3 */ {MarkAdded: true, MarkDisabled: true, Name: "Name_4"},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := p.AddNamePrefixes(sl1)
-	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Len(t, sl2, len(sl1))
@@ -1917,7 +1873,7 @@ func TestChangedStreams(t *testing.T) {
 		{Name: "Stream 5", ID: "0005"},
 		{Name: "Stream 6", ID: "0006", Enabled: true, Inputs: []string{"I", "J"}, MarkAdded: true, MarkDisabled: false},
 	}
-	sl1Original := copier.TestDeep(t, sl1)
+	sl1Original := copier.MustDeep(sl1)
 
 	sl2 := []Stream{
 		// No changes.
@@ -1937,12 +1893,10 @@ func TestChangedStreams(t *testing.T) {
 		// New.
 		{Name: "Stream 8", ID: "0008", Enabled: false, DisabledInputs: []string{"A", "B"}},
 	}
-	sl2Original := copier.TestDeep(t, sl2)
+	sl2Original := copier.MustDeep(sl2)
 
 	actual := p.ChangedStreams(sl1, sl2)
 
-	assert.NotSame(t, &sl1, &actual)
-	assert.NotSame(t, &sl2, &actual)
 	assert.Exactly(t, sl1Original, sl1)
 	assert.Exactly(t, sl2Original, sl2)
 

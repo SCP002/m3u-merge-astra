@@ -11,14 +11,13 @@ import (
 
 func TestIndexOrElse(t *testing.T) {
 	ol1 := []string{"A", "B"}
-	ol1Original := copier.TestDeep(t, ol1)
+	ol1Original := copier.MustDeep(ol1)
 
 	search := "B"
 	ol2, o, idx := IndexOrElse(ol1, search, func(o string) bool {
 		return o == search
 	})
 
-	assert.NotSame(t, &ol1, &ol2)
 	assert.Exactly(t, ol1Original, ol1)
 
 	assert.Exactly(t, ol1, ol2)
@@ -30,7 +29,6 @@ func TestIndexOrElse(t *testing.T) {
 		return o == search
 	})
 
-	assert.NotSame(t, &ol1, &ol2)
 	assert.Exactly(t, ol1Original, ol1)
 
 	assert.Exactly(t, []string{"A", "B", "C"}, ol2)
@@ -50,7 +48,6 @@ func TestNamed(t *testing.T) {
 	}
 
 	o, idx, found := Named(cfg, ol, "name2")
-	assert.NotSame(t, &ol[1], &o)
 	assert.Exactly(t, ol[1], o)
 	assert.Exactly(t, 1, idx, "should return index of first found element")
 	assert.True(t, found)
@@ -101,10 +98,9 @@ func TestGetSimilar(t *testing.T) {
 		/* 4 */ {Name: "Name_3"},
 		/* 5 */ {Name: "Name-2"},
 	}
-	ol1Original := copier.TestDeep(t, ol1)
+	ol1Original := copier.MustDeep(ol1)
 	ol2 := GetSimilar(cfg, ol1, "name2!")
 
-	assert.NotSame(t, &ol1, &ol2)
 	assert.Exactly(t, ol1Original, ol1)
 
 	expected := []slice.TestNamedStruct{{Name: "Name 2"}, {Name: "Name_2"}, {Name: "Name-2"}}

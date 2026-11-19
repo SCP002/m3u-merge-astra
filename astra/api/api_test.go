@@ -22,20 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewHandler(t *testing.T) {
-	log := logger.New(logger.DebugLevel, os.Stderr)
-	httpClient := network.NewHttpClient(time.Second * 3)
-
-	expected := handler{
-		log:        log,
-		httpClient: httpClient,
-		address:    "127.0.0.1",
-		user:       "user",
-		password:   "pass",
-	}
-	assert.Exactly(t, expected, NewHandler(log, httpClient, "127.0.0.1", "user", "pass"))
-}
-
 func TestSetCategories(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
 	httpClient := network.NewHttpClient(time.Second * 3)
@@ -272,14 +258,4 @@ func TestSetErrors(t *testing.T) {
 			assert.ErrorContains(t, err, tt.wantErr)
 		})
 	}
-}
-
-func TestRequest(t *testing.T) {
-	log := logger.New(logger.DebugLevel, os.Stderr)
-	httpClient := network.NewHttpClient(time.Second * 3)
-	addr := apitest.NewServer(t).URL
-	apiHandler := NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
-	resp, err := apiHandler.request("POST", "/control/", loadReq{Cmd: "sessions"})
-	assert.Contains(t, string(resp), "sessions")
-	assert.NoError(t, err)
 }

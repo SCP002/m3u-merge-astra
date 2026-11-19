@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	pLog "github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -301,10 +299,4 @@ func TestPrint(t *testing.T) {
 	print(log.Logger.Info(), "message", []any{"a", "b", 1, 2})
 	out = buf.String()
 	assert.Regexp(t, regexp.MustCompile(timeRx+` INFO message: a "b", 1 "2"`), out)
-}
-
-func TestNewConsoleFormatter(t *testing.T) {
-	// Tested in TestNew.
-	var formatter func(io.Writer, *pLog.FormatterArgs) (int, error)
-	assert.IsType(t, formatter, newConsoleFormatter(false, ""))
 }

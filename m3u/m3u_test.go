@@ -11,11 +11,6 @@ import (
 	"github.com/utahta/go-openuri"
 )
 
-func TestGetName(t *testing.T) {
-	ch := Channel{Name: "Name"}
-	assert.Exactly(t, ch.Name, ch.GetName())
-}
-
 func TestReplaceGroup(t *testing.T) {
 	cfg := cfg.NewDefCfg().M3U
 
@@ -26,24 +21,22 @@ func TestReplaceGroup(t *testing.T) {
 
 	newGroups := []string{}
 	c1 := Channel{Name: "From Group 2", Group: "From Group 2", URL: "From Group 2"}
-	c1Original := copier.TestDeep(t, c1)
+	c1Original := copier.MustDeep(c1)
 	c2 := c1.replaceGroup(cfg, func(newGroup string) {
 		newGroups = append(newGroups, newGroup)
 	})
 
-	assert.NotSame(t, &c1, &c2)
 	assert.Exactly(t, c1Original, c1)
 
 	expected := Channel{Name: "From Group 2", Group: "To Group 2", URL: "From Group 2"}
 	assert.Exactly(t, expected, c2)
 
 	c1 = Channel{Group: "Group 1"}
-	c1Original = copier.TestDeep(t, c1)
+	c1Original = copier.MustDeep(c1)
 	c2 = c1.replaceGroup(cfg, func(newGroup string) {
 		t.Fail()
 	})
 
-	assert.NotSame(t, &c1, &c2)
 	assert.Exactly(t, c1Original, c1)
 
 	assert.Exactly(t, c1, c2)
@@ -83,10 +76,9 @@ func TestSort(t *testing.T) {
 	cl1 := []Channel{
 		{Name: "C"}, {Name: "A"}, {}, {Name: "B"},
 	}
-	cl1Original := copier.TestDeep(t, cl1)
+	cl1Original := copier.MustDeep(cl1)
 
 	cl2 := p.Sort(cl1)
-	assert.NotSame(t, &cl1, &cl2)
 	assert.Exactly(t, cl1Original, cl1)
 
 	expected := []Channel{{Name: ""}, {Name: "A"}, {Name: "B"}, {Name: "C"}}
@@ -104,10 +96,9 @@ func TestReplaceGroups(t *testing.T) {
 	cl1 := []Channel{
 		{Group: "Other"}, {Group: "From Group 2"}, {Group: "From Group 1"},
 	}
-	cl1Original := copier.TestDeep(t, cl1)
+	cl1Original := copier.MustDeep(cl1)
 
 	cl2 := p.ReplaceGroups(cl1)
-	assert.NotSame(t, &cl1, &cl2)
 	assert.Exactly(t, cl1Original, cl1)
 
 	assert.Len(t, cl2, len(cl1))
@@ -163,11 +154,10 @@ func TestRemoveBlocked(t *testing.T) {
 		/* 5 */ {Name: "Other", Group: "Other", URL: "Other"},
 		/* 6 */ {},
 	}
-	cl1Original := copier.TestDeep(t, cl1)
+	cl1Original := copier.MustDeep(cl1)
 
 	p.cfg.General.NameAliases = false
 	cl2 := p.RemoveBlocked(cl1)
-	assert.NotSame(t, &cl1, &cl2)
 	assert.Exactly(t, cl1Original, cl1)
 
 	assert.Len(t, cl2, 3, "should remove blocked channels excluding the ones with aliases as NameAliases = false")
@@ -182,7 +172,6 @@ func TestRemoveBlocked(t *testing.T) {
 
 	p.cfg.General.NameAliases = true
 	cl2 = p.RemoveBlocked(cl1)
-	assert.NotSame(t, &cl1, &cl2)
 	assert.Exactly(t, cl1Original, cl1)
 
 	assert.Len(t, cl2, 2, "should remove blocked channels with the ones with aliases as NameAliases = true")

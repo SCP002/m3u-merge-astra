@@ -20,11 +20,10 @@ func TestSimplifyAliases(t *testing.T) {
 			{"Name_2", "Name_2_var_2"},
 		},
 	}
-	cfgOriginal := copier.TestDeep(t, cfg)
+	cfgOriginal := copier.MustDeep(cfg)
 
 	actual := cfg.SimplifyAliases()
 
-	assert.NotSame(t, &cfg.NameAliasList, &actual)
 	assert.Exactly(t, cfgOriginal, cfg)
 
 	expected := [][]string{
