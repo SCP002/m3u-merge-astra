@@ -750,23 +750,37 @@ func (r repo) removeDeadInputs(httpClient *http.Client, analyzer analyzer.Analyz
 	}
 
 	msg := lo.Ternary(disable, "Disabling dead inputs of streams", "Removing dead inputs from streams")
-	// At least 1 worker as 0 means unbounded for pond.
-	pool := pond.NewPool(max(r.cfg.Streams.InputMaxConns, 1), pond.WithoutPanicRecovery())
-	var mut sync.Mutex
 	start := time.Now()
-	var lastProgress time.Time
 	inputsAmount := getInputsAmount(streams)
-	inputsDone, inputsChecked, inputsDead := 0, 0, 0
 
-	out = copier.MustDeep(streams)
-	for sIdx, s := range out {
+	var mut sync.Mutex
+	var lastProgress time.Time
+	inputsDone := 0
+
+	// logProgress counts finished check and logs progress, but not more often than once per interval and always at
+	// the end.
+	logProgress := func() {
+		mut.Lock()
+		defer mut.Unlock()
+		inputsDone++
+		if time.Since(lastProgress) >= r.progressInterval || inputsDone == inputsAmount {
+			lastProgress = time.Now()
+			percent := (inputsDone * 100) / inputsAmount
+			r.log.InfoFi(msg, "progress", fmt.Sprintf("%v / %v (%v%%)", inputsDone, inputsAmount, percent))
+		}
+	}
+
+	// At least 1 worker as 0 means unbounded for pond.
+	pool := pond.NewResultPool[string](max(r.cfg.Streams.InputMaxConns, 1), pond.WithoutPanicRecovery())
+	defer pool.StopAndWait()
+	group := pool.NewGroup()
+
+	for sIdx, s := range streams {
 		for _, inp := range s.Inputs {
-			pool.Submit(func() {
+			group.Submit(func() (removalReason string) {
 				r.log.DebugFi("Start checking input", "stream ID", s.ID, "stream name", s.Name, "stream index", sIdx,
 					"input", inp)
-				checked := canCheck(inp)
-				removalReason := ""
-				if checked {
+				if canCheck(inp) {
 					removalReason = getRemovalReason(inp)
 				}
 				if removalReason != "" {
@@ -774,33 +788,42 @@ func (r repo) removeDeadInputs(httpClient *http.Client, analyzer analyzer.Analyz
 					r.log.WarnFi(inpMsg, "ID", s.ID, "name", s.Name, "group", s.FirstGroup(), "input", inp,
 						"reason", removalReason)
 				}
-
-				mut.Lock()
-				if removalReason != "" {
-					out[sIdx].Inputs = slice.RemoveLast(out[sIdx].Inputs, inp)
-					if disable {
-						out[sIdx].DisabledInputs = append(out[sIdx].DisabledInputs, inp)
-					}
-					inputsDead++
-				}
-				if checked {
-					inputsChecked++
-				}
-				inputsDone++
-				// Log progress on check completion, but not more often than once per interval and always at the end.
-				if time.Since(lastProgress) >= r.progressInterval || inputsDone == inputsAmount {
-					lastProgress = time.Now()
-					percent := (inputsDone * 100) / inputsAmount
-					r.log.InfoFi(msg, "progress", fmt.Sprintf("%v / %v (%v%%)", inputsDone, inputsAmount, percent))
-				}
-				mut.Unlock()
+				logProgress()
 				r.log.DebugFi("End checking input", "stream ID", s.ID, "stream name", s.Name, "stream index", sIdx,
 					"input", inp)
+				return
 			})
 		}
 	}
 
-	pool.StopAndWait()
+	removalReasons, _ := group.Wait() // In order of submission, no errors as panics are not recovered.
+
+	// Apply results in order of inputs.
+	inputsChecked, inputsDead := 0, 0
+	out = copier.MustDeep(streams)
+	for sIdx := range out {
+		s := &out[sIdx]
+		var alive []string
+		for _, inp := range s.Inputs {
+			removalReason := removalReasons[0]
+			removalReasons = removalReasons[1:]
+			if canCheck(inp) {
+				inputsChecked++
+			}
+			if removalReason == "" {
+				alive = append(alive, inp)
+				continue
+			}
+			if disable {
+				s.DisabledInputs = append(s.DisabledInputs, inp)
+			}
+			inputsDead++
+		}
+		if len(alive) != len(s.Inputs) { // Keep streams without dead inputs as is.
+			s.Inputs = alive
+		}
+	}
+
 	r.log.InfoFi(msg+" finished", "checked", inputsChecked, "skipped", inputsAmount-inputsChecked,
 		lo.Ternary(disable, "disabled", "removed"), inputsDead, "took", time.Since(start).Round(time.Second).String())
 

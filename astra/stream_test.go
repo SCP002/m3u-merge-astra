@@ -1041,8 +1041,8 @@ func TestRemoveDeadInputs(t *testing.T) {
 	assert.Contains(t, out.String(), msg)
 }
 
-// TestDisableDeadInputsConcurrently forces every input check to be in flight at the same time, so results of
-// concurrent checks are written simultaneously.
+// TestDisableDeadInputsConcurrently forces every input check to be in flight at the same time, so checks finish in
+// arbitrary order.
 func TestDisableDeadInputsConcurrently(t *testing.T) {
 	sl1 := []Stream{
 		{Name: "Name 1", Inputs: []string{"http://a/dead/1", "http://a/alive/1", "http://a/dead/2"}},
@@ -1086,15 +1086,14 @@ func TestDisableDeadInputsConcurrently(t *testing.T) {
 			inputsAmount)
 	}
 
-	// Order of disabled inputs depends on the order checks finish in.
+	// Order of disabled inputs does not depend on the order checks finish in.
 	require.Len(t, sl2, len(sl1))
 	assert.Exactly(t, []string{"http://a/alive/1"}, sl2[0].Inputs)
-	assert.ElementsMatch(t, []string{"http://a/dead/1", "http://a/dead/2"}, sl2[0].DisabledInputs)
+	assert.Exactly(t, []string{"http://a/dead/1", "http://a/dead/2"}, sl2[0].DisabledInputs)
 	assert.Empty(t, sl2[1].Inputs)
-	assert.ElementsMatch(t, []string{"https://a/dead/3", "https://a/dead/4", "https://a/dead/5"},
-		sl2[1].DisabledInputs)
+	assert.Exactly(t, []string{"https://a/dead/3", "https://a/dead/4", "https://a/dead/5"}, sl2[1].DisabledInputs)
 	assert.Exactly(t, []string{"http://a/alive/2"}, sl2[2].Inputs)
-	assert.ElementsMatch(t, []string{"https://a/dead/6"}, sl2[2].DisabledInputs)
+	assert.Exactly(t, []string{"https://a/dead/6"}, sl2[2].DisabledInputs)
 }
 
 func TestAnalyzerRemoveDeadInputs(t *testing.T) {
@@ -1270,7 +1269,7 @@ func TestProgressRemoveDeadInputs(t *testing.T) {
 
 func TestDisableDeadInputs(t *testing.T) {
 	r := newDefRepo()
-	r.cfg.Streams.InputMaxConns = 1 // Keep order of disabled inputs predictable.
+	r.cfg.Streams.InputMaxConns = 100
 	r.cfg.Streams.UseAnalyzer = false
 	r.cfg.Streams.DeadInputsCheckBlacklist = []regexp.Regexp{
 		*regexp.MustCompile(`ignore/1`),
