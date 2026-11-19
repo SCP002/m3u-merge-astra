@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,214 +22,83 @@ func TestNew(t *testing.T) {
 	log := New(DebugLevel, &buf)
 	log.Trace("message")
 	log.Debug("message")
-	log.DebugFi("message", "k", "v")
-	log.InfoFi("message", "1", 2)
-	log.Warn("message")
-	log.Error("message")
-	assert.Panics(t, func() { log.Panic("message") })
 	out := buf.String()
 	assert.NotRegexp(t, regexp.MustCompile(`TRACE`), out, "should not print trace messages with debug level logger")
-	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message`), out)
-	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message: k "v"`), out)
-	assert.Regexp(t, regexp.MustCompile(timeRx+` INFO message: 1 "2"`), out)
-	assert.Regexp(t, regexp.MustCompile(timeRx+` WARN message`), out)
-	assert.Regexp(t, regexp.MustCompile(timeRx+` ERROR message`), out)
-	assert.Regexp(t, regexp.MustCompile(timeRx+` PANIC message`), out)
+	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message\n`), out)
 }
 
-func TestTrace(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(TraceLevel, &buf)
-	log.Trace("message")
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` TRACE message`), out)
+func TestLevels(t *testing.T) {
+	levels := []struct {
+		name   string
+		plain  func(Logger, any)
+		format func(Logger, string, ...any)
+		withFi func(Logger, string, ...any)
+		panics bool
+		exits  bool
+	}{
+		{name: "TRACE", plain: Logger.Trace, format: Logger.Tracef, withFi: Logger.TraceFi},
+		{name: "DEBUG", plain: Logger.Debug, format: Logger.Debugf, withFi: Logger.DebugFi},
+		{name: "INFO", plain: Logger.Info, format: Logger.Infof, withFi: Logger.InfoFi},
+		{name: "WARN", plain: Logger.Warn, format: Logger.Warnf, withFi: Logger.WarnFi},
+		{name: "ERROR", plain: Logger.Error, format: Logger.Errorf, withFi: Logger.ErrorFi},
+		{name: "PANIC", plain: Logger.Panic, format: Logger.Panicf, withFi: Logger.PanicFi, panics: true},
+		{name: "FATAL", plain: Logger.Fatal, format: Logger.Fatalf, withFi: Logger.FatalFi, exits: true},
+	}
+	for _, lvl := range levels {
+		calls := []struct {
+			name string
+			call func(Logger)
+			want string
+		}{
+			{name: "plain", call: func(l Logger) { lvl.plain(l, "message") }, want: `message`},
+			{name: "format", call: func(l Logger) { lvl.format(l, "%v + %v", "message 1", "message 2") },
+				want: `message 1 \+ message 2`},
+			{name: "fields", call: func(l Logger) { lvl.withFi(l, "message", "a", "b", 1, 2) },
+				want: `message: a "b", 1 "2"`},
+			{name: "no fields", call: func(l Logger) { lvl.withFi(l, "message") }, want: `message`},
+		}
+		for _, c := range calls {
+			t.Run(lvl.name+"/"+c.name, func(t *testing.T) {
+				wantRx := regexp.MustCompile(timeRx + ` ` + lvl.name + ` ` + c.want + `\n`)
+				if lvl.exits {
+					assertExits(t, func() { c.call(*New(TraceLevel, os.Stderr)) }, wantRx)
+					return
+				}
+				var buf bytes.Buffer
+				log := New(TraceLevel, &buf)
+				if lvl.panics {
+					assert.Panics(t, func() { c.call(*log) })
+				} else {
+					c.call(*log)
+				}
+				assert.Regexp(t, wantRx, buf.String())
+			})
+		}
+	}
 }
 
-func TestTracef(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(TraceLevel, &buf)
-	log.Tracef("%v + %v", "message 1", "message 2")
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` TRACE message 1 \+ message 2`), out)
-}
-
-func TestTraceFi(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(TraceLevel, &buf)
-	log.TraceFi("message", "a", "b", 1, 2)
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` TRACE message: a "b", 1 "2"`), out)
-}
-
-func TestDebug(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	log.Debug("message")
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message`), out)
-}
-
-func TestDebugf(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	log.Debugf("%v + %v", "message 1", "message 2")
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message 1 \+ message 2`), out)
-}
-
-func TestDebugFi(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	log.DebugFi("message", "a", "b", 1, 2)
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` DEBUG message: a "b", 1 "2"`), out)
-}
-
-func TestInfo(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	log.Info("message")
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` INFO message`), out)
-}
-
-func TestInfof(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	log.Infof("%v + %v", "message 1", "message 2")
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` INFO message 1 \+ message 2`), out)
-}
-
-func TestInfoFi(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	log.InfoFi("message", "a", "b", 1, 2)
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` INFO message: a "b", 1 "2"`), out)
-}
-
-func TestWarn(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	log.Warn("message")
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` WARN message`), out)
-}
-
-func TestWarnf(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	log.Warnf("%v + %v", "message 1", "message 2")
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` WARN message 1 \+ message 2`), out)
-}
-
-func TestWarnFi(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	log.WarnFi("message", "a", "b", 1, 2)
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` WARN message: a "b", 1 "2"`), out)
-}
-
-func TestError(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	log.Error("message")
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` ERROR message`), out)
-}
-
-func TestErrorf(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	log.Errorf("%v + %v", "message 1", "message 2")
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` ERROR message 1 \+ message 2`), out)
-}
-
-func TestErrorFi(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	log.ErrorFi("message", "a", "b", 1, 2)
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` ERROR message: a "b", 1 "2"`), out)
-}
-
-func TestFatal(t *testing.T) {
-	if os.Getenv("TestFatal") == "1" {
-		log := New(DebugLevel, os.Stderr)
-		log.Fatal("message")
+// assertExits runs `fn` in a new process of the current test and asserts it exits with code 255 and output matching
+// `wantRx`.
+func assertExits(t *testing.T, fn func(), wantRx *regexp.Regexp) {
+	t.Helper()
+	const env = "LOGGER_TEST_EXIT"
+	if os.Getenv(env) == "1" {
+		fn()
 		return
 	}
-	cmd := exec.Command(os.Args[0], "-test.run=^TestFatal$")
-	cmd.Env = append(os.Environ(), "TestFatal=1")
+	// Anchor every part of the name, as -test.run matches every part of the subtest name separately.
+	parts := strings.Split(t.Name(), "/")
+	for i, part := range parts {
+		parts[i] = "^" + regexp.QuoteMeta(part) + "$"
+	}
+	cmd := exec.Command(os.Args[0], "-test.run="+strings.Join(parts, "/"))
+	cmd.Env = append(os.Environ(), env+"=1")
 	out, err := cmd.CombinedOutput()
-	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-		assert.Exactly(t, 255, e.ExitCode())
-		assert.Regexp(t, regexp.MustCompile(timeRx+` FATAL message`), string(out))
-		return
+	var exitErr *exec.ExitError
+	if assert.ErrorAs(t, err, &exitErr, "should exit with error") {
+		assert.Exactly(t, 255, exitErr.ExitCode())
 	}
-	assert.Failf(t, "", "expected exec.ExitError, got '%v'", err)
-}
-
-func TestFatalf(t *testing.T) {
-	if os.Getenv("TestFatalf") == "1" {
-		log := New(DebugLevel, os.Stderr)
-		log.Fatalf("%v + %v", "message 1", "message 2")
-		return
-	}
-	cmd := exec.Command(os.Args[0], "-test.run=^TestFatalf$")
-	cmd.Env = append(os.Environ(), "TestFatalf=1")
-	out, err := cmd.CombinedOutput()
-	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-		assert.Exactly(t, 255, e.ExitCode())
-		assert.Regexp(t, regexp.MustCompile(timeRx+` FATAL message 1 \+ message 2`), string(out))
-		return
-	}
-	assert.Failf(t, "", "expected exec.ExitError, got '%v'", err)
-}
-
-func TestFatalFi(t *testing.T) {
-	if os.Getenv("TestFatalFi") == "1" {
-		log := New(DebugLevel, os.Stderr)
-		log.FatalFi("message", "a", "b", 1, 2)
-		return
-	}
-	cmd := exec.Command(os.Args[0], "-test.run=^TestFatalFi$")
-	cmd.Env = append(os.Environ(), "TestFatalFi=1")
-	out, err := cmd.CombinedOutput()
-	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-		assert.Exactly(t, 255, e.ExitCode())
-		assert.Regexp(t, regexp.MustCompile(timeRx+` FATAL message: a "b", 1 "2"`), string(out))
-		return
-	}
-	assert.Failf(t, "", "expected exec.ExitError, got '%v'", err)
-}
-
-func TestPanic(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	assert.Panics(t, func() { log.Panic("message") })
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` PANIC message`), out)
-}
-
-func TestPanicf(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	assert.Panics(t, func() { log.Panicf("%v + %v", "message 1", "message 2") })
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` PANIC message 1 \+ message 2`), out)
-}
-
-func TestPanicFi(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	assert.Panics(t, func() { log.PanicFi("message", "a", "b", 1, 2) })
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` PANIC message: a "b", 1 "2"`), out)
+	assert.Regexp(t, wantRx, string(out))
 }
 
 func TestAddFileWriter(t *testing.T) {
@@ -285,18 +155,4 @@ func TestAddFileWriter(t *testing.T) {
 	assert.Exactly(t, "value 3", entry.Field1)
 	assert.Exactly(t, 4, entry.Field2)
 	assert.Exactly(t, "message 2", entry.Message)
-}
-
-func TestPrint(t *testing.T) {
-	var buf bytes.Buffer
-	log := New(DebugLevel, &buf)
-	print(log.Logger.Info(), "message", nil)
-	out := buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` INFO message`), out)
-
-	buf.Reset()
-	log = New(DebugLevel, &buf)
-	print(log.Logger.Info(), "message", []any{"a", "b", 1, 2})
-	out = buf.String()
-	assert.Regexp(t, regexp.MustCompile(timeRx+` INFO message: a "b", 1 "2"`), out)
 }
