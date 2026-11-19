@@ -106,6 +106,7 @@ func main() {
 	mergeRepo := merge.NewRepo(log, cfg)
 
 	modifiedStreams := copier.MustDeep(astraCfg.Streams)
+	gid := astraCfg.GID
 	modifiedStreams = astraRepo.RemoveNamePrefixes(modifiedStreams)
 	modifiedStreams = astraRepo.Sort(modifiedStreams)
 	if cfg.Streams.Rename {
@@ -139,7 +140,7 @@ func main() {
 		modifiedStreams = astraRepo.SortInputs(modifiedStreams)
 	}
 	if cfg.Streams.AddNew {
-		modifiedStreams = mergeRepo.AddNewStreams(modifiedStreams, m3uChannels)
+		modifiedStreams, gid = mergeRepo.AddNewStreams(modifiedStreams, m3uChannels, gid)
 	}
 	if cfg.Streams.RemoveDeadInputs {
 		httpClient := network.NewHttpClient(cfg.Streams.InputRespTimeout)
@@ -186,7 +187,7 @@ func main() {
 	}
 	if sendChangesAllowed {
 		apiHandler.SetCategories(changedCatMap)
-		apiHandler.SetStreams(changedStreams)
+		apiHandler.SetStreams(changedStreams, gid)
 	}
 
 	log.Info("Done")

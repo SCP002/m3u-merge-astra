@@ -20,16 +20,18 @@ const (
 
 // Server is a fake astra control API, mimicing:
 //   - set-stream removes stream with requested ID if exists, then appends the passed stream object as is, unless it
-//     has "remove" field set to true. Object is stored verbatim, so its "id" field may differ from the requested one;
+//     has "remove" field set to true. Object is stored verbatim, so its "id" field may differ from the requested one.
+//     ID counter is set to requested "gid" unless it is not set or 0;
 //   - set-category replaces category at requested index with passed object as is, appends it if index is not set or
 //     removes category at index if object has "remove" field set to true;
-//   - empty lists are omitted from "load" response.
+//   - empty lists and unset ID counter are omitted from "load" response.
 type Server struct {
 	*httptest.Server
 	t          testing.TB
 	mu         sync.Mutex
 	streams    []jsontext.Value
 	categories []jsontext.Value
+	gid        int
 }
 
 // NewServer starts new fake astra control API with empty config, closed on `t` cleanup.
@@ -45,6 +47,7 @@ func NewServer(t testing.TB) *Server {
 // request represents any request to control API.
 type request struct {
 	Cmd      string         `json:"cmd"`
+	GID      int            `json:"gid"`
 	ID       jsontext.Value `json:"id"`
 	Stream   jsontext.Value `json:"stream"`
 	Category jsontext.Value `json:"category"`
@@ -87,6 +90,9 @@ func (s *Server) handleControl(w http.ResponseWriter, r *http.Request) {
 		if len(s.categories) > 0 {
 			cfg["categories"] = s.categories
 		}
+		if s.gid != 0 {
+			cfg["gid"] = s.gid
+		}
 		s.respond(w, cfg)
 	case "sessions":
 		s.respond(w, map[string]any{"sessions": []any{}})
@@ -115,6 +121,9 @@ func (s *Server) setStream(w http.ResponseWriter, req request) {
 	})
 	if !stream.Remove {
 		s.streams = append(s.streams, req.Stream)
+	}
+	if req.GID != 0 {
+		s.gid = req.GID
 	}
 	s.respond(w, map[string]string{"set-stream": "ok"})
 }

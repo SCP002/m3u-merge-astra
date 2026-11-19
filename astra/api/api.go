@@ -22,6 +22,7 @@ type loadReq struct {
 // setStreamReq represents request to set stream.
 type setStreamReq struct {
 	Cmd    string       `json:"cmd"`
+	GID    int          `json:"gid,omitzero"`
 	ID     string       `json:"id"`
 	Stream astra.Stream `json:"stream"`
 }
@@ -111,12 +112,12 @@ func (h handler) SetCategory(idx int, category astra.Category) error {
 	return nil
 }
 
-// SetStreams makes a requests to API setting `streams` synchronously.
-func (h handler) SetStreams(streams []astra.Stream) {
+// SetStreams makes a requests to API setting `streams` and ID counter `gid` synchronously.
+func (h handler) SetStreams(streams []astra.Stream, gid int) {
 	h.log.Info("Sending changed streams to astra")
 
 	for _, stream := range streams {
-		err := h.SetStream(stream.ID, stream)
+		err := h.SetStream(stream.ID, stream, gid)
 		if err == nil {
 			h.log.InfoFi("Successfully set stream", "ID", stream.ID, "name", stream.Name)
 		} else {
@@ -125,9 +126,9 @@ func (h handler) SetStreams(streams []astra.Stream) {
 	}
 }
 
-// SetStream makes a request to API setting stream with `id` to `stream`.
-func (h handler) SetStream(id string, stream astra.Stream) error {
-	respBytes, err := h.request("POST", "/control/", setStreamReq{Cmd: "set-stream", ID: id, Stream: stream})
+// SetStream makes a request to API setting stream with `id` to `stream` and ID counter to `gid` (unchanged if 0).
+func (h handler) SetStream(id string, stream astra.Stream, gid int) error {
+	respBytes, err := h.request("POST", "/control/", setStreamReq{Cmd: "set-stream", GID: gid, ID: id, Stream: stream})
 	if err != nil {
 		return err
 	}

@@ -3,8 +3,8 @@ package merge
 import (
 	"m3u-merge-astra/astra"
 	"m3u-merge-astra/m3u"
-	"m3u-merge-astra/util/rnd"
 	"m3u-merge-astra/util/slice/find"
+	"strconv"
 
 	"github.com/samber/lo"
 )
@@ -103,8 +103,9 @@ func (r repo) AddNewInputs(streams []astra.Stream, channels []m3u.Channel) (out 
 	return
 }
 
-// AddNewStreams returns `streams` with new streams generated from `channels` if no such found in `streams`.
-func (r repo) AddNewStreams(streams []astra.Stream, channels []m3u.Channel) []astra.Stream {
+// AddNewStreams returns `streams` with new streams generated from `channels` if no such found in `streams` and ID
+// counter `gid` advanced by generated IDs.
+func (r repo) AddNewStreams(streams []astra.Stream, channels []m3u.Channel, gid int) ([]astra.Stream, int) {
 	r.log.Info("Adding new streams")
 
 	astraRepo := astra.NewRepo(r.log, r.cfg)
@@ -114,26 +115,34 @@ func (r repo) AddNewStreams(streams []astra.Stream, channels []m3u.Channel) []as
 			continue
 		}
 		if !find.HasAnySimilar(r.cfg.General, streams, ch.Name) {
-			id := generateUID(streams)
+			var id string
+			id, gid = generateUID(streams, gid)
 			stream := astra.NewStream(r.cfg.Streams, id, ch.Name, ch.Group, []string{ch.URL})
 			r.log.InfoFi("Adding new stream", "ID", id, "name", ch.Name, "group", stream.FirstGroup(), "input", ch.URL)
 			streams = append(streams, stream)
 		}
 	}
 
-	return streams
+	return streams, gid
 }
 
-// generateUID returns 4 symbols long ID unique for `streams`.
-func generateUID(streams []astra.Stream) string {
+// defaultGID is initial ID counter value used by astra web interface if config has none ("a000" in base 36).
+const defaultGID = 466560
+
+// generateUID returns ID unique for `streams` and advanced ID counter `gid`, the same way as astra web interface does:
+// increments `gid` until its base 36 representation is not used as ID by any of `streams`.
+func generateUID(streams []astra.Stream, gid int) (string, int) {
+	if gid == 0 {
+		gid = defaultGID
+	}
 	for {
-		uid := rnd.String(4, false, true)
+		gid++
+		uid := strconv.FormatInt(int64(gid), 36)
 		duplicate := lo.ContainsBy(streams, func(s astra.Stream) bool {
 			return s.ID == uid
 		})
-		if duplicate {
-			continue
+		if !duplicate {
+			return uid, gid
 		}
-		return uid
 	}
 }

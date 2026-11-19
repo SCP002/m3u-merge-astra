@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"encoding/json/v2"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,7 +15,6 @@ import (
 	"m3u-merge-astra/cfg"
 	"m3u-merge-astra/util/logger"
 	"m3u-merge-astra/util/network"
-	"m3u-merge-astra/util/rnd"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/samber/lo"
@@ -122,7 +120,7 @@ func TestSetCategory(t *testing.T) {
 
 	// Set new category.
 	err := apiHandler.SetCategory(-1, astra.Category{
-		Name:   fmt.Sprintf("Category %v", rnd.String(4, false, true)),
+		Name:   "Category 1",
 		Groups: []astra.Group{{Name: "Group name 1"}, {Name: "Group name 2"}, {Name: "Group name 3"}},
 	})
 	assert.NoError(t, err)
@@ -133,7 +131,7 @@ func TestSetCategory(t *testing.T) {
 		Name:    "Name 1",
 		Enabled: true,
 		Type:    string(cfg.SPTS),
-	})
+	}, 0)
 	assert.NoError(t, err)
 
 	modifiedCategory := astra.Category{
@@ -164,12 +162,13 @@ func TestSetStreams(t *testing.T) {
 		{ID: "0002", Name: "Name 2", Type: string(cfg.SPTS)},
 		{ID: "0003", Name: "Name 3", Type: string(cfg.SPTS)},
 	}
-	apiHandler.SetStreams(streams)
+	apiHandler.SetStreams(streams, 466563)
 
 	// Check.
 	config, err := apiHandler.FetchCfg()
 	assert.NoError(t, err)
 	assert.Equal(t, streams, config.Streams)
+	assert.Exactly(t, 466563, config.GID)
 
 	// Test log output.
 	var out bytes.Buffer
@@ -179,7 +178,7 @@ func TestSetStreams(t *testing.T) {
 	streams = []astra.Stream{
 		{ID: "0000", Name: "Name 0", Type: string(cfg.SPTS)},
 	}
-	apiHandler.SetStreams(streams)
+	apiHandler.SetStreams(streams, 0)
 	assert.Contains(t, out.String(), `Successfully set stream: ID "0000", name "Name 0"`)
 	assert.NotContains(t, out.String(), "Failed")
 }
@@ -191,7 +190,7 @@ func TestSetStream(t *testing.T) {
 	apiHandler := NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 
 	// Set.
-	streamName := fmt.Sprintf("Stream %v", rnd.String(4, false, true))
+	streamName := "Stream 1"
 	err := apiHandler.SetStream("0000", astra.Stream{
 		Enabled: true,
 		ID:      "0000",
@@ -199,7 +198,7 @@ func TestSetStream(t *testing.T) {
 		Groups:  map[string]string{"Category 1": "Group 1"},
 		Name:    streamName,
 		Type:    string(cfg.SPTS),
-	})
+	}, 466561)
 	assert.NoError(t, err)
 
 	// Change.
@@ -209,7 +208,7 @@ func TestSetStream(t *testing.T) {
 		Inputs:  []string{"http://xxx"},
 		Name:    streamName,
 		Type:    string(cfg.SPTS),
-	})
+	}, 0)
 	assert.NoError(t, err)
 
 	// Check.
@@ -218,6 +217,7 @@ func TestSetStream(t *testing.T) {
 	assert.True(t, lo.ContainsBy(cfg.Streams, func(s astra.Stream) bool {
 		return s.ID == "0000" && s.Name == streamName && cmp.Equal(s.Inputs, []string{"http://xxx"})
 	}))
+	assert.Exactly(t, 466561, cfg.GID, "should not change if 0 is passed")
 }
 
 func TestFetchCfg(t *testing.T) {
@@ -225,7 +225,7 @@ func TestFetchCfg(t *testing.T) {
 	httpClient := network.NewHttpClient(time.Second * 3)
 	addr := apitest.NewServer(t).URL
 	apiHandler := NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
-	err := apiHandler.SetStream("0001", astra.Stream{ID: "0001", Name: "Name 1", Type: string(cfg.SPTS)})
+	err := apiHandler.SetStream("0001", astra.Stream{ID: "0001", Name: "Name 1", Type: string(cfg.SPTS)}, 0)
 	require.NoError(t, err)
 
 	astraCfg, err := apiHandler.FetchCfg()
@@ -265,7 +265,7 @@ func TestSetErrors(t *testing.T) {
 			defer srv.Close()
 			apiHandler := NewHandler(log, httpClient, srv.URL, apitest.User, apitest.Password)
 
-			err := apiHandler.SetStream("0001", astra.Stream{ID: "0001"})
+			err := apiHandler.SetStream("0001", astra.Stream{ID: "0001"}, 0)
 			assert.ErrorContains(t, err, tt.wantErr)
 
 			err = apiHandler.SetCategory(-1, astra.Category{Name: "Category 1"})

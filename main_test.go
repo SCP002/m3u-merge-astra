@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -57,7 +58,7 @@ func TestMainFunc(t *testing.T) {
 			Inputs:  []string{"http://url/2"},
 			Groups:  map[string]string{"Category 1": "Group 2"},
 		},
-	})
+	}, 0)
 
 	// Run program.
 	os.Args = []string{"", "-n", "-l", "2", "-c", programCfgPath, "-m", m3uPath, "-a", astraAddr,
@@ -74,9 +75,13 @@ func TestMainFunc(t *testing.T) {
 	}
 	assert.Exactly(t, expectedCategories, astraCfg.Categories)
 
-	// Checking fields separately as new streams contains random ID.
+	ids := lo.Map(astraCfg.Streams, func(s astra.Stream, _ int) string {
+		return s.ID
+	})
+	assert.Exactly(t, []string{"0001", "0002", "a001", "a002"}, ids)
 	assert.Exactly(t, "Channel 1", astraCfg.Streams[0].Name)
 	assert.Exactly(t, "Channel 2", astraCfg.Streams[1].Name)
 	assert.Exactly(t, "_ADDED: Channel 3", astraCfg.Streams[2].Name)
 	assert.Exactly(t, "_ADDED: Channel 4", astraCfg.Streams[3].Name)
+	assert.Exactly(t, 466562, astraCfg.GID)
 }

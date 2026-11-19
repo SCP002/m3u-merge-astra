@@ -15,6 +15,7 @@ import (
 type Cfg struct {
 	Categories []Category `json:"categories"`
 	Streams    []Stream   `json:"make_stream"`
+	GID        int        `json:"gid"` // Counter used to generate IDs.
 }
 
 // Category represents category for groups of astra streams.

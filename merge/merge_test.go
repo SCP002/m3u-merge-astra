@@ -2,17 +2,14 @@ package merge
 
 import (
 	"bytes"
-	"fmt"
 	"m3u-merge-astra/astra"
 	"m3u-merge-astra/cfg"
 	"m3u-merge-astra/m3u"
 	"m3u-merge-astra/util/copier"
 	"regexp"
 	"strconv"
-	"strings"
 	"testing"
 
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -403,7 +400,7 @@ func TestAddNewStreams(t *testing.T) {
 
 	r.cfg.Streams.AddNewWithKnownInputs = true
 	r.cfg.Streams.AddGroupsToNew = false
-	sl2 := r.AddNewStreams(sl1, cl1)
+	sl2, gid := r.AddNewStreams(sl1, cl1, 0)
 
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
@@ -419,17 +416,18 @@ func TestAddNewStreams(t *testing.T) {
 		DisabledInputs: make([]string, 0),
 		Enabled:        r.cfg.Streams.MakeNewEnabled,
 		HTTPKeepActive: strconv.Itoa(r.cfg.Streams.NewKeepActive),
-		ID:             sl2[2].ID,
+		ID:             "a001",
 		Inputs:         []string{"http://some/url/2"},
 		Name:           "Other name B",
 		Type:           string(r.cfg.Streams.NewType),
 		MarkAdded:      true,
 	}
 	assert.Exactly(t, expected, sl2[2])
+	assert.Exactly(t, 466561, gid)
 
 	r.cfg.Streams.AddNewWithKnownInputs = true
 	r.cfg.Streams.AddGroupsToNew = true
-	sl2 = r.AddNewStreams(sl1, cl1)
+	sl2, gid = r.AddNewStreams(sl1, cl1, gid)
 
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
@@ -441,18 +439,20 @@ func TestAddNewStreams(t *testing.T) {
 
 	assert.Exactly(t, sl1[1], sl2[1])
 
-	expected.ID = sl2[2].ID
+	expected.ID = "a002"
 	expected.Groups = map[string]string{r.cfg.Streams.GroupsCategoryForNew: "Group"}
 	assert.Exactly(t, expected, sl2[2])
+	assert.Exactly(t, 466562, gid)
 
 	sl1 = []astra.Stream{{Name: "Other name", Inputs: []string{"http://some/url"}}}
 	cl1 = []m3u.Channel{
 		{Name: "Other name", URL: "http://some/url"},
 		{Name: "Other name", URL: "http://some/url/2"},
 	}
-	sl2 = r.AddNewStreams(sl1, cl1)
+	sl2, gid = r.AddNewStreams(sl1, cl1, 466562)
 
 	assert.Exactly(t, sl1, sl2, "should not change as M3U channels does not contain any new name")
+	assert.Exactly(t, 466562, gid, "should not change as no IDs generated")
 
 	sl1 = []astra.Stream{
 		{Name: "Known name", Inputs: []string{"http://some/url#a"}},
@@ -466,7 +466,7 @@ func TestAddNewStreams(t *testing.T) {
 	cl1Original = copier.TestDeep(t, cl1)
 
 	r.cfg.Streams.AddNewWithKnownInputs = false
-	sl2 = r.AddNewStreams(sl1, cl1)
+	sl2, _ = r.AddNewStreams(sl1, cl1, 0)
 
 	assert.NotSame(t, &sl1, &sl2)
 	assert.Exactly(t, sl1Original, sl1)
@@ -484,29 +484,30 @@ func TestAddNewStreams(t *testing.T) {
 
 	cl1 = []m3u.Channel{{Name: "Name 1", Group: "Grp", URL: "http://url/1"}}
 
-	sl2 = r.AddNewStreams(sl1, cl1)
-	assert.Contains(t, out.String(), fmt.Sprintf(`Adding new stream: ID "%v", name "Name 1", group "All: Grp", `+
-		`input "http://url/1"`, sl2[0].ID))
+	_, _ = r.AddNewStreams(sl1, cl1, 0)
+	assert.Contains(t, out.String(), `Adding new stream: ID "a001", name "Name 1", group "All: Grp", `+
+		`input "http://url/1"`)
 }
 
 func TestGenerateUID(t *testing.T) {
-	sl := []astra.Stream{}
+	uid, gid := generateUID(nil, 0)
+	assert.Exactly(t, "a001", uid, "should start from default counter if not set")
+	assert.Exactly(t, 466561, gid)
 
-	for i := 0; i < 10000; i++ {
-		uid := generateUID(sl)
-		// Check length.
-		assert.Len(t, uid, 4)
-		// Check if not uppercase.
-		hasUpperCase := strings.ContainsAny(uid, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-		assert.False(t, hasUpperCase)
-		// Check if unique.
-		contains := lo.ContainsBy(sl, func(s astra.Stream) bool {
-			return s.ID == uid
-		})
-		if contains {
-			assert.FailNow(t, "ID should be unique")
-		}
-		// Append.
-		sl = append(sl, astra.Stream{ID: uid})
-	}
+	uid, gid = generateUID(nil, gid)
+	assert.Exactly(t, "a002", uid)
+	assert.Exactly(t, 466562, gid)
+
+	sl := []astra.Stream{{ID: "a003"}, {ID: "a004"}, {ID: "a006"}}
+	uid, gid = generateUID(sl, gid)
+	assert.Exactly(t, "a005", uid, "should skip IDs used by streams")
+	assert.Exactly(t, 466565, gid)
+
+	uid, gid = generateUID(nil, 1679615) // "zzzz".
+	assert.Exactly(t, "10000", uid)
+	assert.Exactly(t, 1679616, gid)
+
+	uid, gid = generateUID(nil, 35)
+	assert.Exactly(t, "10", uid)
+	assert.Exactly(t, 36, gid)
 }
