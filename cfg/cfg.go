@@ -427,6 +427,18 @@ func Init(log *logger.Logger, cfgFilePath string) (Root, bool, error) {
 		return nil
 	}
 
+	addNewOptions := func() error {
+		modified := false
+		// Add new options here with addNewOption(), for example:
+		//
+		// path := "$.streams.new_option"
+		// modified = addNewOption(log, &root.Streams.NewOption, 1, path, commentMap, defComments) || modified
+		if modified {
+			return errors.Wrap(writeConfig(root, commentMap), "Write config")
+		}
+		return nil
+	}
+
 	// Read config or create a new if not exist.
 	if err := readConfig(); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -444,12 +456,32 @@ func Init(log *logger.Logger, cfgFilePath string) (Root, bool, error) {
 		return root, false, errors.Wrap(err, "Validate config")
 	}
 
+	if err := addNewOptions(); err != nil {
+		return root, false, errors.Wrap(err, "Add new options")
+	}
+
 	// Build simple aliases list.
 	if root.General.NameAliases {
 		root.General.SimpleNameAliasList = root.General.SimplifyAliases()
 	}
 
 	return root, false, nil
+}
+
+// addNewOption sets option `opt` to `defVal` and adds its default comment from `defCommentMap` by `path` to
+// `commentMap` if the option is missing in config. Returns true if the option was added.
+//
+// Option must be a pointer to tell a missing value from zero.
+func addNewOption[T any](log *logger.Logger, opt **T, defVal T, path string,
+	commentMap, defCommentMap yaml.CommentMap,
+) bool {
+	if *opt != nil {
+		return false
+	}
+	log.InfoFi("Adding new config option", "path", path, "value", defVal)
+	*opt = &defVal
+	commentMap[path] = defCommentMap[path]
+	return true
 }
 
 // DefFullTranslitMap returns default full transliteration map.

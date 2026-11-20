@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/errors"
+	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -100,4 +101,25 @@ func TestInitSimplifyAliases(t *testing.T) {
 	assert.Exactly(t, expected, actual.General.SimpleNameAliasList)
 	assert.False(t, isNewCfg)
 	assert.NoError(t, err)
+}
+
+func TestAddNewOption(t *testing.T) {
+	log := logger.New(logger.DebugLevel, os.Stderr)
+	path := "$.streams.new_option"
+	defComment := yaml.HeadComment("", " New option.")
+	defCommentMap := yaml.CommentMap{path: []*yaml.Comment{defComment}}
+
+	// Missing option.
+	var opt *int
+	commentMap := yaml.CommentMap{}
+	assert.True(t, addNewOption(log, &opt, 5, path, commentMap, defCommentMap), "should add missing option")
+	assert.Exactly(t, 5, *opt, "should set default value")
+	assert.Exactly(t, defCommentMap, commentMap, "should add default comment")
+
+	// Present option, even with zero value.
+	opt = new(0)
+	commentMap = yaml.CommentMap{}
+	assert.False(t, addNewOption(log, &opt, 5, path, commentMap, defCommentMap), "should not add present option")
+	assert.Exactly(t, 0, *opt, "should keep value")
+	assert.Empty(t, commentMap, "should not add comment")
 }
