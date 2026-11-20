@@ -74,10 +74,9 @@ type Analyzer interface {
 
 // analyzer represents astra analyzer client.
 type analyzer struct {
-	url          string
-	dialer       *websocket.Dialer
-	log          *logger.Logger
-	closeTimeout time.Duration // How long to wait for the server to close the connection after each check.
+	url    string
+	dialer *websocket.Dialer
+	log    *logger.Logger
 }
 
 // New returns new configured astra analyzer client which connects to `address` in format of 'host:port' with
@@ -91,8 +90,7 @@ func New(log *logger.Logger, address string, handshakeTimeout time.Duration) *an
 			Proxy:            http.ProxyFromEnvironment,
 			HandshakeTimeout: handshakeTimeout,
 		},
-		log:          log,
-		closeTimeout: time.Second,
+		log: log,
 	}
 }
 
@@ -182,7 +180,7 @@ func (a analyzer) Check(watchTime time.Duration, maxAttempts int, urlToCheck str
 				}
 			case <-ctx.Done():
 				// Deadline exceeded.
-				// Send stop request.
+				// Send stop request, the connection is closed on return.
 				stopReqBytes, err := json.Marshal(stopReq{Cmd: "stop"})
 				if err != nil {
 					return Result{}, errors.Wrap(err, "Encode stop request")
@@ -190,26 +188,6 @@ func (a analyzer) Check(watchTime time.Duration, maxAttempts int, urlToCheck str
 				err = conn.WriteMessage(websocket.TextMessage, stopReqBytes)
 				if err != nil {
 					return Result{}, errors.Wrap(err, "Send stop request")
-				}
-				// Send close message.
-				closeMsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
-				err = conn.WriteMessage(websocket.CloseMessage, closeMsg)
-				if err != nil {
-					return Result{}, errors.Wrap(err, "Send close message")
-				}
-				// Wait (with timeout) for the server to close the connection (deferred close), discarding responses
-				// still in flight.
-				closeTimeout := time.After(a.closeTimeout)
-			waitClose:
-				for {
-					select {
-					case <-readRespCh:
-					case err := <-readErrCh:
-						_ = err // Connection is closed, as expected.
-						break waitClose
-					case <-closeTimeout:
-						break waitClose
-					}
 				}
 				// Calculate averages and return the result.
 				if totalResponsesCount != 0 {

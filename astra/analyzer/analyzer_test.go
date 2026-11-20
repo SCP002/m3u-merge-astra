@@ -29,12 +29,10 @@ func TestNew(t *testing.T) {
 	assert.Exactly(t, log, analyzer.log)
 	assert.Exactly(t, "ws://127.0.0.1/api/", analyzer.url)
 	assert.Exactly(t, time.Second, analyzer.dialer.HandshakeTimeout)
-	assert.Exactly(t, time.Second, analyzer.closeTimeout)
 }
 
 // newHandlerServer starts analyzer server closed on `t` cleanup, which runs `handle` for every connection and closes
-// the connection afterwards. Like real analyzer, it does not reply to close message, so `handle` can keep sending
-// responses after it.
+// the connection afterwards.
 func newHandlerServer(t *testing.T, handle func(conn *websocket.Conn)) *httptest.Server {
 	upgrader := websocket.Upgrader{}
 	mux := http.NewServeMux()
@@ -44,7 +42,6 @@ func newHandlerServer(t *testing.T, handle func(conn *websocket.Conn)) *httptest
 			return
 		}
 		defer func() { _ = conn.Close() }()
-		conn.SetCloseHandler(func(int, string) error { return nil })
 		handle(conn)
 	})
 	server := httptest.NewServer(mux)
@@ -55,7 +52,7 @@ func newHandlerServer(t *testing.T, handle func(conn *websocket.Conn)) *httptest
 // fakeServer emulates astra analyzer websocket API (astra --analyze).
 //
 // After start request it periodically sends a message produced by `respond` for requested address.
-// Like real analyzer, it ignores close message and keeps the connection open until the client closes it.
+// Like real analyzer, it keeps the connection open until the client closes it.
 type fakeServer struct {
 	*httptest.Server
 	respond func(address string) []byte
@@ -77,21 +74,19 @@ func newFakeServer(t *testing.T, respond func(address string) []byte) *fakeServe
 		s.starts[req.Address]++
 		s.mu.Unlock()
 
-		// Read stop request and close message.
-		stopped := make(chan struct{})
+		// Read stop request until the client closes the connection.
 		closed := make(chan struct{})
 		go func() {
 			defer close(closed)
 			for {
 				_, msg, err := conn.ReadMessage()
 				if err != nil {
-					return // Close message or broken connection.
+					return
 				}
 				if strings.Contains(string(msg), `"stop"`) {
 					s.mu.Lock()
 					s.stops[req.Address]++
 					s.mu.Unlock()
-					close(stopped)
 				}
 			}
 		}()
@@ -105,11 +100,6 @@ func newFakeServer(t *testing.T, respond func(address string) []byte) *fakeServe
 				if conn.WriteMessage(websocket.TextMessage, s.respond(req.Address)) != nil {
 					return
 				}
-			case <-stopped:
-				<-closed
-				// Wait for the client to close the connection.
-				_, _ = conn.NetConn().Read(make([]byte, 1))
-				return
 			case <-closed:
 				return
 			}
@@ -128,6 +118,15 @@ func (s *fakeServer) counts(address string) (starts, stops int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.starts[address], s.stops[address]
+}
+
+// assertStops asserts that the server soon gets `expected` amount of stop requests for `address`, as client does not
+// wait for the server to handle it.
+func (s *fakeServer) assertStops(t *testing.T, address string, expected int, msgAndArgs ...any) {
+	assert.EventuallyWithT(t, func(c *assert.CollectT) {
+		_, stops := s.counts(address)
+		assert.Exactly(c, expected, stops)
+	}, time.Second, time.Millisecond*10, msgAndArgs...)
 }
 
 func TestCheck(t *testing.T) {
@@ -154,7 +153,6 @@ func TestCheck(t *testing.T) {
 
 	// Checks run in parallel against the same analyzer.
 	analyzer := New(log, server.addr(), time.Second)
-	analyzer.closeTimeout = time.Millisecond * 50
 	t.Run("checks", func(t *testing.T) {
 		t.Run("alive", func(t *testing.T) {
 			t.Parallel()
@@ -163,9 +161,9 @@ func TestCheck(t *testing.T) {
 			expected := Result{Bitrate: 1500, CCErrors: 3, PCRErrors: 2, PESErrors: 1, Scrambled: true,
 				HasAudio: true, HasVideo: true}
 			assert.Exactly(t, expected, result)
-			starts, stops := server.counts(aliveURL)
+			starts, _ := server.counts(aliveURL)
 			assert.Exactly(t, 1, starts, "should stop trying after getting bitrate")
-			assert.Exactly(t, 1, stops, "should send stop request")
+			server.assertStops(t, aliveURL, 1, "should send stop request")
 		})
 
 		t.Run("dead", func(t *testing.T) {
@@ -173,9 +171,9 @@ func TestCheck(t *testing.T) {
 			result, err := analyzer.Check(watchTime, maxAttempts, deadURL)
 			require.NoError(t, err, "dead input is not an error, bitrate should be checked instead")
 			assert.Exactly(t, Result{}, result)
-			starts, stops := server.counts(deadURL)
+			starts, _ := server.counts(deadURL)
 			assert.Exactly(t, maxAttempts, starts, "should retry while bitrate is 0")
-			assert.Exactly(t, maxAttempts, stops)
+			server.assertStops(t, deadURL, maxAttempts)
 		})
 
 		t.Run("invalid response", func(t *testing.T) {
@@ -203,44 +201,16 @@ func TestCheck(t *testing.T) {
 }
 
 func TestCheckInFlightResponses(t *testing.T) {
-	log := logger.New(logger.DebugLevel, os.Stderr)
-	response := []byte(`{"total": {"bitrate": 1}}`)
-	watchTime := time.Millisecond
-
-	t.Run("should be discarded to notice that server closed the connection", func(t *testing.T) {
-		// Responses are sent after close message, when the client no longer collects them.
-		server := newHandlerServer(t, func(conn *websocket.Conn) {
-			for {
-				if _, _, err := conn.ReadMessage(); err != nil {
-					break
-				}
-			}
-			for range 100 {
-				_ = conn.WriteMessage(websocket.TextMessage, response)
-			}
-		})
-
-		analyzer := New(log, server.Listener.Addr().String(), time.Second)
-		analyzer.closeTimeout = time.Second * 5
-		start := time.Now()
-		_, err := analyzer.Check(watchTime, 1, "http://url")
-		assert.NoError(t, err)
-		assert.Less(t, time.Since(start), analyzer.closeTimeout, "should not wait for close timeout")
+	// Responses are sent non-stop, so reader always has the next one when the client stops collecting them.
+	server := newHandlerServer(t, func(conn *websocket.Conn) {
+		for conn.WriteMessage(websocket.TextMessage, []byte(`{"total": {"bitrate": 1}}`)) == nil {
+		}
 	})
 
-	t.Run("should not block the reader after close timeout", func(t *testing.T) {
-		// Responses are sent non-stop, so reader always has the next one when the client stops collecting them.
-		server := newHandlerServer(t, func(conn *websocket.Conn) {
-			for conn.WriteMessage(websocket.TextMessage, response) == nil {
-			}
-		})
-
-		analyzer := New(log, server.Listener.Addr().String(), time.Second)
-		analyzer.closeTimeout = time.Millisecond
-		// Blocked reader is reported by goleak in TestMain.
-		_, err := analyzer.Check(watchTime, 1, "http://url")
-		assert.NoError(t, err)
-	})
+	analyzer := New(logger.New(logger.DebugLevel, os.Stderr), server.Listener.Addr().String(), time.Second)
+	// Blocked reader is reported by goleak in TestMain.
+	_, err := analyzer.Check(time.Millisecond, 1, "http://url")
+	assert.NoError(t, err)
 }
 
 func TestFakeCheck(t *testing.T) {
