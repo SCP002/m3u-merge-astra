@@ -125,9 +125,9 @@ func (p Processor) RemoveBlocked(channels []Channel) (out []Channel) {
 		if p.cfg.General.NameAliases {
 			names = getAliases(ch.Name)
 		}
-		reject := slice.AnyRxMatchAny(p.cfg.M3U.ChannNameBlacklist, names...) ||
-			slice.AnyRxMatch(p.cfg.M3U.ChannGroupBlacklist, ch.Group) ||
-			slice.AnyRxMatch(p.cfg.M3U.ChannURLBlacklist, ch.URL)
+		reject := slice.AnyRxMatchAny(p.log, p.cfg.M3U.ChannNameBlacklist, names...) ||
+			slice.AnyRxMatch(p.log, p.cfg.M3U.ChannGroupBlacklist, ch.Group) ||
+			slice.AnyRxMatch(p.log, p.cfg.M3U.ChannURLBlacklist, ch.URL)
 		if reject {
 			p.log.InfoFi("Removing blocked channel", "name", ch.Name, "group", ch.Group, "URL", ch.URL)
 		}

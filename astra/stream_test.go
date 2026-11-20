@@ -24,7 +24,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m)
+	// Clock of regexp2 match timeouts runs in background for a while after matching and stops by itself.
+	goleak.VerifyTestMain(m, goleak.IgnoreAnyFunction("github.com/dlclark/regexp2.runClock"))
 }
 
 func TestNewStream(t *testing.T) {
@@ -182,7 +183,7 @@ func TestKnownInputs(t *testing.T) {
 	}
 
 	s := Stream{Inputs: []string{"http://known/input/2#a", "http://other/input", "http://known/input/1"}}
-	ki := s.KnownInputs(config)
+	ki := s.KnownInputs(newDefProcessor().log, config)
 
 	expected := []string{"http://known/input/2#a", "http://known/input/1"}
 	assert.Exactly(t, expected, ki)
@@ -341,7 +342,7 @@ func TestDisableAllButOneInputByRx(t *testing.T) {
 	s1Original := copier.MustDeep(s1)
 
 	disabled := []string{}
-	s2 := s1.disableAllButOneInputByRx(p.cfg.Streams, func(input string) {
+	s2 := s1.disableAllButOneInputByRx(p.log, p.cfg.Streams, func(input string) {
 		disabled = append(disabled, input)
 	})
 	assert.Exactly(t, s1Original, s1)
@@ -368,7 +369,7 @@ func TestDisableAllButOneInputByRx(t *testing.T) {
 	s1Original = copier.MustDeep(s1)
 
 	disabled = []string{}
-	s2 = s1.disableAllButOneInputByRx(p.cfg.Streams, func(input string) {
+	s2 = s1.disableAllButOneInputByRx(p.log, p.cfg.Streams, func(input string) {
 		disabled = append(disabled, input)
 	})
 	assert.Exactly(t, s1Original, s1)
@@ -419,7 +420,7 @@ func TestRemoveBlockedInputs(t *testing.T) {
 	s1Original := copier.MustDeep(s1)
 
 	removed := []string{}
-	s2 := s1.removeBlockedInputs(cfg, func(input string) {
+	s2 := s1.removeBlockedInputs(newDefProcessor().log, cfg, func(input string) {
 		removed = append(removed, input)
 	})
 

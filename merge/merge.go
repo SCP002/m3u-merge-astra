@@ -62,7 +62,7 @@ func (p Processor) RemoveInputsByUpdateMap(streams []astra.Stream, channels []m3
 
 	for _, s := range streams {
 		similarChannels := find.GetSimilar(p.cfg.General, channels, s.Name)
-		for _, knownInp := range s.KnownInputs(p.cfg.Streams) {
+		for _, knownInp := range s.KnownInputs(p.log, p.cfg.Streams) {
 			if !m3u.HasURL(p.log, similarChannels, knownInp, false) {
 				s = s.RemoveInputsCb(knownInp, func() {
 					p.log.InfoFi("Removing absent input from stream according the update map", "ID", s.ID,

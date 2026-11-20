@@ -18,6 +18,8 @@ import (
 func init() {
 	// Decode regular expressions in RE2 compatibility mode, as they were used with regexp package before.
 	regexp2.DefaultUnmarshalOptions = regexp2.RE2
+	// Stop matching which takes too long, such as with catastrophic backtracking.
+	regexp2.DefaultMatchTimeout = time.Second
 
 	// Encode regular expressions as strings of their patterns.
 	yaml.RegisterCustomMarshaler(func(rx *regexp2.Regexp) ([]byte, error) {

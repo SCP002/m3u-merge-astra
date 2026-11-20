@@ -90,7 +90,7 @@ func (s Stream) FirstGroup() string {
 func (s Stream) UpdateInput(log *logger.Logger, cfg cfg.Streams, newURL string, callback func(string)) (Stream, bool) {
 	for inpIdx, oldURL := range s.Inputs {
 		for _, updRec := range cfg.InputUpdateMap {
-			if slice.RxMatch(updRec.From, oldURL) && slice.RxMatch(updRec.To, newURL) {
+			if slice.RxMatch(log, updRec.From, oldURL) && slice.RxMatch(log, updRec.To, newURL) {
 				// Append old hash to new URL.
 				if cfg.KeepInputHash {
 					oldHash, err := urlUtil.GetHash(oldURL)
@@ -135,11 +135,11 @@ func (s Stream) AddInput(url string) Stream {
 	return s
 }
 
-// KnownInputs returns all inputs matching InputUpdateMap.From expression from `config`.
-func (s Stream) KnownInputs(config cfg.Streams) []string {
+// KnownInputs returns all inputs matching InputUpdateMap.From expression from `config`, logging to `log`.
+func (s Stream) KnownInputs(log *logger.Logger, config cfg.Streams) []string {
 	return lo.Filter(s.Inputs, func(inp string, _ int) bool {
 		return lo.ContainsBy(config.InputUpdateMap, func(updRec cfg.UpdateRecord) bool {
-			return slice.RxMatch(updRec.From, inp)
+			return slice.RxMatch(log, updRec.From, inp)
 		})
 	})
 }
@@ -193,7 +193,7 @@ func (s Stream) removeDuplicatedInputsByRx(log *logger.Logger, cfg cfg.Streams, 
 
 	for _, rx := range cfg.RemoveDuplicatedInputsByRxList {
 		for _, inp := range s.Inputs {
-			match, _ := rx.FindStringMatch(inp) // Error is returned only on timeout, which is disabled by default.
+			match := slice.RxFindMatch(log, rx, inp)
 			if match == nil {
 				log.DebugFi("Found no matches", "regexp", rx.String(), "for input", inp)
 				continue
@@ -215,10 +215,10 @@ func (s Stream) removeDuplicatedInputsByRx(log *logger.Logger, cfg cfg.Streams, 
 // expression defined in config.
 //
 // Runs `callback` for every disabled input.
-func (s Stream) disableAllButOneInputByRx(cfg cfg.Streams, callback func(string)) Stream {
+func (s Stream) disableAllButOneInputByRx(log *logger.Logger, cfg cfg.Streams, callback func(string)) Stream {
 	for _, rx := range cfg.DisableAllButOneInputByRxList {
 		for _, inp := range s.Inputs {
-			if slice.RxMatch(rx, inp) {
+			if slice.RxMatch(log, rx, inp) {
 				inputsToDisable := slice.RemoveFirst(s.Inputs, inp)
 				iter.ForEach(inputsToDisable, callback)
 				s.DisabledInputs = append(slices.Clip(s.DisabledInputs), inputsToDisable...)
@@ -243,9 +243,9 @@ func (s Stream) removeDisabledInputs(callback func(string)) Stream {
 }
 
 // removeBlockedInputs removes blocked inputs from stream, running `callback` for every removed input.
-func (s Stream) removeBlockedInputs(cfg cfg.Streams, callback func(string)) Stream {
+func (s Stream) removeBlockedInputs(log *logger.Logger, cfg cfg.Streams, callback func(string)) Stream {
 	rejectFn := func(input string, _ int) bool {
-		reject := slice.AnyRxMatch(cfg.InputBlacklist, input)
+		reject := slice.AnyRxMatch(log, cfg.InputBlacklist, input)
 		if reject {
 			callback(input)
 		}
@@ -329,7 +329,7 @@ func (p Processor) RemoveBlockedInputs(streams []Stream) (out []Stream) {
 	p.log.Info("Removing blocked inputs from streams")
 
 	for _, s := range streams {
-		out = append(out, s.removeBlockedInputs(p.cfg.Streams, func(input string) {
+		out = append(out, s.removeBlockedInputs(p.log, p.cfg.Streams, func(input string) {
 			p.log.InfoFi("Removing blocked input from stream", "ID", s.ID, "name", s.Name, "group", s.FirstGroup(),
 				"input", input)
 		}))
@@ -422,8 +422,8 @@ func (p Processor) SortInputs(streams []Stream) (out []Stream) {
 
 			for weight, rx := range p.cfg.Streams.InputWeightToTypeMap {
 				// Assign weight from map if match found.
-				leftInpWeight = lo.Ternary(slice.RxMatch(rx, s.Inputs[i]), weight, leftInpWeight)
-				rightInpWeight = lo.Ternary(slice.RxMatch(rx, s.Inputs[j]), weight, rightInpWeight)
+				leftInpWeight = lo.Ternary(slice.RxMatch(p.log, rx, s.Inputs[i]), weight, leftInpWeight)
+				rightInpWeight = lo.Ternary(slice.RxMatch(p.log, rx, s.Inputs[j]), weight, rightInpWeight)
 			}
 
 			return leftInpWeight < rightInpWeight
@@ -463,7 +463,7 @@ func (p Processor) AddHashes(streams []Stream) (out []Stream) {
 		for inpIdx, inp := range s.Inputs {
 			// By inputs.
 			for _, rule := range p.cfg.Streams.InputToInputHashMap {
-				if slice.RxMatch(rule.By, inp) {
+				if slice.RxMatch(p.log, rule.By, inp) {
 					var err error
 					inp, changed, err = urlUtil.AddHash(rule.Hash, inp)
 					if err != nil {
@@ -477,7 +477,7 @@ func (p Processor) AddHashes(streams []Stream) (out []Stream) {
 			}
 			// By name.
 			for _, rule := range p.cfg.Streams.NameToInputHashMap {
-				if slice.RxMatch(rule.By, s.Name) {
+				if slice.RxMatch(p.log, rule.By, s.Name) {
 					var err error
 					inp, changed, err = urlUtil.AddHash(rule.Hash, inp)
 					if err != nil {
@@ -491,7 +491,7 @@ func (p Processor) AddHashes(streams []Stream) (out []Stream) {
 			}
 			// By group.
 			for _, rule := range p.cfg.Streams.GroupToInputHashMap {
-				if slice.RxMatch(rule.By, s.FirstGroup()) {
+				if slice.RxMatch(p.log, rule.By, s.FirstGroup()) {
 					var err error
 					inp, changed, err = urlUtil.AddHash(rule.Hash, inp)
 					if err != nil {
@@ -516,7 +516,7 @@ func (p Processor) DisableAllButOneInputByRx(streams []Stream) (out []Stream) {
 	p.log.Info("Disabling all but one input per stream by regular expressions")
 
 	for _, s := range streams {
-		out = append(out, s.disableAllButOneInputByRx(p.cfg.Streams, func(input string) {
+		out = append(out, s.disableAllButOneInputByRx(p.log, p.cfg.Streams, func(input string) {
 			p.log.InfoFi("Disabling other input per stream by regular expressions", "ID", s.ID, "name", s.Name,
 				"group", s.FirstGroup(), "input", input)
 		}))
@@ -545,7 +545,7 @@ func (p Processor) SetKeepActive(streams []Stream) (out []Stream) {
 	for _, s := range streams {
 		// By inputs.
 		for _, rule := range p.cfg.Streams.InputToKeepActiveMap {
-			if slice.RxMatchAny(rule.By, s.Inputs...) {
+			if slice.RxMatchAny(p.log, rule.By, s.Inputs...) {
 				keepActiveStr := strconv.Itoa(rule.KeepActive)
 				if s.HTTPKeepActive != keepActiveStr {
 					p.log.InfoFi("Setting keep active on stream", "ID", s.ID, "name", s.Name, "group", s.FirstGroup(),
@@ -557,7 +557,7 @@ func (p Processor) SetKeepActive(streams []Stream) (out []Stream) {
 		}
 		// By name.
 		for _, rule := range p.cfg.Streams.NameToKeepActiveMap {
-			if slice.RxMatch(rule.By, s.Name) {
+			if slice.RxMatch(p.log, rule.By, s.Name) {
 				keepActiveStr := strconv.Itoa(rule.KeepActive)
 				if s.HTTPKeepActive != keepActiveStr {
 					p.log.InfoFi("Setting keep active on stream", "ID", s.ID, "name", s.Name, "group", s.FirstGroup(),
@@ -569,7 +569,7 @@ func (p Processor) SetKeepActive(streams []Stream) (out []Stream) {
 		}
 		// By group.
 		for _, rule := range p.cfg.Streams.GroupToKeepActiveMap {
-			if slice.RxMatch(rule.By, s.FirstGroup()) {
+			if slice.RxMatch(p.log, rule.By, s.FirstGroup()) {
 				keepActiveStr := strconv.Itoa(rule.KeepActive)
 				if s.HTTPKeepActive != keepActiveStr {
 					p.log.InfoFi("Setting keep active on stream", "ID", s.ID, "name", s.Name, "group", s.FirstGroup(),
@@ -682,7 +682,7 @@ func (p Processor) removeDeadInputs(httpClient *http.Client, analyzer analyzer.A
 	disable bool) (out []Stream) {
 	// canCheck returns true if `inp` can be checked.
 	canCheck := func(inp string) bool {
-		if slice.AnyRxMatch(p.cfg.Streams.DeadInputsCheckBlacklist, inp) {
+		if slice.AnyRxMatch(p.log, p.cfg.Streams.DeadInputsCheckBlacklist, inp) {
 			return false
 		}
 		if slice.HasAnyPrefix(inp, "http://", "https://") {

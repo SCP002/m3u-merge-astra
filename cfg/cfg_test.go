@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/dlclark/regexp2"
@@ -138,6 +139,7 @@ func TestInitRegexpWithLookaround(t *testing.T) {
 	assert.False(t, isNewCfg)
 
 	negativeLookahead := root.Streams.InputBlacklist[0]
+	assert.Exactly(t, time.Second, negativeLookahead.MatchTimeout, "should set match timeout")
 	match, err := negativeLookahead.MatchString("http://other.tv/1")
 	assert.NoError(t, err)
 	assert.True(t, match, "should support negative lookahead")
