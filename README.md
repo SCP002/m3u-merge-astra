@@ -409,7 +409,7 @@ docker compose --file compose.dev.yaml run --rm --build dev bash ./build.sh
 5. To build a binary for current OS / architecture into `./build/` folder:
 
     ```sh
-    go build -o build/ .
+    go build -ldflags "-s -w" -o build/ .
     ```
 
     Or run `./build.sh` to build binaries for every OS / architecture pair.
