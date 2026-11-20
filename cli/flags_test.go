@@ -25,6 +25,11 @@ func TestParse(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, flags.Version)
 
+	os.Args = []string{"", "--update"}
+	flags, err = Parse()
+	assert.NoError(t, err)
+	assert.True(t, flags.Update)
+
 	os.Args = []string{"", "--logLevel=-1"}
 	_, err = Parse()
 	assert.Error(t, err, "should return error for negative log level")

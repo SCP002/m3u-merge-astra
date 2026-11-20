@@ -11,6 +11,7 @@ import (
 //nolint:lll // go-flags struct tags cannot be wrapped across lines.
 type Flags struct {
 	Version        bool       `short:"v" long:"version"        description:"Print the program version"`
+	Update         bool       `          long:"update"         description:"Check for updates, update and exit"`
 	Noninteractive bool       `short:"n" long:"noninteractive" description:"Do not ask user for input (confirmations etc.)"`
 	LogLevel       pLog.Level `short:"l" long:"logLevel"       description:"Logging level. Can be from 1 (most verbose) to 7 (least verbose)"`
 	LogFile        string     `short:"f" long:"logFile"        description:"Log file. If set, writes structured log to a file at the specified path"`

@@ -7,6 +7,7 @@ require (
 	github.com/alitto/pond/v2 v2.7.3
 	github.com/cockroachdb/errors v1.14.0
 	github.com/fatih/color v1.19.0
+	github.com/fynelabs/selfupdate v0.2.1
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/go-cmp v0.7.0
 	github.com/gorilla/websocket v1.5.3
@@ -17,6 +18,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/utahta/go-openuri v0.1.0
 	go.uber.org/goleak v1.3.0
+	golang.org/x/mod v0.41.0
 )
 
 require (

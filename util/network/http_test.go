@@ -91,3 +91,15 @@ func TestGetErrTypeNoSuchHost(t *testing.T) {
 		assert.Exactly(t, NoSuchHost, GetErrType(err), scheme)
 	}
 }
+
+func TestNewVerifyingHTTPClient(t *testing.T) {
+	httpsSrv := httptest.NewTLSServer(newTestMux())
+	defer httpsSrv.Close()
+
+	client := NewVerifyingHTTPClient(time.Second)
+	defer client.CloseIdleConnections()
+
+	resp, err := client.Get(httpsSrv.URL + "/ok/1")
+	assert.Nil(t, resp)
+	assert.ErrorContains(t, err, "certificate signed by unknown authority", "should verify TLS certificates")
+}

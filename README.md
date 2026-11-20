@@ -18,6 +18,7 @@ defined in `--programCfgPath` and sends requests to astra to modify config.
 | Command argument     | Description                                                                                     |
 | -------------------- | ----------------------------------------------------------------------------------------------- |
 | -v, --version        | Print the program version                                                                       |
+| --update             | Check for updates, update and exit                                                              |
 | -h, --help           | Print help message                                                                              |
 | -n, --noninteractive | Do not ask user for input (confirmations etc.)                                                  |
 | -l, --logLevel       | Logging level. Can be from `1` (most verbose) to `7` (least verbose) [default: `3`]             |

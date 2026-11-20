@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"m3u-merge-astra/astra"
 	"m3u-merge-astra/astra/analyzer"
@@ -11,6 +12,7 @@ import (
 	"m3u-merge-astra/cli"
 	"m3u-merge-astra/m3u"
 	"m3u-merge-astra/merge"
+	"m3u-merge-astra/updater"
 	"m3u-merge-astra/util/input"
 	"m3u-merge-astra/util/logger"
 	"m3u-merge-astra/util/network"
@@ -18,6 +20,7 @@ import (
 	"m3u-merge-astra/version"
 
 	"github.com/adampresley/sigint"
+	"github.com/cockroachdb/errors"
 	goFlags "github.com/jessevdk/go-flags"
 	"github.com/utahta/go-openuri"
 )
@@ -55,6 +58,16 @@ func main() {
 		log.Info("SIGINT or SIGTERM signal received, shutting down")
 		os.Exit(0)
 	})
+
+	// Update the program.
+	if flags.Update {
+		updaterHttpClient := network.NewVerifyingHTTPClient(time.Minute * 10)
+		updater := updater.New(log, updaterHttpClient)
+		if err := updater.Update(); err != nil {
+			log.Fatal(errors.Wrap(err, "Self update failed"))
+		}
+		return
+	}
 
 	log.InfoFi("Running with", "program config path", flags.ProgramCfgPath, "M3U path", flags.M3UPath, "astra address",
 		flags.AstraAddr)
