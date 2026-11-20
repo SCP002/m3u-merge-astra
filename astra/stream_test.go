@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -18,6 +17,7 @@ import (
 	"m3u-merge-astra/util/network/nettest"
 	"m3u-merge-astra/util/slice/slicetest"
 
+	"github.com/dlclark/regexp2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -65,8 +65,8 @@ func TestUpdateStreamInput(t *testing.T) {
 	p := newDefProcessor()
 
 	p.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
-		{From: *regexp.MustCompile("update/from"), To: *regexp.MustCompile("update/to")},
-		{From: *regexp.MustCompile("update/url"), To: *regexp.MustCompile("update/url")},
+		{From: regexp2.MustCompile("update/from", regexp2.RE2), To: regexp2.MustCompile("update/to", regexp2.RE2)},
+		{From: regexp2.MustCompile("update/url", regexp2.RE2), To: regexp2.MustCompile("update/url", regexp2.RE2)},
 	}
 	s1 := Stream{Inputs: []string{
 		"http://irrelevant/from#a", "http://update/from/1#c", "http://update/url/1#b", "http://update/url/1#c",
@@ -177,8 +177,8 @@ func TestKnownInputs(t *testing.T) {
 	config := cfg.NewDefCfg().Streams
 
 	config.InputUpdateMap = []cfg.UpdateRecord{
-		{From: *regexp.MustCompile("known/input/1")},
-		{From: *regexp.MustCompile("known/input/2")},
+		{From: regexp2.MustCompile("known/input/1", regexp2.RE2)},
+		{From: regexp2.MustCompile("known/input/2", regexp2.RE2)},
 	}
 
 	s := Stream{Inputs: []string{"http://known/input/2#a", "http://other/input", "http://known/input/1"}}
@@ -297,9 +297,9 @@ func TestDisableStream(t *testing.T) {
 func TestRemoveDuplicatedInputsByRx(t *testing.T) {
 	p := newDefProcessor()
 
-	p.cfg.Streams.RemoveDuplicatedInputsByRxList = []regexp.Regexp{
-		*regexp.MustCompile(`^.*:\/\/([^#?/]*)`),     // By host.
-		*regexp.MustCompile(`^.*:\/\/.*?\/([^#?]*)`), // By path.
+	p.cfg.Streams.RemoveDuplicatedInputsByRxList = []*regexp2.Regexp{
+		regexp2.MustCompile(`^.*:\/\/([^#?/]*)`, regexp2.RE2),     // By host.
+		regexp2.MustCompile(`^.*:\/\/.*?\/([^#?]*)`, regexp2.RE2), // By path.
 	}
 
 	s1 := Stream{Inputs: []string{
@@ -329,9 +329,9 @@ func TestRemoveDuplicatedInputsByRx(t *testing.T) {
 func TestDisableAllButOneInputByRx(t *testing.T) {
 	p := newDefProcessor()
 
-	p.cfg.Streams.DisableAllButOneInputByRxList = []regexp.Regexp{
-		*regexp.MustCompile(`[#&]no_sync(&|$)`),
-		*regexp.MustCompile(`[#&]i_might_stay(&|$)`),
+	p.cfg.Streams.DisableAllButOneInputByRxList = []*regexp2.Regexp{
+		regexp2.MustCompile(`[#&]no_sync(&|$)`, regexp2.RE2),
+		regexp2.MustCompile(`[#&]i_might_stay(&|$)`, regexp2.RE2),
 	}
 
 	s1 := Stream{
@@ -410,9 +410,9 @@ func TestRemoveDisabledInputs(t *testing.T) {
 func TestRemoveBlockedInputs(t *testing.T) {
 	cfg := cfg.NewDefCfg().Streams
 
-	cfg.InputBlacklist = []regexp.Regexp{
-		*regexp.MustCompile("input/1"),
-		*regexp.MustCompile("input/3"),
+	cfg.InputBlacklist = []*regexp2.Regexp{
+		regexp2.MustCompile("input/1", regexp2.RE2),
+		regexp2.MustCompile("input/3", regexp2.RE2),
 	}
 
 	s1 := Stream{Inputs: []string{"http://input/1", "http://input/2", "http://input/1", "http://input/3"}}
@@ -608,9 +608,9 @@ func TestSort(t *testing.T) {
 
 func TestAllRemoveBlockedInputs(t *testing.T) {
 	p := newDefProcessor()
-	p.cfg.Streams.InputBlacklist = []regexp.Regexp{
-		*regexp.MustCompile("input/1"),
-		*regexp.MustCompile("input/3"),
+	p.cfg.Streams.InputBlacklist = []*regexp2.Regexp{
+		regexp2.MustCompile("input/1", regexp2.RE2),
+		regexp2.MustCompile("input/3", regexp2.RE2),
 	}
 
 	sl1 := []Stream{
@@ -636,7 +636,7 @@ func TestAllRemoveBlockedInputs(t *testing.T) {
 	var out syncBuffer
 	p = newDefProcessorWithWriter(&out)
 
-	p.cfg.Streams.InputBlacklist = []regexp.Regexp{*regexp.MustCompile("input/1")}
+	p.cfg.Streams.InputBlacklist = []*regexp2.Regexp{regexp2.MustCompile("input/1", regexp2.RE2)}
 
 	sl1 = []Stream{
 		{ID: "0", Name: "Name 1", Groups: map[string]string{"Cat": "Grp"}, Inputs: []string{"http://input/1"}},
@@ -678,7 +678,7 @@ func TestRemoveDuplicatedInputs(t *testing.T) {
 	var out syncBuffer
 	p = newDefProcessorWithWriter(&out)
 
-	p.cfg.Streams.InputBlacklist = []regexp.Regexp{*regexp.MustCompile("input/1")}
+	p.cfg.Streams.InputBlacklist = []*regexp2.Regexp{regexp2.MustCompile("input/1", regexp2.RE2)}
 
 	sl1 = []Stream{
 		{ID: "0", Name: "Name 1", Groups: map[string]string{"Cat": "Grp"}, Inputs: []string{"http://input/1"}},
@@ -693,9 +693,9 @@ func TestRemoveDuplicatedInputs(t *testing.T) {
 func TestAllRemoveDuplicatedInputsByRx(t *testing.T) {
 	p := newDefProcessor()
 
-	p.cfg.Streams.RemoveDuplicatedInputsByRxList = []regexp.Regexp{
-		*regexp.MustCompile(`^.*:\/\/([^#?/]*)`),     // By host.
-		*regexp.MustCompile(`^.*:\/\/.*?\/([^#?]*)`), // By path.
+	p.cfg.Streams.RemoveDuplicatedInputsByRxList = []*regexp2.Regexp{
+		regexp2.MustCompile(`^.*:\/\/([^#?/]*)`, regexp2.RE2),     // By host.
+		regexp2.MustCompile(`^.*:\/\/.*?\/([^#?]*)`, regexp2.RE2), // By path.
 	}
 
 	sl1 := []Stream{
@@ -726,8 +726,8 @@ func TestAllRemoveDuplicatedInputsByRx(t *testing.T) {
 	var out syncBuffer
 	p = newDefProcessorWithWriter(&out)
 
-	p.cfg.Streams.RemoveDuplicatedInputsByRxList = []regexp.Regexp{
-		*regexp.MustCompile(`^.*:\/\/([^#?/]*)`), // By host.
+	p.cfg.Streams.RemoveDuplicatedInputsByRxList = []*regexp2.Regexp{
+		regexp2.MustCompile(`^.*:\/\/([^#?/]*)`, regexp2.RE2), // By host.
 	}
 
 	sl1 = []Stream{
@@ -845,9 +845,9 @@ func TestSortInputs(t *testing.T) {
 
 	// Multiple entries.
 	p.cfg.Streams.UnknownInputWeight = 25
-	p.cfg.Streams.InputWeightToTypeMap = map[int]regexp.Regexp{
-		20: *regexp.MustCompile(`input/20`),
-		30: *regexp.MustCompile(`input/30`),
+	p.cfg.Streams.InputWeightToTypeMap = map[int]*regexp2.Regexp{
+		20: regexp2.MustCompile(`input/20`, regexp2.RE2),
+		30: regexp2.MustCompile(`input/30`, regexp2.RE2),
 	}
 	sl1 := []Stream{
 		{Inputs: []string{"http://other/a", "http://other/b", "http://input/30", "http://input/20"}},
@@ -870,8 +870,8 @@ func TestSortInputs(t *testing.T) {
 
 	// One entry.
 	p.cfg.Streams.UnknownInputWeight = 30
-	p.cfg.Streams.InputWeightToTypeMap = map[int]regexp.Regexp{
-		20: *regexp.MustCompile(`input/20`),
+	p.cfg.Streams.InputWeightToTypeMap = map[int]*regexp2.Regexp{
+		20: regexp2.MustCompile(`input/20`, regexp2.RE2),
 	}
 	sl1 = []Stream{
 		{Inputs: []string{"http://other/a", "http://other/b", "http://other/c", "http://input/20"}},
@@ -891,7 +891,7 @@ func TestSortInputs(t *testing.T) {
 
 	// Empty map.
 	p.cfg.Streams.UnknownInputWeight = 50
-	p.cfg.Streams.InputWeightToTypeMap = map[int]regexp.Regexp{}
+	p.cfg.Streams.InputWeightToTypeMap = map[int]*regexp2.Regexp{}
 	sl1 = []Stream{
 		{Inputs: []string{"http://other/d", "http://other/c", "http://other/b", "http://other/a"}},
 		{Inputs: []string{"http://other/f", "http://other/e"}},
@@ -926,9 +926,9 @@ func TestRemoveDeadInputs(t *testing.T) {
 	p := newDefProcessor()
 	p.cfg.Streams.InputMaxConns = 100
 	p.cfg.Streams.UseAnalyzer = false
-	p.cfg.Streams.DeadInputsCheckBlacklist = []regexp.Regexp{
-		*regexp.MustCompile(`ignore/1`),
-		*regexp.MustCompile(`ignore/2`),
+	p.cfg.Streams.DeadInputsCheckBlacklist = []*regexp2.Regexp{
+		regexp2.MustCompile(`ignore/1`, regexp2.RE2),
+		regexp2.MustCompile(`ignore/2`, regexp2.RE2),
 	}
 
 	srv := newDeadInputsServers(t)
@@ -1075,8 +1075,8 @@ func TestAnalyzerRemoveDeadInputs(t *testing.T) {
 	p.cfg.Streams.AnalyzerPCRErrorsThreshold = 20
 	p.cfg.Streams.AnalyzerPESErrorsThreshold = 30
 
-	p.cfg.Streams.DeadInputsCheckBlacklist = []regexp.Regexp{
-		*regexp.MustCompile(`ignore/1`),
+	p.cfg.Streams.DeadInputsCheckBlacklist = []*regexp2.Regexp{
+		regexp2.MustCompile(`ignore/1`, regexp2.RE2),
 	}
 	sl1 := []Stream{
 		{
@@ -1237,8 +1237,8 @@ func TestDisableDeadInputs(t *testing.T) {
 	p := newDefProcessor()
 	p.cfg.Streams.InputMaxConns = 100
 	p.cfg.Streams.UseAnalyzer = false
-	p.cfg.Streams.DeadInputsCheckBlacklist = []regexp.Regexp{
-		*regexp.MustCompile(`ignore/1`),
+	p.cfg.Streams.DeadInputsCheckBlacklist = []*regexp2.Regexp{
+		regexp2.MustCompile(`ignore/1`, regexp2.RE2),
 	}
 
 	srv := newDeadInputsServers(t)
@@ -1303,16 +1303,16 @@ func TestDisableDeadInputs(t *testing.T) {
 func TestAddHashes(t *testing.T) {
 	p := newDefProcessor()
 	p.cfg.Streams.NameToInputHashMap = []cfg.HashAddRule{
-		{By: *regexp.MustCompile(`Known name 1`), Hash: "a"},
-		{By: *regexp.MustCompile(`Known name 2`), Hash: "b"},
+		{By: regexp2.MustCompile(`Known name 1`, regexp2.RE2), Hash: "a"},
+		{By: regexp2.MustCompile(`Known name 2`, regexp2.RE2), Hash: "b"},
 	}
 	p.cfg.Streams.GroupToInputHashMap = []cfg.HashAddRule{
-		{By: *regexp.MustCompile(`Known group 1`), Hash: "c"},
-		{By: *regexp.MustCompile(`Known group 2`), Hash: "d"},
+		{By: regexp2.MustCompile(`Known group 1`, regexp2.RE2), Hash: "c"},
+		{By: regexp2.MustCompile(`Known group 2`, regexp2.RE2), Hash: "d"},
 	}
 	p.cfg.Streams.InputToInputHashMap = []cfg.HashAddRule{
-		{By: *regexp.MustCompile(`http://known/input/1`), Hash: "e"},
-		{By: *regexp.MustCompile(`http://known/input/2`), Hash: "f"},
+		{By: regexp2.MustCompile(`http://known/input/1`, regexp2.RE2), Hash: "e"},
+		{By: regexp2.MustCompile(`http://known/input/2`, regexp2.RE2), Hash: "f"},
 	}
 
 	sl1 := []Stream{
@@ -1433,7 +1433,7 @@ func TestAddHashes(t *testing.T) {
 	var out syncBuffer
 	p = newDefProcessorWithWriter(&out)
 	p.cfg.Streams.NameToInputHashMap = []cfg.HashAddRule{
-		{By: *regexp.MustCompile(`Name 1`), Hash: "a"},
+		{By: regexp2.MustCompile(`Name 1`, regexp2.RE2), Hash: "a"},
 	}
 
 	sl1 = []Stream{
@@ -1448,9 +1448,9 @@ func TestAddHashes(t *testing.T) {
 func TestAllDisableAllButOneInputByRx(t *testing.T) {
 	p := newDefProcessor()
 
-	p.cfg.Streams.DisableAllButOneInputByRxList = []regexp.Regexp{
-		*regexp.MustCompile(`[#&]no_sync(&|$)`),
-		*regexp.MustCompile(`[#&]i_might_stay(&|$)`),
+	p.cfg.Streams.DisableAllButOneInputByRxList = []*regexp2.Regexp{
+		regexp2.MustCompile(`[#&]no_sync(&|$)`, regexp2.RE2),
+		regexp2.MustCompile(`[#&]i_might_stay(&|$)`, regexp2.RE2),
 	}
 
 	sl1 := []Stream{
@@ -1502,8 +1502,8 @@ func TestAllDisableAllButOneInputByRx(t *testing.T) {
 	var out syncBuffer
 	p = newDefProcessorWithWriter(&out)
 
-	p.cfg.Streams.DisableAllButOneInputByRxList = []regexp.Regexp{
-		*regexp.MustCompile(`[#&]no_sync(&|$)`),
+	p.cfg.Streams.DisableAllButOneInputByRxList = []*regexp2.Regexp{
+		regexp2.MustCompile(`[#&]no_sync(&|$)`, regexp2.RE2),
 	}
 
 	sl1 = []Stream{
@@ -1581,16 +1581,16 @@ func TestAllRemoveDisabledInputs(t *testing.T) {
 func TestSetKeepActive(t *testing.T) {
 	p := newDefProcessor()
 	p.cfg.Streams.NameToKeepActiveMap = []cfg.KeepActiveAddRule{
-		{By: *regexp.MustCompile(`Known name 1`), KeepActive: 0},
-		{By: *regexp.MustCompile(`Known name 2`), KeepActive: 1},
+		{By: regexp2.MustCompile(`Known name 1`, regexp2.RE2), KeepActive: 0},
+		{By: regexp2.MustCompile(`Known name 2`, regexp2.RE2), KeepActive: 1},
 	}
 	p.cfg.Streams.GroupToKeepActiveMap = []cfg.KeepActiveAddRule{
-		{By: *regexp.MustCompile(`Known group 1`), KeepActive: 2},
-		{By: *regexp.MustCompile(`Known group 2`), KeepActive: 3},
+		{By: regexp2.MustCompile(`Known group 1`, regexp2.RE2), KeepActive: 2},
+		{By: regexp2.MustCompile(`Known group 2`, regexp2.RE2), KeepActive: 3},
 	}
 	p.cfg.Streams.InputToKeepActiveMap = []cfg.KeepActiveAddRule{
-		{By: *regexp.MustCompile(`http://known/input/1`), KeepActive: 4},
-		{By: *regexp.MustCompile(`http://known/input/2`), KeepActive: 5},
+		{By: regexp2.MustCompile(`http://known/input/1`, regexp2.RE2), KeepActive: 4},
+		{By: regexp2.MustCompile(`http://known/input/2`, regexp2.RE2), KeepActive: 5},
 	}
 
 	sl1 := []Stream{
@@ -1718,7 +1718,7 @@ func TestSetKeepActive(t *testing.T) {
 	var out syncBuffer
 	p = newDefProcessorWithWriter(&out)
 	p.cfg.Streams.NameToKeepActiveMap = []cfg.KeepActiveAddRule{
-		{By: *regexp.MustCompile(`Name 1`), KeepActive: 1},
+		{By: regexp2.MustCompile(`Name 1`, regexp2.RE2), KeepActive: 1},
 	}
 
 	sl1 = []Stream{{ID: "0", Name: "Name 1", Groups: map[string]string{"Cat": "Grp"}}}

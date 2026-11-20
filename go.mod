@@ -6,6 +6,7 @@ require (
 	github.com/adampresley/sigint v0.0.0-20150906022118-7e8d2ad16a94
 	github.com/alitto/pond/v2 v2.7.3
 	github.com/cockroachdb/errors v1.14.0
+	github.com/dlclark/regexp2 v1.12.0
 	github.com/fatih/color v1.19.0
 	github.com/fynelabs/selfupdate v0.2.1
 	github.com/goccy/go-yaml v1.19.2

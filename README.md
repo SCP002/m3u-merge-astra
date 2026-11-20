@@ -76,6 +76,9 @@ docker compose --file compose.dev.yaml run --rm --build dev bash ./build.sh
 
 ## Program config settings
 
+Regular expressions use [RE2 syntax](https://github.com/google/re2/wiki/Syntax) with lookarounds, such as negative
+lookahead `(?!...)`.
+
 * `general`  
   General settings of the program.
 

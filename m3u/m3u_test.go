@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"m3u-merge-astra/cfg"
 	"m3u-merge-astra/util/copier"
-	"regexp"
 	"testing"
 
+	"github.com/dlclark/regexp2"
 	"github.com/stretchr/testify/assert"
 	"github.com/utahta/go-openuri"
 )
@@ -132,17 +132,17 @@ func TestRemoveBlocked(t *testing.T) {
 		{"Name 3", "Name 3 Var 2"},
 		{"Name 2", "Name 2 Var 2"},
 	}
-	p.cfg.M3U.ChannNameBlacklist = []regexp.Regexp{
-		*regexp.MustCompile("Name 1"),
-		*regexp.MustCompile("(?i)^NAME 2$"),
+	p.cfg.M3U.ChannNameBlacklist = []*regexp2.Regexp{
+		regexp2.MustCompile("Name 1", regexp2.RE2),
+		regexp2.MustCompile("(?i)^NAME 2$", regexp2.RE2),
 	}
-	p.cfg.M3U.ChannGroupBlacklist = []regexp.Regexp{
-		*regexp.MustCompile("Group 1"),
-		*regexp.MustCompile("Group 2"),
+	p.cfg.M3U.ChannGroupBlacklist = []*regexp2.Regexp{
+		regexp2.MustCompile("Group 1", regexp2.RE2),
+		regexp2.MustCompile("Group 2", regexp2.RE2),
 	}
-	p.cfg.M3U.ChannURLBlacklist = []regexp.Regexp{
-		*regexp.MustCompile("url/1"),
-		*regexp.MustCompile("url/2"),
+	p.cfg.M3U.ChannURLBlacklist = []*regexp2.Regexp{
+		regexp2.MustCompile("url/1", regexp2.RE2),
+		regexp2.MustCompile("url/2", regexp2.RE2),
 	}
 
 	cl1 := []Channel{
@@ -185,7 +185,7 @@ func TestRemoveBlocked(t *testing.T) {
 	var out bytes.Buffer
 	p = newDefProcessorWithWriter(&out)
 
-	p.cfg.M3U.ChannNameBlacklist = []regexp.Regexp{*regexp.MustCompile("Name 1")}
+	p.cfg.M3U.ChannNameBlacklist = []*regexp2.Regexp{regexp2.MustCompile("Name 1", regexp2.RE2)}
 
 	cl1 = []Channel{{Name: "Name 1", Group: "Group 1", URL: "http://url/1"}}
 

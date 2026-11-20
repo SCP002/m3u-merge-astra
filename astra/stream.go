@@ -90,7 +90,7 @@ func (s Stream) FirstGroup() string {
 func (s Stream) UpdateInput(log *logger.Logger, cfg cfg.Streams, newURL string, callback func(string)) (Stream, bool) {
 	for inpIdx, oldURL := range s.Inputs {
 		for _, updRec := range cfg.InputUpdateMap {
-			if updRec.From.MatchString(oldURL) && updRec.To.MatchString(newURL) {
+			if slice.RxMatch(updRec.From, oldURL) && slice.RxMatch(updRec.To, newURL) {
 				// Append old hash to new URL.
 				if cfg.KeepInputHash {
 					oldHash, err := urlUtil.GetHash(oldURL)
@@ -139,7 +139,7 @@ func (s Stream) AddInput(url string) Stream {
 func (s Stream) KnownInputs(config cfg.Streams) []string {
 	return lo.Filter(s.Inputs, func(inp string, _ int) bool {
 		return lo.ContainsBy(config.InputUpdateMap, func(updRec cfg.UpdateRecord) bool {
-			return updRec.From.MatchString(inp)
+			return slice.RxMatch(updRec.From, inp)
 		})
 	})
 }
@@ -193,12 +193,12 @@ func (s Stream) removeDuplicatedInputsByRx(log *logger.Logger, cfg cfg.Streams, 
 
 	for _, rx := range cfg.RemoveDuplicatedInputsByRxList {
 		for _, inp := range s.Inputs {
-			matchList := rx.FindStringSubmatch(inp)
-			if len(matchList) < 2 {
+			match, _ := rx.FindStringMatch(inp) // Error is returned only on timeout, which is disabled by default.
+			if match == nil {
 				log.DebugFi("Found no matches", "regexp", rx.String(), "for input", inp)
 				continue
 			}
-			captureGroup := matchList[1]
+			captureGroup := match.GroupByNumber(1).String()
 			if _, duplicate := inputsCGMap[captureGroup]; duplicate {
 				callback(inp)
 				s.Inputs = slice.RemoveLast(s.Inputs, inp)
@@ -218,7 +218,7 @@ func (s Stream) removeDuplicatedInputsByRx(log *logger.Logger, cfg cfg.Streams, 
 func (s Stream) disableAllButOneInputByRx(cfg cfg.Streams, callback func(string)) Stream {
 	for _, rx := range cfg.DisableAllButOneInputByRxList {
 		for _, inp := range s.Inputs {
-			if rx.MatchString(inp) {
+			if slice.RxMatch(rx, inp) {
 				inputsToDisable := slice.RemoveFirst(s.Inputs, inp)
 				iter.ForEach(inputsToDisable, callback)
 				s.DisabledInputs = append(slices.Clip(s.DisabledInputs), inputsToDisable...)
@@ -422,8 +422,8 @@ func (p Processor) SortInputs(streams []Stream) (out []Stream) {
 
 			for weight, rx := range p.cfg.Streams.InputWeightToTypeMap {
 				// Assign weight from map if match found.
-				leftInpWeight = lo.Ternary(rx.MatchString(s.Inputs[i]), weight, leftInpWeight)
-				rightInpWeight = lo.Ternary(rx.MatchString(s.Inputs[j]), weight, rightInpWeight)
+				leftInpWeight = lo.Ternary(slice.RxMatch(rx, s.Inputs[i]), weight, leftInpWeight)
+				rightInpWeight = lo.Ternary(slice.RxMatch(rx, s.Inputs[j]), weight, rightInpWeight)
 			}
 
 			return leftInpWeight < rightInpWeight
@@ -463,7 +463,7 @@ func (p Processor) AddHashes(streams []Stream) (out []Stream) {
 		for inpIdx, inp := range s.Inputs {
 			// By inputs.
 			for _, rule := range p.cfg.Streams.InputToInputHashMap {
-				if rule.By.MatchString(inp) {
+				if slice.RxMatch(rule.By, inp) {
 					var err error
 					inp, changed, err = urlUtil.AddHash(rule.Hash, inp)
 					if err != nil {
@@ -477,7 +477,7 @@ func (p Processor) AddHashes(streams []Stream) (out []Stream) {
 			}
 			// By name.
 			for _, rule := range p.cfg.Streams.NameToInputHashMap {
-				if rule.By.MatchString(s.Name) {
+				if slice.RxMatch(rule.By, s.Name) {
 					var err error
 					inp, changed, err = urlUtil.AddHash(rule.Hash, inp)
 					if err != nil {
@@ -491,7 +491,7 @@ func (p Processor) AddHashes(streams []Stream) (out []Stream) {
 			}
 			// By group.
 			for _, rule := range p.cfg.Streams.GroupToInputHashMap {
-				if rule.By.MatchString(s.FirstGroup()) {
+				if slice.RxMatch(rule.By, s.FirstGroup()) {
 					var err error
 					inp, changed, err = urlUtil.AddHash(rule.Hash, inp)
 					if err != nil {
@@ -557,7 +557,7 @@ func (p Processor) SetKeepActive(streams []Stream) (out []Stream) {
 		}
 		// By name.
 		for _, rule := range p.cfg.Streams.NameToKeepActiveMap {
-			if rule.By.MatchString(s.Name) {
+			if slice.RxMatch(rule.By, s.Name) {
 				keepActiveStr := strconv.Itoa(rule.KeepActive)
 				if s.HTTPKeepActive != keepActiveStr {
 					p.log.InfoFi("Setting keep active on stream", "ID", s.ID, "name", s.Name, "group", s.FirstGroup(),
@@ -569,7 +569,7 @@ func (p Processor) SetKeepActive(streams []Stream) (out []Stream) {
 		}
 		// By group.
 		for _, rule := range p.cfg.Streams.GroupToKeepActiveMap {
-			if rule.By.MatchString(s.FirstGroup()) {
+			if slice.RxMatch(rule.By, s.FirstGroup()) {
 				keepActiveStr := strconv.Itoa(rule.KeepActive)
 				if s.HTTPKeepActive != keepActiveStr {
 					p.log.InfoFi("Setting keep active on stream", "ID", s.ID, "name", s.Name, "group", s.FirstGroup(),

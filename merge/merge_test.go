@@ -7,10 +7,10 @@ import (
 	"m3u-merge-astra/m3u"
 	"m3u-merge-astra/util/copier"
 	"m3u-merge-astra/util/slice/slicetest"
-	"regexp"
 	"strconv"
 	"testing"
 
+	"github.com/dlclark/regexp2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,8 +58,14 @@ func TestRenameStreams(t *testing.T) {
 func TestUpdateInputs(t *testing.T) {
 	p := newDefProcessor()
 	p.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
-		{From: *regexp.MustCompile("known/input/2"), To: *regexp.MustCompile("known/input/2")},
-		{From: *regexp.MustCompile("known/input/1"), To: *regexp.MustCompile("known/input/1")},
+		{
+			From: regexp2.MustCompile("known/input/2", regexp2.RE2),
+			To:   regexp2.MustCompile("known/input/2", regexp2.RE2),
+		},
+		{
+			From: regexp2.MustCompile("known/input/1", regexp2.RE2),
+			To:   regexp2.MustCompile("known/input/1", regexp2.RE2),
+		},
 	}
 
 	sl1 := []astra.Stream{
@@ -154,7 +160,10 @@ func TestUpdateInputs(t *testing.T) {
 	p = newDefProcessorWithWriter(&out)
 	p.cfg.Streams.EnableOnInputUpdate = false
 	p.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
-		{From: *regexp.MustCompile("known/input/1"), To: *regexp.MustCompile("known/input/1")},
+		{
+			From: regexp2.MustCompile("known/input/1", regexp2.RE2),
+			To:   regexp2.MustCompile("known/input/1", regexp2.RE2),
+		},
 	}
 
 	sl1 = []astra.Stream{{ID: "0", Enabled: false, Name: "Known name", Inputs: []string{"http://known/input/1"}}}
@@ -169,7 +178,10 @@ func TestUpdateInputs(t *testing.T) {
 	p = newDefProcessorWithWriter(&out)
 	p.cfg.Streams.EnableOnInputUpdate = true
 	p.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
-		{From: *regexp.MustCompile("known/input/1"), To: *regexp.MustCompile("known/input/1")},
+		{
+			From: regexp2.MustCompile("known/input/1", regexp2.RE2),
+			To:   regexp2.MustCompile("known/input/1", regexp2.RE2),
+		},
 	}
 
 	sl1 = []astra.Stream{{ID: "0", Enabled: false, Name: "Known name", Inputs: []string{"http://known/input/1"}}}
@@ -184,8 +196,8 @@ func TestUpdateInputs(t *testing.T) {
 func TestRemoveInputsByUpdateMap(t *testing.T) {
 	p := newDefProcessor()
 	p.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{
-		{From: *regexp.MustCompile("known/input/1")},
-		{From: *regexp.MustCompile("known/input/2")},
+		{From: regexp2.MustCompile("known/input/1", regexp2.RE2)},
+		{From: regexp2.MustCompile("known/input/2", regexp2.RE2)},
 	}
 
 	sl1 := []astra.Stream{
@@ -231,7 +243,7 @@ func TestRemoveInputsByUpdateMap(t *testing.T) {
 	// Test log output.
 	var out bytes.Buffer
 	p = newDefProcessorWithWriter(&out)
-	p.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{{From: *regexp.MustCompile("known/input/1")}}
+	p.cfg.Streams.InputUpdateMap = []cfg.UpdateRecord{{From: regexp2.MustCompile("known/input/1", regexp2.RE2)}}
 
 	sl1 = []astra.Stream{
 		{

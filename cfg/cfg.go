@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"regexp"
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/dlclark/regexp2"
 	"github.com/goccy/go-yaml"
 	"github.com/samber/lo"
 
@@ -16,9 +16,12 @@ import (
 )
 
 func init() {
-	// Treat regexp.Regexp as its pattern string on encoding.
-	yaml.RegisterCustomMarshaler(func(rx regexp.Regexp) ([]byte, error) {
-		return []byte(rx.String()), nil
+	// Decode regular expressions in RE2 compatibility mode, as they were used with regexp package before.
+	regexp2.DefaultUnmarshalOptions = regexp2.RE2
+
+	// Encode regular expressions as strings of their patterns.
+	yaml.RegisterCustomMarshaler(func(rx *regexp2.Regexp) ([]byte, error) {
+		return yaml.Marshal(rx.String())
 	})
 }
 
@@ -95,19 +98,19 @@ type M3U struct {
 	// ChannNameBlacklist represens the list of regular expressions.
 	//
 	// If any expression match name of a channel, this channel will be removed from M3U input before merging.
-	ChannNameBlacklist []regexp.Regexp `yaml:"chann_name_blacklist"`
+	ChannNameBlacklist []*regexp2.Regexp `yaml:"chann_name_blacklist"`
 
 	// ChannGroupBlacklist represens the list of regular expressions.
 	//
 	// If any expression match group of a channel, this channel will be removed from M3U input before merging.
 	//
 	// It runs after replacing groups by ChannGroupMap so enter the appropriate values.
-	ChannGroupBlacklist []regexp.Regexp `yaml:"chann_group_blacklist"`
+	ChannGroupBlacklist []*regexp2.Regexp `yaml:"chann_group_blacklist"`
 
 	// ChannURLBlacklist represens the list of regular expressions.
 	//
 	// If any expression match URL of a channel, this channel will be removed from M3U input before merging.
-	ChannURLBlacklist []regexp.Regexp `yaml:"chann_url_blacklist"`
+	ChannURLBlacklist []*regexp2.Regexp `yaml:"chann_url_blacklist"`
 
 	// ChannGroupMap represents invalid to valid M3U channel group mapping.
 	//
@@ -179,7 +182,7 @@ type Streams struct {
 	// InputWeightToTypeMap represents Mapping of how high stream input should appear in the list after sorting.
 	//
 	// Any unspecified input will have weight of maximum - 1 (right before the last entry).
-	InputWeightToTypeMap map[int]regexp.Regexp `yaml:"input_weight_to_type_map"`
+	InputWeightToTypeMap map[int]*regexp2.Regexp `yaml:"input_weight_to_type_map"`
 
 	// UnknownInputWeight represents Default weight of unknown inputs.
 	UnknownInputWeight int `yaml:"unknown_input_weight"`
@@ -188,7 +191,7 @@ type Streams struct {
 	//
 	// If any expression match URL of a stream's input, this input will be removed from astra streams before adding new
 	// ones.
-	InputBlacklist []regexp.Regexp `yaml:"input_blacklist"`
+	InputBlacklist []*regexp2.Regexp `yaml:"input_blacklist"`
 
 	// RemoveDuplicatedInputs specifies if inputs of astra streams which already present in config should be
 	// removed.
@@ -200,7 +203,7 @@ type Streams struct {
 	// stream, any other inputs of that stream which first capture group is the same will be removed from stream.
 	//
 	// This setting is not controlled by 'remove_duplicated_inputs'.
-	RemoveDuplicatedInputsByRxList []regexp.Regexp `yaml:"remove_duplicated_inputs_by_rx_list"`
+	RemoveDuplicatedInputsByRxList []*regexp2.Regexp `yaml:"remove_duplicated_inputs_by_rx_list"`
 
 	// RemoveDisabledInputs specifies if disabled inputs should be removed.
 	RemoveDisabledInputs bool `yaml:"remove_disabled_inputs"`
@@ -210,7 +213,7 @@ type Streams struct {
 	// If any expression match URL of a stream's input, only this input will be kept and all other will be disabled.
 	//
 	// If list has multiple entries, only input matching first found expression will be kept.
-	DisableAllButOneInputByRxList []regexp.Regexp `yaml:"disable_all_but_one_input_by_rx_list"`
+	DisableAllButOneInputByRxList []*regexp2.Regexp `yaml:"disable_all_but_one_input_by_rx_list"`
 
 	// RemoveDeadInputs specifies if inputs of astra streams which do not respond or give invalid response should be
 	// removed.
@@ -229,7 +232,7 @@ type Streams struct {
 	// DeadInputsCheckBlacklist represens the list of regular expressions.
 	//
 	// If any expression match URL of a stream's input, this input will not be checked for availability.
-	DeadInputsCheckBlacklist []regexp.Regexp `yaml:"dead_inputs_check_blacklist"`
+	DeadInputsCheckBlacklist []*regexp2.Regexp `yaml:"dead_inputs_check_blacklist"`
 
 	// InputMaxConns represents maximum amount of simultaneous connections to validate inputs of astra streams.
 	//
@@ -349,20 +352,20 @@ type Streams struct {
 
 // UpdateRecord represents astra stream input update rule.
 type UpdateRecord struct {
-	From regexp.Regexp `yaml:"from"`
-	To   regexp.Regexp `yaml:"to"`
+	From *regexp2.Regexp `yaml:"from"`
+	To   *regexp2.Regexp `yaml:"to"`
 }
 
 // HashAddRule represents astra stream input hash adding rule.
 type HashAddRule struct {
-	By   regexp.Regexp `yaml:"by"`
-	Hash string        `yaml:"hash"`
+	By   *regexp2.Regexp `yaml:"by"`
+	Hash string          `yaml:"hash"`
 }
 
 // KeepActiveAddRule represents astra stream 'keep active' adding rule.
 type KeepActiveAddRule struct {
-	By         regexp.Regexp `yaml:"by"`
-	KeepActive int           `yaml:"keep_active"`
+	By         *regexp2.Regexp `yaml:"by"`
+	KeepActive int             `yaml:"keep_active"`
 }
 
 // StreamType represents astra stream type.
@@ -376,7 +379,7 @@ const (
 // BadRegexpError represents error thrown if program config has invalid regular expression.
 type BadRegexpError struct {
 	Reason string
-	Regexp regexp.Regexp
+	Regexp *regexp2.Regexp
 }
 
 // Error is used to satisfy golang error interface.
@@ -409,8 +412,7 @@ func Init(log *logger.Logger, cfgFilePath string) (Root, bool, error) {
 	}
 
 	writeConfig := func(cfg Root, comments yaml.CommentMap) error {
-		bytes, err := yaml.MarshalWithOptions(cfg, yaml.WithComment(comments),
-			yaml.UseLiteralStyleIfMultiline(true), yaml.UseSingleQuote(true))
+		bytes, err := encode(cfg, comments)
 		if err != nil {
 			return errors.Wrap(err, "Encode config file")
 		}
@@ -419,7 +421,7 @@ func Init(log *logger.Logger, cfgFilePath string) (Root, bool, error) {
 
 	validateConfig := func() error {
 		for _, rx := range root.Streams.RemoveDuplicatedInputsByRxList {
-			if rx.NumSubexp() < 1 {
+			if len(rx.GetGroupNumbers()) < 2 { // Group 0 is the whole match.
 				msg := "Expecting at least one capture group"
 				return errors.Wrap(BadRegexpError{Regexp: rx, Reason: msg}, "Validate config")
 			}
@@ -466,6 +468,12 @@ func Init(log *logger.Logger, cfgFilePath string) (Root, bool, error) {
 	}
 
 	return root, false, nil
+}
+
+// encode returns YAML of config `cfg` with `comments`.
+func encode(cfg Root, comments yaml.CommentMap) ([]byte, error) {
+	return yaml.MarshalWithOptions(cfg, yaml.WithComment(comments), yaml.UseLiteralStyleIfMultiline(true),
+		yaml.UseSingleQuote(true))
 }
 
 // addNewOption sets option `opt` to `defVal` and adds its default comment from `defCommentMap` by `path` to
@@ -522,9 +530,9 @@ func NewDefCfg() Root {
 		},
 		M3U: M3U{
 			RespTimeout:         time.Second * 10,
-			ChannNameBlacklist:  []regexp.Regexp{},
-			ChannGroupBlacklist: []regexp.Regexp{},
-			ChannURLBlacklist:   []regexp.Regexp{},
+			ChannNameBlacklist:  []*regexp2.Regexp{},
+			ChannGroupBlacklist: []*regexp2.Regexp{},
+			ChannURLBlacklist:   []*regexp2.Regexp{},
 			ChannGroupMap:       map[string]string{},
 		},
 		Streams: Streams{
@@ -545,16 +553,16 @@ func NewDefCfg() Root {
 			UniteInputs:                       true,
 			HashCheckOnAddNewInputs:           false,
 			SortInputs:                        true,
-			InputWeightToTypeMap:              map[int]regexp.Regexp{},
+			InputWeightToTypeMap:              map[int]*regexp2.Regexp{},
 			UnknownInputWeight:                50,
-			InputBlacklist:                    []regexp.Regexp{},
+			InputBlacklist:                    []*regexp2.Regexp{},
 			RemoveDuplicatedInputs:            true,
-			RemoveDuplicatedInputsByRxList:    []regexp.Regexp{},
+			RemoveDuplicatedInputsByRxList:    []*regexp2.Regexp{},
 			RemoveDisabledInputs:              false,
-			DisableAllButOneInputByRxList:     []regexp.Regexp{},
+			DisableAllButOneInputByRxList:     []*regexp2.Regexp{},
 			RemoveDeadInputs:                  false,
 			DisableDeadInputs:                 false,
-			DeadInputsCheckBlacklist:          []regexp.Regexp{},
+			DeadInputsCheckBlacklist:          []*regexp2.Regexp{},
 			InputMaxConns:                     1,
 			InputRespTimeout:                  time.Second * 10,
 			UseAnalyzer:                       false,
