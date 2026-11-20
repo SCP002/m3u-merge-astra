@@ -6,18 +6,17 @@ import (
 	"time"
 )
 
-// NewHttpClient returns new HTTP client.
-//
-// `timeout` is a time limit for requests made by returned client.
-func NewHttpClient(timeout time.Duration) *http.Client {
-	tlsCfg := &tls.Config{
-		InsecureSkipVerify: true,
-	}
-	client := &http.Client{
+// NewHTTPClient returns new HTTP client with a time limit for requests set to `timeout`.
+// The proxy is taken from the environment variables HTTP_PROXY, HTTPS_PROXY and NO_PROXY.
+// TLS certificates are not verified, as astra plays inputs with invalid certificates, so they should not be
+// considered dead.
+func NewHTTPClient(timeout time.Duration) *http.Client {
+	return &http.Client{
 		Timeout: timeout,
 		Transport: &http.Transport{
-			TLSClientConfig: tlsCfg,
+			Proxy:           http.ProxyFromEnvironment,
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			IdleConnTimeout: time.Second * 5,
 		},
 	}
-	return client
 }

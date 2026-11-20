@@ -72,7 +72,7 @@ func main() {
 
 	// Fetch astra config.
 	log.Info("Fetching astra config")
-	apiHttpClient := network.NewHttpClient(cfg.General.AstraAPIRespTimeout)
+	apiHttpClient := network.NewHTTPClient(cfg.General.AstraAPIRespTimeout)
 	apiHandler := api.NewHandler(log, apiHttpClient, flags.AstraAddr, flags.AstraUser, flags.AstraPwd)
 	astraCfg, err := apiHandler.FetchCfg()
 	if err != nil {
@@ -81,7 +81,7 @@ func main() {
 
 	// Fetch M3U channels.
 	log.Info("Fetching M3U channels")
-	m3uHttpClient := network.NewHttpClient(cfg.M3U.RespTimeout)
+	m3uHttpClient := network.NewHTTPClient(cfg.M3U.RespTimeout)
 	m3uResp, err := openuri.Open(flags.M3UPath, openuri.WithHTTPClient(m3uHttpClient))
 	if err != nil {
 		log.Fatal(err)
@@ -143,11 +143,11 @@ func main() {
 		modifiedStreams, gid = mergeProcessor.AddNewStreams(modifiedStreams, m3uChannels, gid)
 	}
 	if cfg.Streams.RemoveDeadInputs {
-		httpClient := network.NewHttpClient(cfg.Streams.InputRespTimeout)
+		httpClient := network.NewHTTPClient(cfg.Streams.InputRespTimeout)
 		analyzer := analyzer.New(log, cfg.Streams.AnalyzerAddr, cfg.Streams.InputRespTimeout)
 		modifiedStreams = astraProcessor.RemoveDeadInputs(httpClient, analyzer, modifiedStreams)
 	} else if cfg.Streams.DisableDeadInputs {
-		httpClient := network.NewHttpClient(cfg.Streams.InputRespTimeout)
+		httpClient := network.NewHTTPClient(cfg.Streams.InputRespTimeout)
 		analyzer := analyzer.New(log, cfg.Streams.AnalyzerAddr, cfg.Streams.InputRespTimeout)
 		modifiedStreams = astraProcessor.DisableDeadInputs(httpClient, analyzer, modifiedStreams)
 	}

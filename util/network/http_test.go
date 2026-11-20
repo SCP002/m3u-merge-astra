@@ -29,7 +29,7 @@ func newTestMux() *http.ServeMux {
 	return mux
 }
 
-func TestNewHttpClient(t *testing.T) {
+func TestNewHTTPClient(t *testing.T) {
 	httpSrv := httptest.NewServer(newTestMux())
 	defer httpSrv.Close()
 	httpsSrv := httptest.NewTLSServer(newTestMux())
@@ -47,7 +47,7 @@ func TestNewHttpClient(t *testing.T) {
 	refusedURL := "http://" + listener.Addr().String()
 	_ = listener.Close()
 
-	client := NewHttpClient(time.Millisecond * 200)
+	client := NewHTTPClient(time.Millisecond * 200)
 
 	tests := []struct {
 		name       string

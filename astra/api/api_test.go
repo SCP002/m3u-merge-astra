@@ -24,7 +24,7 @@ import (
 
 func TestSetCategories(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
-	httpClient := network.NewHttpClient(time.Second * 3)
+	httpClient := network.NewHTTPClient(time.Second * 3)
 	addr := apitest.NewServer(t).URL
 	apiHandler := NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 
@@ -83,7 +83,7 @@ func TestSetCategories(t *testing.T) {
 	// Test log output.
 	var out bytes.Buffer
 	log = logger.New(logger.DebugLevel, &out)
-	httpClient = network.NewHttpClient(time.Second * 3)
+	httpClient = network.NewHTTPClient(time.Second * 3)
 	apiHandler = NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 	idxCategoryMap = []lo.Entry[int, astra.Category]{
 		{
@@ -100,7 +100,7 @@ func TestSetCategories(t *testing.T) {
 
 func TestSetCategory(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
-	httpClient := network.NewHttpClient(time.Second * 3)
+	httpClient := network.NewHTTPClient(time.Second * 3)
 	addr := apitest.NewServer(t).URL
 	apiHandler := NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 
@@ -138,7 +138,7 @@ func TestSetCategory(t *testing.T) {
 
 func TestSetStreams(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
-	httpClient := network.NewHttpClient(time.Second * 3)
+	httpClient := network.NewHTTPClient(time.Second * 3)
 	addr := apitest.NewServer(t).URL
 	apiHandler := NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 
@@ -159,7 +159,7 @@ func TestSetStreams(t *testing.T) {
 	// Test log output.
 	var out bytes.Buffer
 	log = logger.New(logger.DebugLevel, &out)
-	httpClient = network.NewHttpClient(time.Second * 3)
+	httpClient = network.NewHTTPClient(time.Second * 3)
 	apiHandler = NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 	streams = []astra.Stream{
 		{ID: "0000", Name: "Name 0", Type: string(cfg.SPTS)},
@@ -171,7 +171,7 @@ func TestSetStreams(t *testing.T) {
 
 func TestSetStream(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
-	httpClient := network.NewHttpClient(time.Second * 3)
+	httpClient := network.NewHTTPClient(time.Second * 3)
 	addr := apitest.NewServer(t).URL
 	apiHandler := NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 
@@ -208,7 +208,7 @@ func TestSetStream(t *testing.T) {
 
 func TestFetchCfg(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
-	httpClient := network.NewHttpClient(time.Second * 3)
+	httpClient := network.NewHTTPClient(time.Second * 3)
 	addr := apitest.NewServer(t).URL
 	apiHandler := NewHandler(log, httpClient, addr, apitest.User, apitest.Password)
 	err := apiHandler.SetStream("0001", astra.Stream{ID: "0001", Name: "Name 1", Type: string(cfg.SPTS)}, 0)
@@ -228,7 +228,7 @@ func TestFetchCfg(t *testing.T) {
 
 func TestSetErrors(t *testing.T) {
 	log := logger.New(logger.DebugLevel, os.Stderr)
-	httpClient := network.NewHttpClient(time.Second * 3)
+	httpClient := network.NewHTTPClient(time.Second * 3)
 
 	tests := []struct {
 		name    string

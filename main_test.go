@@ -36,7 +36,7 @@ func TestMainFunc(t *testing.T) {
 	err = os.WriteFile(m3uPath, m3uBytes, 0644)
 	assert.NoError(t, err)
 
-	apiHttpClient := network.NewHttpClient(time.Second * 10)
+	apiHttpClient := network.NewHTTPClient(time.Second * 10)
 	astraAddr := apitest.NewServer(t).URL
 	apiHandler := api.NewHandler(log, apiHttpClient, astraAddr, apitest.User, apitest.Password)
 
