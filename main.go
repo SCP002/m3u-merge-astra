@@ -11,7 +11,6 @@ import (
 	"m3u-merge-astra/cli"
 	"m3u-merge-astra/m3u"
 	"m3u-merge-astra/merge"
-	"m3u-merge-astra/util/copier"
 	"m3u-merge-astra/util/input"
 	"m3u-merge-astra/util/logger"
 	"m3u-merge-astra/util/network"
@@ -105,7 +104,8 @@ func main() {
 	astraProcessor := astra.NewProcessor(log, cfg)
 	mergeProcessor := merge.NewProcessor(log, cfg)
 
-	modifiedStreams := copier.MustDeep(astraCfg.Streams)
+	// Processing does not modify its arguments, so astraCfg keeps original streams and categories to find changes.
+	modifiedStreams := astraCfg.Streams
 	gid := astraCfg.GID
 	modifiedStreams = astraProcessor.RemoveNamePrefixes(modifiedStreams)
 	modifiedStreams = astraProcessor.Sort(modifiedStreams)
@@ -170,7 +170,7 @@ func main() {
 	modifiedStreams = astraProcessor.AddNamePrefixes(modifiedStreams)
 
 	// Update astra categories.
-	modifiedCats := copier.MustDeep(astraCfg.Categories)
+	modifiedCats := astraCfg.Categories
 	if cfg.General.MergeCategories {
 		modifiedCats = astraProcessor.MergeCategories(modifiedCats)
 	}

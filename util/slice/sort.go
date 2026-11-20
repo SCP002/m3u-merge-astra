@@ -3,13 +3,11 @@ package slice
 import (
 	"cmp"
 	"slices"
-
-	"m3u-merge-astra/util/copier"
 )
 
-// Sort returns deep copy of `list` sorted by Name field.
+// Sort returns `list` sorted by Name field. Does not modify `list`.
 func Sort[T Named](list []T) (out []T) {
-	out = copier.MustDeep(list)
+	out = slices.Clone(list)
 
 	slices.SortStableFunc(out, func(a, b T) int {
 		return cmp.Compare(a.GetName(), b.GetName())

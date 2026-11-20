@@ -4,13 +4,14 @@ import (
 	"m3u-merge-astra/cfg"
 	"m3u-merge-astra/util/copier"
 	"m3u-merge-astra/util/slice"
+	"m3u-merge-astra/util/slice/slicetest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIndexOrElse(t *testing.T) {
-	ol1 := []string{"A", "B"}
+	ol1 := slicetest.WithSpare([]string{"A", "B"}, "spare")
 	ol1Original := copier.MustDeep(ol1)
 
 	search := "B"
@@ -30,6 +31,7 @@ func TestIndexOrElse(t *testing.T) {
 	})
 
 	assert.Exactly(t, ol1Original, ol1)
+	assert.Exactly(t, "spare", slicetest.Spare(ol1), "should not append to `list`")
 
 	assert.Exactly(t, []string{"A", "B", "C"}, ol2)
 	assert.Exactly(t, search, o)

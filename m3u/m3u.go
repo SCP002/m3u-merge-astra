@@ -85,7 +85,7 @@ func (p Processor) Parse(rawChannels io.ReadCloser) (out []Channel) {
 	return
 }
 
-// Sort returns deep copy of `channels` sorted by name.
+// Sort returns `channels` sorted by name.
 func (p Processor) Sort(channels []Channel) (out []Channel) {
 	p.log.Info("Sorting M3U channels")
 
@@ -94,7 +94,7 @@ func (p Processor) Sort(channels []Channel) (out []Channel) {
 	return
 }
 
-// ReplaceGroups returns shallow copy of `channels` with groups taken from map in config.
+// ReplaceGroups returns `channels` with groups taken from map in config.
 func (p Processor) ReplaceGroups(channels []Channel) (out []Channel) {
 	p.log.Info("Replacing groups of M3U channels")
 
@@ -108,7 +108,7 @@ func (p Processor) ReplaceGroups(channels []Channel) (out []Channel) {
 	return
 }
 
-// RemoveBlocked returns shallow copy of `channels` without blocked ones.
+// RemoveBlocked returns `channels` without blocked ones.
 func (p Processor) RemoveBlocked(channels []Channel) (out []Channel) {
 	p.log.Info("Removing blocked channels")
 

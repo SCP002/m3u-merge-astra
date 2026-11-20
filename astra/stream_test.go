@@ -16,6 +16,7 @@ import (
 	"m3u-merge-astra/util/copier"
 	"m3u-merge-astra/util/logger"
 	"m3u-merge-astra/util/network/nettest"
+	"m3u-merge-astra/util/slice/slicetest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -335,7 +336,7 @@ func TestDisableAllButOneInputByRx(t *testing.T) {
 
 	s1 := Stream{
 		Inputs:         []string{"http://input/1#abc", "http://input/1#no_sync&abc", "http://input/1#abc&i_might_stay"},
-		DisabledInputs: []string{"http://input/1#def"},
+		DisabledInputs: slicetest.WithSpare([]string{"http://input/1#def"}, "spare"),
 	}
 	s1Original := copier.MustDeep(s1)
 
@@ -344,6 +345,7 @@ func TestDisableAllButOneInputByRx(t *testing.T) {
 		disabled = append(disabled, input)
 	})
 	assert.Exactly(t, s1Original, s1)
+	assert.Exactly(t, "spare", slicetest.Spare(s1.DisabledInputs), "should not append to disabled inputs of the stream")
 
 	expected := []string{"http://input/1#no_sync&abc"}
 	assert.Exactly(t, expected, s2.Inputs,
@@ -1253,7 +1255,7 @@ func TestDisableDeadInputs(t *testing.T) {
 				"http://no-such-host.test/2",
 				"http://streams.test/alive/1",
 			},
-			DisabledInputs: []string{"http://dead/existing/1"},
+			DisabledInputs: slicetest.WithSpare([]string{"http://dead/existing/1"}, "spare"),
 		},
 		{
 			Name:   "Name 2",
@@ -1265,6 +1267,8 @@ func TestDisableDeadInputs(t *testing.T) {
 
 	sl2 := p.DisableDeadInputs(httpClient, analyzerClient, sl1)
 	assert.Exactly(t, sl1Original, sl1)
+	assert.Exactly(t, "spare", slicetest.Spare(sl1[0].DisabledInputs),
+		"should not append to disabled inputs of `streams`")
 
 	assert.Len(t, sl2, len(sl1))
 

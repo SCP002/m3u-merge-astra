@@ -1,6 +1,7 @@
 package slice
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
@@ -13,8 +14,9 @@ func Prepend[T any](inp []T, elm T) []T {
 }
 
 // AppendNew returns `inp` with every element of `elms` added to the end of `inp` if it's not in `inp` and runs
-// `callback`.
+// `callback`. Does not modify `inp`.
 func AppendNew[T any](inp []T, callback func(T), elms ...T) []T {
+	inp = slices.Clip(inp)
 	for _, elm := range elms {
 		if !lo.ContainsBy(inp, func(cElm T) bool { return cmp.Equal(cElm, elm) }) {
 			inp = append(inp, elm)

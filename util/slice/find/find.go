@@ -1,6 +1,8 @@
 package find
 
 import (
+	"slices"
+
 	"m3u-merge-astra/cfg"
 	"m3u-merge-astra/util/compare"
 	"m3u-merge-astra/util/slice"
@@ -9,11 +11,11 @@ import (
 )
 
 // IndexOrElse returns unmodified `list`, `list` entry and it's index if `predicate` returns true or `list` with
-// `fallback`, `fallback` and it's index (len - 1) if not found.
+// `fallback`, `fallback` and it's index (len - 1) if not found. Does not modify `list`.
 func IndexOrElse[T any](list []T, fallback T, predicate func(elm T) bool) ([]T, T, int) {
 	elm, idx, found := lo.FindIndexOf(list, predicate)
 	if !found {
-		list = append(list, fallback)
+		list = append(slices.Clip(list), fallback)
 		return list, fallback, len(list) - 1
 	}
 	return list, elm, idx
@@ -42,7 +44,7 @@ func EverySimilar[T slice.Named](cfg cfg.General, list []T, name string, start i
 	}
 }
 
-// GetSimilar returns shallow copy of `list` only with entries whose .Name() matching the `name`.
+// GetSimilar returns entries of `list` whose .Name() matching the `name`.
 //
 // Both names standartized before comparsion using transliteration settings from `cfg`.
 func GetSimilar[T slice.Named](cfg cfg.General, list []T, name string) []T {

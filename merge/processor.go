@@ -6,6 +6,8 @@ import (
 )
 
 // Processor merges M3U channels into astra streams.
+//
+// Its methods do not modify their arguments.
 type Processor struct {
 	log *logger.Logger
 	cfg cfg.Root

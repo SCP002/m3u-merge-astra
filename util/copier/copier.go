@@ -6,6 +6,8 @@ import (
 )
 
 // MustDeep returns deep copy of `inp`, panicking if copier fails.
+//
+// Used in tests to keep original values for comparison.
 func MustDeep[T any](inp T) T {
 	out, err := deep(inp)
 	if err != nil {

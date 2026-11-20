@@ -4,6 +4,7 @@ import (
 	"encoding/json/jsontext"
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,7 +13,6 @@ import (
 
 	"m3u-merge-astra/astra/analyzer"
 	"m3u-merge-astra/cfg"
-	"m3u-merge-astra/util/copier"
 	"m3u-merge-astra/util/iter"
 	"m3u-merge-astra/util/logger"
 	"m3u-merge-astra/util/network"
@@ -26,6 +26,8 @@ import (
 )
 
 // Stream represents astra stream object.
+//
+// Its methods return modified copy of the stream and do not modify the original, including its slices.
 type Stream struct {
 	DisabledInputs []string          `json:"_input,omitempty"`
 	Enabled        bool              `json:"enable"`
@@ -80,16 +82,12 @@ func (s Stream) FirstGroup() string {
 
 // UpdateInput updates first encountered input if both it and `newURL` match the InputUpdateMap from `cfg`.
 //
-// Returns deep copy of stream.
-//
 // Returns true as the second return value if stream was updated.
 //
 // Runs `callback` with old URL for every updated input.
 //
 // If KeepInputHash is enabled in config, it also adds old input URL hash to `newURL`.
 func (s Stream) UpdateInput(log *logger.Logger, cfg cfg.Streams, newURL string, callback func(string)) (Stream, bool) {
-	s = copier.MustDeep(s)
-
 	for inpIdx, oldURL := range s.Inputs {
 		for _, updRec := range cfg.InputUpdateMap {
 			if updRec.From.MatchString(oldURL) && updRec.To.MatchString(newURL) {
@@ -109,6 +107,7 @@ func (s Stream) UpdateInput(log *logger.Logger, cfg cfg.Streams, newURL string, 
 				}
 				// Update first encountered matching input.
 				callback(oldURL)
+				s.Inputs = slices.Clone(s.Inputs)
 				s.Inputs[inpIdx] = newURL
 				return s, true
 			}
@@ -222,7 +221,7 @@ func (s Stream) disableAllButOneInputByRx(cfg cfg.Streams, callback func(string)
 			if rx.MatchString(inp) {
 				inputsToDisable := slice.RemoveFirst(s.Inputs, inp)
 				iter.ForEach(inputsToDisable, callback)
-				s.DisabledInputs = append(s.DisabledInputs, inputsToDisable...)
+				s.DisabledInputs = append(slices.Clip(s.DisabledInputs), inputsToDisable...)
 				s.Inputs = []string{inp}
 				return s
 			}
@@ -289,8 +288,8 @@ func HasInput(log *logger.Logger, streams []Stream, inp string, withHash bool) b
 	})
 }
 
-// RemoveNamePrefixes returns shallow copy of `streams` without name prefixes on every stream and MarkAdded or
-// MarkDisabled fields set instead.
+// RemoveNamePrefixes returns `streams` without name prefixes on every stream and MarkAdded or MarkDisabled fields set
+// instead.
 func (p Processor) RemoveNamePrefixes(streams []Stream) (out []Stream) {
 	p.log.Info("Temporarily removing name prefixes from streams")
 
@@ -316,7 +315,7 @@ func (p Processor) RemoveNamePrefixes(streams []Stream) (out []Stream) {
 	return
 }
 
-// Sort returns deep copy of `streams` sorted by name.
+// Sort returns `streams` sorted by name.
 func (p Processor) Sort(streams []Stream) (out []Stream) {
 	p.log.Info("Sorting astra streams")
 
@@ -325,7 +324,7 @@ func (p Processor) Sort(streams []Stream) (out []Stream) {
 	return
 }
 
-// RemoveBlockedInputs returns shallow copy of `streams` without blocked inputs.
+// RemoveBlockedInputs returns `streams` without blocked inputs.
 func (p Processor) RemoveBlockedInputs(streams []Stream) (out []Stream) {
 	p.log.Info("Removing blocked inputs from streams")
 
@@ -339,7 +338,7 @@ func (p Processor) RemoveBlockedInputs(streams []Stream) (out []Stream) {
 	return
 }
 
-// RemoveDuplicatedInputs returns shallow copy of `streams` with only unique inputs.
+// RemoveDuplicatedInputs returns `streams` with only unique inputs.
 func (p Processor) RemoveDuplicatedInputs(streams []Stream) (out []Stream) {
 	p.log.Info("Removing duplicated inputs from streams")
 
@@ -362,8 +361,8 @@ func (p Processor) RemoveDuplicatedInputs(streams []Stream) (out []Stream) {
 	return
 }
 
-// RemoveDuplicatedInputsByRx returns shallow copy of `streams` with only unique inputs per stream by first capture
-// groups of regular expressions defined in config.
+// RemoveDuplicatedInputsByRx returns `streams` with only unique inputs per stream by first capture groups of regular
+// expressions defined in config.
 func (p Processor) RemoveDuplicatedInputsByRx(streams []Stream) (out []Stream) {
 	p.log.Info("Removing duplicated inputs per stream by regular expressions")
 
@@ -377,13 +376,13 @@ func (p Processor) RemoveDuplicatedInputsByRx(streams []Stream) (out []Stream) {
 	return
 }
 
-// UniteInputs returns deep copy of `streams` with inputs of every equally named stream moved to the first stream found.
+// UniteInputs returns `streams` with inputs of every equally named stream moved to the first stream found.
 //
 // If cfg.Streams.EnableOnInputUpdate is enabled in config, it also enables every stream with new inputs.
 func (p Processor) UniteInputs(streams []Stream) (out []Stream) {
 	p.log.Info("Uniting inputs of streams")
 
-	out = copier.MustDeep(streams)
+	out = slices.Clone(streams)
 	for currIdx, currStream := range out {
 		find.EverySimilar(p.cfg.General, out, currStream.Name, currIdx+1, func(nextStream Stream, nextIdx int) {
 			for _, nextInput := range nextStream.Inputs {
@@ -408,12 +407,14 @@ func (p Processor) UniteInputs(streams []Stream) (out []Stream) {
 	return
 }
 
-// SortInputs returns deep copy of `streams` with all inputs sorted by InputWeightToTypeMap in config.
+// SortInputs returns `streams` with all inputs sorted by InputWeightToTypeMap in config.
 func (p Processor) SortInputs(streams []Stream) (out []Stream) {
 	p.log.Info("Sorting inputs of streams")
 
-	out = copier.MustDeep(streams)
-	for _, s := range out {
+	out = slices.Clone(streams)
+	for sIdx := range out {
+		s := &out[sIdx]
+		s.Inputs = slices.Clone(s.Inputs)
 		sort.SliceStable(s.Inputs, func(i, j int) bool {
 			// Set default weight.
 			leftInpWeight := p.cfg.Streams.UnknownInputWeight
@@ -432,7 +433,7 @@ func (p Processor) SortInputs(streams []Stream) (out []Stream) {
 	return
 }
 
-// RemoveDeadInputs returns deep copy of `streams` without dead inputs.
+// RemoveDeadInputs returns `streams` without dead inputs.
 //
 // For detailed description, see removeDeadInputs method.
 func (p Processor) RemoveDeadInputs(httpClient *http.Client, analyzer analyzer.Analyzer,
@@ -441,7 +442,7 @@ func (p Processor) RemoveDeadInputs(httpClient *http.Client, analyzer analyzer.A
 	return p.removeDeadInputs(httpClient, analyzer, streams, false)
 }
 
-// DisableDeadInputs returns deep copy of `streams` with dead inputs disabled.
+// DisableDeadInputs returns `streams` with dead inputs disabled.
 //
 // For detailed description, see removeDeadInputs method.
 func (p Processor) DisableDeadInputs(httpClient *http.Client, analyzer analyzer.Analyzer,
@@ -450,14 +451,15 @@ func (p Processor) DisableDeadInputs(httpClient *http.Client, analyzer analyzer.
 	return p.removeDeadInputs(httpClient, analyzer, streams, true)
 }
 
-// AddHashes returns deep copy of `streams` with hashes added to every input as defined in config with *ToInputHashMap.
+// AddHashes returns `streams` with hashes added to every input as defined in config with *ToInputHashMap.
 func (p Processor) AddHashes(streams []Stream) (out []Stream) {
 	p.log.Info("Adding hashes to inputs of streams")
 
-	out = copier.MustDeep(streams)
+	out = slices.Clone(streams)
 	var changed bool
 
 	for sIdx, s := range out {
+		out[sIdx].Inputs = slices.Clone(s.Inputs)
 		for inpIdx, inp := range s.Inputs {
 			// By inputs.
 			for _, rule := range p.cfg.Streams.InputToInputHashMap {
@@ -508,8 +510,8 @@ func (p Processor) AddHashes(streams []Stream) (out []Stream) {
 	return
 }
 
-// DisableAllButOneInputByRx returns shallow copy of `streams` with all inputs in every stream disabled except the input
-// which matches any regular expression defined in config.
+// DisableAllButOneInputByRx returns `streams` with all inputs in every stream disabled except the input which matches
+// any regular expression defined in config.
 func (p Processor) DisableAllButOneInputByRx(streams []Stream) (out []Stream) {
 	p.log.Info("Disabling all but one input per stream by regular expressions")
 
@@ -523,7 +525,7 @@ func (p Processor) DisableAllButOneInputByRx(streams []Stream) (out []Stream) {
 	return
 }
 
-// RemoveDisabledInputs returns shallow copy of `streams` with all disabled inputs removed.
+// RemoveDisabledInputs returns `streams` with all disabled inputs removed.
 func (p Processor) RemoveDisabledInputs(streams []Stream) (out []Stream) {
 	p.log.Info("Removing disabled inputs")
 
@@ -536,8 +538,7 @@ func (p Processor) RemoveDisabledInputs(streams []Stream) (out []Stream) {
 	return
 }
 
-// SetKeepActive returns shallow copy of `streams` with HTTPKeepActive set on every stream as defined in config with
-// *ToKeepActiveMap.
+// SetKeepActive returns `streams` with HTTPKeepActive set on every stream as defined in config with *ToKeepActiveMap.
 func (p Processor) SetKeepActive(streams []Stream) (out []Stream) {
 	p.log.Info("Setting keep active on streams")
 
@@ -585,7 +586,7 @@ func (p Processor) SetKeepActive(streams []Stream) (out []Stream) {
 	return
 }
 
-// RemoveWithoutInputs returns shallow copy of `streams` with Remove field set to true on streams which have no inputs.
+// RemoveWithoutInputs returns `streams` with Remove field set to true on streams which have no inputs.
 func (p Processor) RemoveWithoutInputs(streams []Stream) (out []Stream) {
 	p.log.Info("Removing streams without inputs")
 
@@ -600,7 +601,7 @@ func (p Processor) RemoveWithoutInputs(streams []Stream) (out []Stream) {
 	return
 }
 
-// DisableWithoutInputs returns shallow copy of `streams` with all streams disabled if they have no inputs.
+// DisableWithoutInputs returns `streams` with all streams disabled if they have no inputs.
 func (p Processor) DisableWithoutInputs(streams []Stream) (out []Stream) {
 	p.log.Info("Disabling streams without inputs")
 
@@ -615,8 +616,7 @@ func (p Processor) DisableWithoutInputs(streams []Stream) (out []Stream) {
 	return
 }
 
-// RemoveNamePrefixes returns shallow copy of `streams` with name prefixes on every stream if MarkAdded or MarkDisabled
-// is true.
+// AddNamePrefixes returns `streams` with name prefixes on every stream if MarkAdded or MarkDisabled is true.
 func (p Processor) AddNamePrefixes(streams []Stream) (out []Stream) {
 	p.log.Info("Adding name prefixes to streams")
 
@@ -662,7 +662,7 @@ func (p Processor) ChangedStreams(oldStreams, newStreams []Stream) (out []Stream
 	return
 }
 
-// removeDeadInputs returns deep copy of `streams` without dead inputs.
+// removeDeadInputs returns `streams` without dead inputs.
 //
 // If `disable` is true, disable dead inputs instead of deleting them.
 //
@@ -799,9 +799,10 @@ func (p Processor) removeDeadInputs(httpClient *http.Client, analyzer analyzer.A
 
 	// Apply results in order of inputs.
 	inputsChecked, inputsDead := 0, 0
-	out = copier.MustDeep(streams)
+	out = slices.Clone(streams)
 	for sIdx := range out {
 		s := &out[sIdx]
+		s.DisabledInputs = slices.Clip(s.DisabledInputs)
 		var alive []string
 		for _, inp := range s.Inputs {
 			removalReason := removalReasons[0]

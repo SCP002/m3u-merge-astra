@@ -6,6 +6,7 @@ import (
 	"m3u-merge-astra/cfg"
 	"m3u-merge-astra/m3u"
 	"m3u-merge-astra/util/copier"
+	"m3u-merge-astra/util/slice/slicetest"
 	"regexp"
 	"strconv"
 	"testing"
@@ -378,10 +379,11 @@ func TestAddNewInputs(t *testing.T) {
 func TestAddNewStreams(t *testing.T) {
 	p := newDefProcessor()
 
-	sl1 := []astra.Stream{
+	spare := astra.Stream{Name: "Spare"}
+	sl1 := slicetest.WithSpare([]astra.Stream{
 		{Name: "Known name", Inputs: []string{"http://some/url"}},
 		{Name: "Other name A", Inputs: []string{"http://some/url/2"}},
-	}
+	}, spare)
 	sl1Original := copier.MustDeep(sl1)
 	cl1 := []m3u.Channel{
 		{Name: "Other name B", Group: "Group", URL: "http://some/url/2"},
@@ -396,6 +398,7 @@ func TestAddNewStreams(t *testing.T) {
 
 	assert.Exactly(t, sl1Original, sl1)
 	assert.Exactly(t, cl1Original, cl1)
+	assert.Exactly(t, spare, slicetest.Spare(sl1), "should not append to `streams`")
 
 	assert.Len(t, sl2, 3)
 

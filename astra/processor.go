@@ -8,6 +8,8 @@ import (
 )
 
 // Processor processes astra streams and categories.
+//
+// Its methods do not modify their arguments.
 type Processor struct {
 	log              *logger.Logger
 	cfg              cfg.Root

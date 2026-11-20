@@ -2,6 +2,7 @@ package slice
 
 import (
 	"m3u-merge-astra/util/copier"
+	"m3u-merge-astra/util/slice/slicetest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +14,7 @@ func TestPrepend(t *testing.T) {
 }
 
 func TestAppendNew(t *testing.T) {
-	ol1 := []int{0, 1}
+	ol1 := slicetest.WithSpare([]int{0, 1}, -1)
 	ol1Original := copier.MustDeep(ol1)
 
 	cbCounter := 0
@@ -22,6 +23,7 @@ func TestAppendNew(t *testing.T) {
 	}, []int{1, 2, 3}...)
 
 	assert.Exactly(t, ol1Original, ol1)
+	assert.Exactly(t, -1, slicetest.Spare(ol1), "should not append to `inp`")
 
 	assert.Exactly(t, []int{0, 1, 2, 3}, ol2)
 	assert.Exactly(t, 2, cbCounter)

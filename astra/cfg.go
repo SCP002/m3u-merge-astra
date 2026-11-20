@@ -2,9 +2,9 @@ package astra
 
 import (
 	"encoding/json/jsontext"
-	"m3u-merge-astra/util/copier"
 	"m3u-merge-astra/util/slice"
 	"m3u-merge-astra/util/slice/find"
+	"slices"
 	"sort"
 
 	"github.com/google/go-cmp/cmp"
@@ -33,11 +33,11 @@ type Group struct {
 	Unknown jsontext.Value `json:",embed"`          // All unknown fields go here.
 }
 
-// UpdateCategories returns deep copy of categories `cats` with new and changed categories and groups from `streams`.
+// UpdateCategories returns categories `cats` with new and changed categories and groups from `streams`.
 func (p Processor) UpdateCategories(cats []Category, streams []Stream) []Category {
 	p.log.Info("Updating categories field with new and changed categories and groups from streams")
 
-	cats = copier.MustDeep(cats)
+	cats = slices.Clone(cats)
 
 	// Transform []Stream into []Category.
 	sCats := lo.FlatMap(streams, func(s Stream, _ int) []Category {
@@ -93,7 +93,7 @@ func (p Processor) ChangedCategories(oldCats, newCats []Category) (out []lo.Entr
 	return
 }
 
-// MergeCategories returns shallow copy of `cats` with unique categories and their groups set from all categories with
+// MergeCategories returns `cats` with unique categories and their groups set from all categories with
 // the same name.
 //
 // Categories to be removed has Remove field set to true.

@@ -6,6 +6,8 @@ import (
 )
 
 // Processor processes M3U channels.
+//
+// Its methods do not modify their arguments.
 type Processor struct {
 	log *logger.Logger
 	cfg cfg.Root

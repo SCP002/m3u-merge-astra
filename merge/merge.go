@@ -4,13 +4,13 @@ import (
 	"m3u-merge-astra/astra"
 	"m3u-merge-astra/m3u"
 	"m3u-merge-astra/util/slice/find"
+	"slices"
 	"strconv"
 
 	"github.com/samber/lo"
 )
 
-// RenameStreams returns shallow copy of `streams` with names taken from `channels` if their standardized names are
-// equal.
+// RenameStreams returns `streams` with names taken from `channels` if their standardized names are equal.
 func (p Processor) RenameStreams(streams []astra.Stream, channels []m3u.Channel) (out []astra.Stream) {
 	p.log.Info("Renaming streams")
 
@@ -27,8 +27,8 @@ func (p Processor) RenameStreams(streams []astra.Stream, channels []m3u.Channel)
 	return
 }
 
-// UpdateInputs returns shallow copy of `streams` with every first matching input of every stream replaced with matching
-// URL's of m3u channels according to cfg.Streams.InputUpdateMap.
+// UpdateInputs returns `streams` with every first matching input of every stream replaced with matching URL's of m3u
+// channels according to cfg.Streams.InputUpdateMap.
 //
 // If cfg.Streams.EnableOnInputUpdate is enabled in config, it also enables every stream on update.
 func (p Processor) UpdateInputs(streams []astra.Stream, channels []m3u.Channel) (out []astra.Stream) {
@@ -55,8 +55,8 @@ func (p Processor) UpdateInputs(streams []astra.Stream, channels []m3u.Channel) 
 	return
 }
 
-// RemoveInputsByUpdateMap returns shallow copy of `streams` without inputs which match at least one
-// cfg.Streams.InputUpdateMap.From expression but none found in `channels`.
+// RemoveInputsByUpdateMap returns `streams` without inputs which match at least one cfg.Streams.InputUpdateMap.From
+// expression but none found in `channels`.
 func (p Processor) RemoveInputsByUpdateMap(streams []astra.Stream, channels []m3u.Channel) (out []astra.Stream) {
 	p.log.Info("Removing absent inputs from streams according the update map")
 
@@ -76,7 +76,7 @@ func (p Processor) RemoveInputsByUpdateMap(streams []astra.Stream, channels []m3
 	return
 }
 
-// AddNewInputs returns shallow copy of `streams` with new inputs if such found in `channels`.
+// AddNewInputs returns `streams` with new inputs if such found in `channels`.
 //
 // If cfg.Streams.EnableOnInputUpdate is enabled in config, it also enables every stream with new inputs.
 func (p Processor) AddNewInputs(streams []astra.Stream, channels []m3u.Channel) (out []astra.Stream) {
@@ -106,6 +106,7 @@ func (p Processor) AddNewInputs(streams []astra.Stream, channels []m3u.Channel) 
 func (p Processor) AddNewStreams(streams []astra.Stream, channels []m3u.Channel, gid int) ([]astra.Stream, int) {
 	p.log.Info("Adding new streams")
 
+	streams = slices.Clip(streams)
 	for _, ch := range channels {
 		if !p.cfg.Streams.AddNewWithKnownInputs && astra.HasInput(p.log, streams, ch.URL, false) {
 			continue

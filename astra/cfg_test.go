@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"m3u-merge-astra/util/copier"
+	"m3u-merge-astra/util/slice/slicetest"
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
@@ -12,10 +13,12 @@ import (
 func TestUpdateCategories(t *testing.T) {
 	p := newDefProcessor()
 
-	cl1 := []Category{
+	spareGroup := Group{Name: "Spare"}
+	spareCat := Category{Name: "Spare"}
+	cl1 := slicetest.WithSpare([]Category{
 		{Name: "Category 1", Groups: []Group{{Name: "A"}, {Name: "A"}, {Name: "B"}}},
-		{Name: "Category 2", Groups: []Group{{Name: "C"}, {Name: "D"}, {Name: "D"}}},
-	}
+		{Name: "Category 2", Groups: slicetest.WithSpare([]Group{{Name: "C"}, {Name: "D"}, {Name: "D"}}, spareGroup)},
+	}, spareCat)
 	cl1Original := copier.MustDeep(cl1)
 	sl1 := []Stream{
 		{Groups: map[string]string{"Category 3": "A"}},
@@ -36,6 +39,8 @@ func TestUpdateCategories(t *testing.T) {
 
 	assert.Exactly(t, cl1Original, cl1)
 	assert.Exactly(t, sl1Original, sl1)
+	assert.Exactly(t, spareCat, slicetest.Spare(cl1), "should not append to `cats`")
+	assert.Exactly(t, spareGroup, slicetest.Spare(cl1[1].Groups), "should not append to groups of `cats`")
 
 	expected := []Category{
 		{Name: "Category 1", Groups: []Group{{Name: "A"}, {Name: "A"}, {Name: "B"}}},
