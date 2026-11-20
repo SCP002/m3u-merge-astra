@@ -59,14 +59,18 @@ func main() {
 		os.Exit(0)
 	})
 
+	if err := run(log, flags); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// run runs the program configured with command line `flags`, logging to `log`.
+func run(log *logger.Logger, flags cli.Flags) error {
 	// Update the program.
 	if flags.Update {
 		updaterHttpClient := network.NewVerifyingHTTPClient(time.Minute * 10)
 		updater := updater.New(log, updaterHttpClient)
-		if err := updater.Update(); err != nil {
-			log.Fatal(errors.Wrap(err, "Self update failed"))
-		}
-		return
+		return errors.Wrap(updater.Update(), "Self update failed")
 	}
 
 	log.InfoFi("Running with", "program config path", flags.ProgramCfgPath, "M3U path", flags.M3UPath, "astra address",
@@ -75,11 +79,11 @@ func main() {
 	// Read program config.
 	cfg, isNewCfg, err := cfg.Init(log, flags.ProgramCfgPath)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	if isNewCfg {
 		log.Infof("New config is written to %v, please verify it and start this program again", flags.ProgramCfgPath)
-		os.Exit(0)
+		return nil
 	}
 
 	// Fetch astra config.
@@ -88,7 +92,7 @@ func main() {
 	apiHandler := api.NewHandler(log, apiHttpClient, flags.AstraAddr, flags.AstraUser, flags.AstraPwd)
 	astraCfg, err := apiHandler.FetchCfg()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	// Fetch M3U channels.
@@ -96,7 +100,7 @@ func main() {
 	m3uHttpClient := network.NewHTTPClient(cfg.M3U.RespTimeout)
 	m3uResp, err := openuri.Open(flags.M3UPath, openuri.WithHTTPClient(m3uHttpClient))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer func() { _ = m3uResp.Close() }()
 
@@ -204,4 +208,6 @@ func main() {
 	}
 
 	log.Info("Done")
+
+	return nil
 }
