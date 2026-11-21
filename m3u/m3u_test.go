@@ -52,7 +52,7 @@ func TestParse(t *testing.T) {
 
 	cl := p.Parse(playlist)
 
-	assert.Len(t, cl, 5)
+	assert.Len(t, cl, 8)
 
 	expected := Channel{Name: ", Channel 1", Group: "Group 1", URL: "http://channel/url/1"}
 	assert.Exactly(t, expected, cl[0])
@@ -68,6 +68,37 @@ func TestParse(t *testing.T) {
 
 	expected = Channel{Name: "Channel 5", Group: "#EXTGRP: Ext Group 2", URL: "file:///C:/channel/url/5"}
 	assert.Exactly(t, expected, cl[4], "should have this channel, overwrite previous #EXTGRP")
+
+	expected = Channel{Name: "Channel, 6", Group: "Group, 6", URL: "http://channel/url/6"}
+	assert.Exactly(t, expected, cl[5], "should not split name on commas inside quoted attributes")
+
+	expected = Channel{Name: "Channel 8", Group: "#EXTGRP: Ext Group 2", URL: "http://channel/url/8"}
+	assert.Exactly(t, expected, cl[6], "should not inherit group-title from previous #EXTINF without URL")
+
+	expected = Channel{Name: "Channel 9", Group: "#EXTGRP: Ext Group 2", URL: "http://channel/url/9"}
+	assert.Exactly(t, expected, cl[7], "should fall back to the first comma if quotes are unbalanced")
+}
+
+func TestParseExtInf(t *testing.T) {
+	tests := []struct {
+		extInf     string
+		name       string
+		groupTitle string
+	}{
+		{`-1,Name`, "Name", ""},
+		{` 3 , Name `, "Name", ""},
+		{`-1 tvg-name="A, B" group-title="G, 1",A, B`, "A, B", "G, 1"},
+		{`-1 group-title="G1" group-title=" G2 " ,Name`, "Name", "G2"},
+		{`0,Name with group-title="X" and "quotes", commas`, `Name with group-title="X" and "quotes", commas`, ""},
+		{`-1 tvg-name="Unbalanced,Name`, "Name", ""},
+		{`-1 group-title="Новости",Канал, HD`, "Канал, HD", "Новости"},
+		{`-1 group-title="G"`, "", ""},
+	}
+	for _, test := range tests {
+		name, groupTitle := parseExtInf(test.extInf)
+		assert.Exactly(t, test.name, name, test.extInf)
+		assert.Exactly(t, test.groupTitle, groupTitle, test.extInf)
+	}
 }
 
 func TestSort(t *testing.T) {

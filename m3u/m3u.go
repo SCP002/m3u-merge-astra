@@ -40,8 +40,6 @@ func (ch Channel) replaceGroup(cfg cfg.M3U, callback func(string)) Channel {
 func (p Processor) Parse(rawChannels io.ReadCloser) (out []Channel) {
 	p.log.Info("Parsing M3U channels")
 
-	nameRx := regexp.MustCompile(`^#EXTINF:.*?,(.*)`)
-	groupTitleRx := regexp.MustCompile(`^#EXTINF:.*group-title="(.*?)"`)
 	extGrpRx := regexp.MustCompile(`^#EXTGRP:(.*)`)
 
 	name := ""
@@ -55,11 +53,10 @@ func (p Processor) Parse(rawChannels io.ReadCloser) (out []Channel) {
 		if line == "" {
 			continue
 		}
-		if matchList := nameRx.FindStringSubmatch(line); len(matchList) > 1 {
-			name = strings.TrimSpace(matchList[1])
-		}
-		if matchList := groupTitleRx.FindStringSubmatch(line); len(matchList) > 1 {
-			groupTitle = strings.TrimSpace(matchList[1])
+		if extInf, ok := strings.CutPrefix(line, "#EXTINF:"); ok {
+			// Every #EXTINF starts a new channel, discarding name and group of a previous one without URL.
+			name, groupTitle = parseExtInf(extInf)
+			continue
 		}
 		if matchList := extGrpRx.FindStringSubmatch(line); len(matchList) > 1 {
 			lastExtGrp = strings.TrimSpace(matchList[1])
@@ -80,6 +77,36 @@ func (p Processor) Parse(rawChannels io.ReadCloser) (out []Channel) {
 	}
 	if err := scanner.Err(); err != nil {
 		p.log.Error(err)
+	}
+
+	return
+}
+
+// groupTitleRx matches group-title attribute of #EXTINF directive.
+var groupTitleRx = regexp.MustCompile(`group-title="(.*?)"`)
+
+// parseExtInf returns channel name and group-title attribute value from `extInf` (#EXTINF directive without prefix).
+//
+// Name is everything after the first comma outside of double quotes (or just the first comma if quotes are
+// unbalanced). If group-title is specified multiple times, the last one is used.
+func parseExtInf(extInf string) (name, groupTitle string) {
+	inQuotes := false
+	sep := strings.IndexFunc(extInf, func(r rune) bool {
+		if r == '"' {
+			inQuotes = !inQuotes
+		}
+		return r == ',' && !inQuotes
+	})
+	if sep < 0 {
+		sep = strings.IndexByte(extInf, ',')
+	}
+	if sep < 0 {
+		return "", ""
+	}
+
+	name = strings.TrimSpace(extInf[sep+1:])
+	if matchList := groupTitleRx.FindAllStringSubmatch(extInf[:sep], -1); len(matchList) > 0 {
+		groupTitle = strings.TrimSpace(matchList[len(matchList)-1][1])
 	}
 
 	return
