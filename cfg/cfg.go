@@ -210,6 +210,18 @@ type Streams struct {
 	// RemoveDisabledInputs specifies if disabled inputs should be removed.
 	RemoveDisabledInputs bool `yaml:"remove_disabled_inputs"`
 
+	// EnableStreamInputsByRxList represents the list of regular expressions.
+	//
+	// If any expression match URL of a stream's disabled input, this input will be enabled.
+	EnableStreamInputsByRxList []*regexp2.Regexp `yaml:"enable_stream_inputs_by_rx_list"`
+
+	// DisableStreamInputsByRxList represents the list of regular expressions.
+	//
+	// If any expression match URL of a stream's input, this input will be disabled.
+	//
+	// It has priority over EnableStreamInputsByRxList.
+	DisableStreamInputsByRxList []*regexp2.Regexp `yaml:"disable_stream_inputs_by_rx_list"`
+
 	// DisableAllButOneInputByRxList represens the list of regular expressions.
 	//
 	// If any expression match URL of a stream's input, only this input will be kept and all other will be disabled.
@@ -567,6 +579,8 @@ func NewDefCfg() Root {
 			RemoveDuplicatedInputs:            true,
 			RemoveDuplicatedInputsByRxList:    []*regexp2.Regexp{},
 			RemoveDisabledInputs:              false,
+			EnableStreamInputsByRxList:        []*regexp2.Regexp{},
+			DisableStreamInputsByRxList:       []*regexp2.Regexp{},
 			DisableAllButOneInputByRxList:     []*regexp2.Regexp{},
 			RemoveDeadInputs:                  false,
 			DisableDeadInputs:                 false,
@@ -889,6 +903,23 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" Remove disabled inputs?",
+			),
+		},
+		"$.streams.enable_stream_inputs_by_rx_list": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" List of regular expressions.",
+				" If any expression match URL of a stream's disabled input, this input will be enabled.",
+				" - 'restored_provider\\.tv'",
+			),
+		},
+		"$.streams.disable_stream_inputs_by_rx_list": []*yaml.Comment{
+			yaml.HeadComment(
+				"",
+				" List of regular expressions.",
+				" If any expression match URL of a stream's input, this input will be disabled.",
+				" It has priority over 'enable_stream_inputs_by_rx_list'.",
+				" - 'broken_provider\\.tv'",
 			),
 		},
 		"$.streams.disable_all_but_one_input_by_rx_list": []*yaml.Comment{

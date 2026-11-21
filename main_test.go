@@ -151,3 +151,65 @@ func TestRun(t *testing.T) {
 	assert.Exactly(t, []string{"http://url/3/new", "http://url/3"}, streams["a001"].Inputs,
 		"should add new input to stream with name prefix")
 }
+
+func TestRunEnableDisableInputsByRx(t *testing.T) {
+	log := logger.New(logger.DebugLevel, os.Stderr)
+
+	// Create program config file with inputs to enable and disable.
+	programCfgPath := filepath.Join(t.TempDir(), "m3u-merge-astra-main-test.yaml")
+	_, _, err := cfg.Init(log, programCfgPath)
+	assert.NoError(t, err)
+
+	cfgBytes, err := os.ReadFile(programCfgPath)
+	assert.NoError(t, err)
+	cfgBytes = bytes.Replace(cfgBytes, []byte("  enable_stream_inputs_by_rx_list: []\n"),
+		[]byte("  enable_stream_inputs_by_rx_list:\n    - 'restored'\n"), 1)
+	cfgBytes = bytes.Replace(cfgBytes, []byte("  disable_stream_inputs_by_rx_list: []\n"),
+		[]byte("  disable_stream_inputs_by_rx_list:\n    - 'broken'\n"), 1)
+	err = os.WriteFile(programCfgPath, cfgBytes, 0644)
+	assert.NoError(t, err)
+
+	// Create M3U file with input to disable.
+	m3uPath := filepath.Join(t.TempDir(), "m3u-merge-astra-main-test.m3u")
+	err = os.WriteFile(m3uPath, []byte("#EXTM3U\n#EXTINF:-1,Channel 1\nhttp://url/1/broken\n"), 0644)
+	assert.NoError(t, err)
+
+	apiHttpClient := network.NewHTTPClient(time.Second * 10)
+	astraAddr := apitest.NewServer(t).URL
+	apiHandler := api.NewHandler(log, apiHttpClient, astraAddr, apitest.User, apitest.Password)
+
+	// Add stream with input to enable.
+	apiHandler.SetStreams([]astra.Stream{{
+		ID:             "0001",
+		Name:           "Channel 1",
+		Type:           string(cfg.SPTS),
+		Enabled:        true,
+		Inputs:         []string{"http://url/1"},
+		DisabledInputs: []string{"http://url/1/restored"},
+		Groups:         map[string]string{"Category 1": "Group 1"},
+	}}, 0)
+
+	flags := cli.Flags{
+		Noninteractive: true,
+		ProgramCfgPath: programCfgPath,
+		M3UPath:        m3uPath,
+		AstraAddr:      astraAddr,
+		AstraUser:      apitest.User,
+		AstraPwd:       apitest.Password,
+	}
+	assert.NoError(t, run(log, flags))
+
+	astraCfg, err := apiHandler.FetchCfg()
+	assert.NoError(t, err)
+	assert.Len(t, astraCfg.Streams, 1)
+	assert.Exactly(t, []string{"http://url/1", "http://url/1/restored"}, astraCfg.Streams[0].Inputs,
+		"should enable input and disable new input of M3U channel")
+	assert.Exactly(t, []string{"http://url/1/broken"}, astraCfg.Streams[0].DisabledInputs)
+
+	// Run program again, M3U channel still has input to disable.
+	assert.NoError(t, run(log, flags))
+
+	astraCfg2, err := apiHandler.FetchCfg()
+	assert.NoError(t, err)
+	assert.Exactly(t, astraCfg, astraCfg2, "should not change anything on the second run")
+}

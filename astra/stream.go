@@ -221,6 +221,38 @@ func (s Stream) disableAllButOneInputByRx(log *logger.Logger, cfg cfg.Streams, c
 	return s
 }
 
+// enableInputsByRx returns stream with disabled inputs which match any of cfg.EnableStreamInputsByRxList enabled.
+//
+// Runs `callback` with every enabled input.
+func (s Stream) enableInputsByRx(log *logger.Logger, cfg cfg.Streams, callback func(string)) Stream {
+	toEnable, toKeep := lo.FilterReject(s.DisabledInputs, func(inp string, _ int) bool {
+		return slice.AnyRxMatch(log, cfg.EnableStreamInputsByRxList, inp)
+	})
+	if len(toEnable) == 0 {
+		return s
+	}
+	loop.ForEach(toEnable, callback)
+	s.DisabledInputs = toKeep
+	s.Inputs = slice.AppendNew(s.Inputs, nil, toEnable...)
+	return s
+}
+
+// disableInputsByRx returns stream with inputs which match any of cfg.DisableStreamInputsByRxList disabled.
+//
+// Runs `callback` with every disabled input.
+func (s Stream) disableInputsByRx(log *logger.Logger, cfg cfg.Streams, callback func(string)) Stream {
+	toDisable, toKeep := lo.FilterReject(s.Inputs, func(inp string, _ int) bool {
+		return slice.AnyRxMatch(log, cfg.DisableStreamInputsByRxList, inp)
+	})
+	if len(toDisable) == 0 {
+		return s
+	}
+	loop.ForEach(toDisable, callback)
+	s.Inputs = toKeep
+	s.DisabledInputs = slice.AppendNew(s.DisabledInputs, nil, toDisable...)
+	return s
+}
+
 // removeDisabledInputs returns stream with all disabled inputs removed.
 //
 // Runs `callback` for every removed input.
@@ -504,6 +536,45 @@ func (p Processor) DisableAllButOneInputByRx(streams []Stream) (out []Stream) {
 	for _, s := range streams {
 		out = append(out, s.disableAllButOneInputByRx(p.log, p.cfg.Streams, func(input string) {
 			p.log.InfoFi("Disabling other input per stream by regular expressions", "ID", s.ID, "name", s.Name,
+				"group", s.FirstGroup(), "input", input)
+		}))
+	}
+
+	return
+}
+
+// EnableInputsByRx returns `streams` with disabled inputs which match any of cfg.Streams.EnableStreamInputsByRxList
+// enabled.
+//
+// If cfg.Streams.EnableOnInputUpdate is enabled in config, it also enables every stream with enabled inputs.
+func (p Processor) EnableInputsByRx(streams []Stream) (out []Stream) {
+	p.log.Info("Enabling inputs of streams by regular expressions")
+
+	for _, s := range streams {
+		var enabled bool
+		s = s.enableInputsByRx(p.log, p.cfg.Streams, func(input string) {
+			enabled = true
+			p.log.InfoFi("Enabling input of stream by regular expressions", "ID", s.ID, "name", s.Name,
+				"group", s.FirstGroup(), "input", input)
+		})
+		if p.cfg.Streams.EnableOnInputUpdate && enabled && !s.Enabled {
+			p.log.InfoFi("Enabling the stream (enabling inputs of streams by regular expressions, "+
+				"enable_on_input_update is on)", "ID", s.ID, "name", s.Name)
+			s = s.Enable()
+		}
+		out = append(out, s)
+	}
+
+	return
+}
+
+// DisableInputsByRx returns `streams` with inputs which match any of cfg.Streams.DisableStreamInputsByRxList disabled.
+func (p Processor) DisableInputsByRx(streams []Stream) (out []Stream) {
+	p.log.Info("Disabling inputs of streams by regular expressions")
+
+	for _, s := range streams {
+		out = append(out, s.disableInputsByRx(p.log, p.cfg.Streams, func(input string) {
+			p.log.InfoFi("Disabling input of stream by regular expressions", "ID", s.ID, "name", s.Name,
 				"group", s.FirstGroup(), "input", input)
 		}))
 	}

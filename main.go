@@ -159,6 +159,12 @@ func run(log *logger.Logger, flags cli.Flags) error {
 	if cfg.Streams.AddNew {
 		modifiedStreams, gid = mergeProcessor.AddNewStreams(modifiedStreams, m3uChannels, gid)
 	}
+	if len(cfg.Streams.EnableStreamInputsByRxList) > 0 {
+		modifiedStreams = astraProcessor.EnableInputsByRx(modifiedStreams)
+	}
+	if len(cfg.Streams.DisableStreamInputsByRxList) > 0 {
+		modifiedStreams = astraProcessor.DisableInputsByRx(modifiedStreams)
+	}
 	if cfg.Streams.RemoveDeadInputs {
 		httpClient := network.NewHTTPClient(cfg.Streams.InputRespTimeout)
 		analyzer := analyzer.New(log, cfg.Streams.AnalyzerAddr, cfg.Streams.InputRespTimeout)

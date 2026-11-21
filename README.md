@@ -242,6 +242,15 @@ lookahead `(?!...)`.
   * `remove_disabled_inputs`  
     Remove disabled inputs?
 
+  * `enable_stream_inputs_by_rx_list`  
+    List of regular expressions.  
+    If any expression match URL of a stream's disabled input, this input will be enabled.
+
+  * `disable_stream_inputs_by_rx_list`  
+    List of regular expressions.  
+    If any expression match URL of a stream's input, this input will be disabled.  
+    It has priority over `enable_stream_inputs_by_rx_list`.
+
   * `disable_all_but_one_input_by_rx_list`  
     List of regular expressions.  
     If any expression match URL of a stream's input, only this input will be kept and all other will be disabled.  

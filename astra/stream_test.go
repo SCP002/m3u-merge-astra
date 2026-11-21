@@ -385,6 +385,64 @@ func TestDisableAllButOneInputByRx(t *testing.T) {
 	assert.Exactly(t, expected, s2.DisabledInputs, "should add all normal removed inputs to the list of disabled ones")
 }
 
+func TestEnableInputsByRx(t *testing.T) {
+	p := newDefProcessor()
+	p.cfg.Streams.EnableStreamInputsByRxList = []*regexp2.Regexp{regexp2.MustCompile(`input/[12]$`, regexp2.RE2)}
+
+	s1 := Stream{
+		Inputs:         slicetest.WithSpare([]string{"http://input/0", "http://input/2"}, "spare"),
+		DisabledInputs: []string{"http://input/1", "http://input/2", "http://input/3"},
+	}
+	s1Original := copier.MustDeep(s1)
+
+	enabled := []string{}
+	s2 := s1.enableInputsByRx(p.log, p.cfg.Streams, func(input string) {
+		enabled = append(enabled, input)
+	})
+	assert.Exactly(t, s1Original, s1)
+	assert.Exactly(t, "spare", slicetest.Spare(s1.Inputs), "should not append to inputs of the stream")
+
+	assert.Exactly(t, []string{"http://input/1", "http://input/2"}, enabled)
+	assert.Exactly(t, []string{"http://input/0", "http://input/2", "http://input/1"}, s2.Inputs,
+		"should add enabled inputs to the end once")
+	assert.Exactly(t, []string{"http://input/3"}, s2.DisabledInputs)
+
+	s1 = Stream{Inputs: []string{"http://input/0"}, DisabledInputs: []string{"http://input/3"}}
+	s2 = s1.enableInputsByRx(p.log, p.cfg.Streams, func(input string) {
+		t.Fail()
+	})
+	assert.Exactly(t, s1, s2, "should not modify the stream without matching inputs")
+}
+
+func TestDisableInputsByRx(t *testing.T) {
+	p := newDefProcessor()
+	p.cfg.Streams.DisableStreamInputsByRxList = []*regexp2.Regexp{regexp2.MustCompile(`input/[12]$`, regexp2.RE2)}
+
+	s1 := Stream{
+		Inputs:         []string{"http://input/0", "http://input/1", "http://input/2"},
+		DisabledInputs: slicetest.WithSpare([]string{"http://input/2", "http://input/3"}, "spare"),
+	}
+	s1Original := copier.MustDeep(s1)
+
+	disabled := []string{}
+	s2 := s1.disableInputsByRx(p.log, p.cfg.Streams, func(input string) {
+		disabled = append(disabled, input)
+	})
+	assert.Exactly(t, s1Original, s1)
+	assert.Exactly(t, "spare", slicetest.Spare(s1.DisabledInputs), "should not append to disabled inputs of the stream")
+
+	assert.Exactly(t, []string{"http://input/1", "http://input/2"}, disabled)
+	assert.Exactly(t, []string{"http://input/0"}, s2.Inputs)
+	assert.Exactly(t, []string{"http://input/2", "http://input/3", "http://input/1"}, s2.DisabledInputs,
+		"should add disabled inputs to the end once")
+
+	s1 = Stream{Inputs: []string{"http://input/0"}, DisabledInputs: []string{"http://input/1"}}
+	s2 = s1.disableInputsByRx(p.log, p.cfg.Streams, func(input string) {
+		t.Fail()
+	})
+	assert.Exactly(t, s1, s2, "should not modify the stream without matching inputs")
+}
+
 func TestRemoveDisabledInputs(t *testing.T) {
 	s1 := Stream{
 		Inputs:         []string{"http://input/1"},
@@ -1599,6 +1657,83 @@ func TestAllDisableAllButOneInputByRx(t *testing.T) {
 	_ = p.DisableAllButOneInputByRx(sl1)
 	assert.Contains(t, out.String(), `Disabling other input per stream by regular expressions: ID "0", name "Name 1", `+
 		`group "Cat: Grp", input "http://input/1#abc"`)
+}
+
+func TestAllEnableInputsByRx(t *testing.T) {
+	var out syncBuffer
+	p := newDefProcessorWithWriter(&out)
+	p.cfg.Streams.EnableOnInputUpdate = false
+	p.cfg.Streams.EnableStreamInputsByRxList = []*regexp2.Regexp{regexp2.MustCompile(`restored`, regexp2.RE2)}
+
+	sl1 := []Stream{
+		{
+			ID: "0", Name: "Name 1", Groups: map[string]string{"Cat": "Grp"},
+			Inputs: []string{"http://input/1"}, DisabledInputs: []string{"http://restored/1", "http://broken/1"},
+		},
+		{ID: "1", Name: "Name 2", DisabledInputs: []string{"http://restored/2"}},
+		{ID: "2", Name: "Name 3", Inputs: []string{"http://input/3"}},
+	}
+	sl1Original := copier.MustDeep(sl1)
+
+	sl2 := p.EnableInputsByRx(sl1)
+	assert.Exactly(t, sl1Original, sl1)
+
+	expected := []Stream{
+		{
+			ID: "0", Name: "Name 1", Groups: map[string]string{"Cat": "Grp"},
+			Inputs: []string{"http://input/1", "http://restored/1"}, DisabledInputs: []string{"http://broken/1"},
+		},
+		{ID: "1", Name: "Name 2", Inputs: []string{"http://restored/2"}, DisabledInputs: []string{}},
+		{ID: "2", Name: "Name 3", Inputs: []string{"http://input/3"}},
+	}
+	assert.Exactly(t, expected, sl2)
+
+	assert.Contains(t, out.String(), `Enabling input of stream by regular expressions: ID "0", name "Name 1", `+
+		`group "Cat: Grp", input "http://restored/1"`)
+	assert.NotContains(t, out.String(), "Enabling the stream", "should not enable streams if option is off")
+
+	// Test enabling streams.
+	out.Reset()
+	p.cfg.Streams.EnableOnInputUpdate = true
+
+	sl2 = p.EnableInputsByRx(sl1)
+	assert.True(t, sl2[0].Enabled)
+	assert.True(t, sl2[1].Enabled)
+	assert.False(t, sl2[2].Enabled, "should not enable streams without enabled inputs")
+	assert.Contains(t, out.String(), `Enabling the stream (enabling inputs of streams by regular expressions, `+
+		`enable_on_input_update is on): ID "1", name "Name 2"`)
+}
+
+func TestAllDisableInputsByRx(t *testing.T) {
+	var out syncBuffer
+	p := newDefProcessorWithWriter(&out)
+	p.cfg.Streams.DisableStreamInputsByRxList = []*regexp2.Regexp{regexp2.MustCompile(`broken`, regexp2.RE2)}
+
+	sl1 := []Stream{
+		{
+			ID: "0", Name: "Name 1", Groups: map[string]string{"Cat": "Grp"}, Enabled: true,
+			Inputs: []string{"http://broken/1", "http://input/1"}, DisabledInputs: []string{"http://input/2"},
+		},
+		{ID: "1", Name: "Name 2", Enabled: true, Inputs: []string{"http://broken/2"}},
+		{ID: "2", Name: "Name 3", Inputs: []string{"http://input/3"}},
+	}
+	sl1Original := copier.MustDeep(sl1)
+
+	sl2 := p.DisableInputsByRx(sl1)
+	assert.Exactly(t, sl1Original, sl1)
+
+	expected := []Stream{
+		{
+			ID: "0", Name: "Name 1", Groups: map[string]string{"Cat": "Grp"}, Enabled: true,
+			Inputs: []string{"http://input/1"}, DisabledInputs: []string{"http://input/2", "http://broken/1"},
+		},
+		{ID: "1", Name: "Name 2", Enabled: true, Inputs: []string{}, DisabledInputs: []string{"http://broken/2"}},
+		{ID: "2", Name: "Name 3", Inputs: []string{"http://input/3"}},
+	}
+	assert.Exactly(t, expected, sl2, "should keep streams enabled, as streams without inputs are handled separately")
+
+	assert.Contains(t, out.String(), `Disabling input of stream by regular expressions: ID "0", name "Name 1", `+
+		`group "Cat: Grp", input "http://broken/1"`)
 }
 
 func TestAllRemoveDisabledInputs(t *testing.T) {
