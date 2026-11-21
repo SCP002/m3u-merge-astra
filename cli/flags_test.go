@@ -6,7 +6,7 @@ import (
 
 	"m3u-merge-astra/util/logger"
 
-	goFlags "github.com/jessevdk/go-flags"
+	goflags "github.com/jessevdk/go-flags"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +19,7 @@ func TestParse(t *testing.T) {
 
 	os.Args = []string{"", "--help"}
 	_, err = Parse()
-	assert.True(t, IsErrOfType(err, goFlags.ErrHelp))
+	assert.True(t, IsErrOfType(err, goflags.ErrHelp))
 
 	os.Args = []string{"", "--version"}
 	flags, err = Parse()
@@ -34,7 +34,7 @@ func TestParse(t *testing.T) {
 	os.Args = []string{"", "--logLevel=-1"}
 	_, err = Parse()
 	assert.Error(t, err, "should return error for negative log level")
-	assert.True(t, IsErrOfType(err, goFlags.ErrMarshal))
+	assert.True(t, IsErrOfType(err, goflags.ErrMarshal))
 
 	os.Args = []string{"", "--logLevel=2"}
 	flags, err = Parse()
@@ -55,7 +55,7 @@ func TestParse(t *testing.T) {
 		os.Args = []string{"", "--logLevel=" + lvl}
 		_, err = Parse()
 		assert.ErrorContains(t, err, "invalid log level "+lvl+", must be from 1 to 7")
-		assert.True(t, IsErrOfType(err, goFlags.ErrMarshal))
+		assert.True(t, IsErrOfType(err, goflags.ErrMarshal))
 	}
 
 	os.Args = []string{"", "--noninteractive", "--logFile=/log", "--programCfgPath=/cfg/path", "--m3uPath=/m3u/path",
@@ -73,6 +73,6 @@ func TestParse(t *testing.T) {
 }
 
 func TestIsErrOfType(t *testing.T) {
-	assert.True(t, IsErrOfType(&goFlags.Error{Type: goFlags.ErrUnknown}, goFlags.ErrUnknown))
-	assert.False(t, IsErrOfType(&goFlags.Error{Type: goFlags.ErrUnknown}, goFlags.ErrHelp))
+	assert.True(t, IsErrOfType(&goflags.Error{Type: goflags.ErrUnknown}, goflags.ErrUnknown))
+	assert.False(t, IsErrOfType(&goflags.Error{Type: goflags.ErrUnknown}, goflags.ErrHelp))
 }

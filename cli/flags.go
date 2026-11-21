@@ -6,7 +6,7 @@ import (
 	"m3u-merge-astra/util/logger"
 
 	"github.com/cockroachdb/errors"
-	goFlags "github.com/jessevdk/go-flags"
+	goflags "github.com/jessevdk/go-flags"
 )
 
 // Flags represents command line flags.
@@ -33,19 +33,19 @@ func Parse() (Flags, error) {
 		ProgramCfgPath: "m3u-merge-astra.yaml",
 		AstraAddr:      "http://127.0.0.1:8000",
 	}
-	parser := goFlags.NewParser(&flags, goFlags.Options(goFlags.Default))
+	parser := goflags.NewParser(&flags, goflags.Options(goflags.Default))
 	_, err := parser.Parse()
 	if err == nil && (flags.LogLevel < logger.TraceLevel || flags.LogLevel > logger.PanicLevel) {
-		err = &goFlags.Error{Type: goFlags.ErrMarshal, Message: fmt.Sprintf(
+		err = &goflags.Error{Type: goflags.ErrMarshal, Message: fmt.Sprintf(
 			"invalid log level %v, must be from %v to %v", flags.LogLevel, logger.TraceLevel, logger.PanicLevel)}
 	}
 	return flags, errors.Wrap(err, "Parse CLI arguments")
 }
 
 // IsErrOfType returns true if `err` is of type `t`.
-func IsErrOfType(err error, t goFlags.ErrorType) bool {
-	goFlagsErr := &goFlags.Error{}
-	if ok := errors.As(err, &goFlagsErr); ok && goFlagsErr.Type == t {
+func IsErrOfType(err error, t goflags.ErrorType) bool {
+	flagsErr := &goflags.Error{}
+	if ok := errors.As(err, &flagsErr); ok && flagsErr.Type == t {
 		return true
 	}
 	return false

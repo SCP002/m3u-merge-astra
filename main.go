@@ -21,7 +21,7 @@ import (
 
 	"github.com/adampresley/sigint"
 	"github.com/cockroachdb/errors"
-	goFlags "github.com/jessevdk/go-flags"
+	goflags "github.com/jessevdk/go-flags"
 	"github.com/utahta/go-openuri"
 )
 
@@ -35,7 +35,7 @@ func main() {
 		fmt.Println(version.Version)
 		os.Exit(0)
 	}
-	if cli.IsErrOfType(err, goFlags.ErrHelp) {
+	if cli.IsErrOfType(err, goflags.ErrHelp) {
 		// Help message will be prined by go-flags.
 		os.Exit(0)
 	}
