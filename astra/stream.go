@@ -110,11 +110,13 @@ func (s Stream) UpdateInput(log *logger.Logger, cfg cfg.Streams, newURL string, 
 	return s, false
 }
 
-// HasInput returns true if stream inputs contain `inp`.
+// HasInput returns true if enabled or disabled stream inputs contain `inp`.
+//
+// Disabled inputs are included, so inputs of M3U channels are not added again after they are disabled.
 //
 // If `withHash` is false, ignore hashes (everything after #) during the search.
 func (s Stream) HasInput(inp string, withHash bool) bool {
-	return lo.ContainsBy(s.Inputs, func(sInp string) bool {
+	return lo.ContainsBy(slices.Concat(s.Inputs, s.DisabledInputs), func(sInp string) bool {
 		return urlfrag.Equal(inp, sInp, withHash)
 	})
 }
@@ -301,7 +303,7 @@ func (s Stream) removePrefix(prefix string) Stream {
 	return s
 }
 
-// HasInput returns true if any input of `streams` contains `inp`.
+// HasInput returns true if any enabled or disabled input of `streams` contains `inp`.
 //
 // If `withHash` is false, ignore hashes (everything after #) during the search.
 func HasInput(streams []Stream, inp string, withHash bool) bool {

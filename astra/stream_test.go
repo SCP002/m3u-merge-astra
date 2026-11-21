@@ -160,6 +160,12 @@ func TestHasInput(t *testing.T) {
 
 	assert.False(t, s.HasInput("http://foreign/input", false))
 	assert.False(t, s.HasInput("http://foreign/input#b", false))
+
+	s = Stream{Inputs: []string{"http://other/input"}, DisabledInputs: []string{"http://disabled/input#a"}}
+
+	assert.True(t, s.HasInput("http://disabled/input#a", true), "should contain disabled input")
+	assert.True(t, s.HasInput("http://disabled/input", false), "should contain disabled input without hash")
+	assert.False(t, s.HasInput("http://disabled/input", true))
 }
 
 func TestAddInput(t *testing.T) {

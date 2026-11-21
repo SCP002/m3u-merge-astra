@@ -9,6 +9,7 @@ import (
 	"m3u-merge-astra/cli"
 	"m3u-merge-astra/util/logger"
 	"m3u-merge-astra/util/network"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRun(t *testing.T) {
@@ -212,4 +214,67 @@ func TestRunEnableDisableInputsByRx(t *testing.T) {
 	astraCfg2, err := apiHandler.FetchCfg()
 	assert.NoError(t, err)
 	assert.Exactly(t, astraCfg, astraCfg2, "should not change anything on the second run")
+}
+
+func TestRunDisableDeadInputs(t *testing.T) {
+	log := logger.New(logger.DebugLevel, os.Stderr)
+
+	// Create program config file which disables dead inputs.
+	programCfgPath := filepath.Join(t.TempDir(), "m3u-merge-astra-main-test.yaml")
+	_, _, err := cfg.Init(log, programCfgPath)
+	assert.NoError(t, err)
+
+	cfgBytes, err := os.ReadFile(programCfgPath)
+	assert.NoError(t, err)
+	cfgBytes = bytes.Replace(cfgBytes, []byte("  disable_dead_inputs: false\n"),
+		[]byte("  disable_dead_inputs: true\n"), 1)
+	err = os.WriteFile(programCfgPath, cfgBytes, 0644)
+	assert.NoError(t, err)
+
+	// Reserve a free port and release it, so connections to it get refused.
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	deadURL := "http://" + listener.Addr().String() + "/dead"
+	_ = listener.Close()
+
+	// Create M3U file with dead input of existing stream.
+	m3uPath := filepath.Join(t.TempDir(), "m3u-merge-astra-main-test.m3u")
+	err = os.WriteFile(m3uPath, []byte("#EXTM3U\n#EXTINF:-1,Channel 1\n"+deadURL+"\n"), 0644)
+	assert.NoError(t, err)
+
+	apiHttpClient := network.NewHTTPClient(time.Second * 10)
+	astraAddr := apitest.NewServer(t).URL
+	apiHandler := api.NewHandler(log, apiHttpClient, astraAddr, apitest.User, apitest.Password)
+
+	apiHandler.SetStreams([]astra.Stream{{
+		ID:      "0001",
+		Name:    "Channel 1",
+		Type:    string(cfg.SPTS),
+		Enabled: true,
+		Inputs:  []string{deadURL},
+		Groups:  map[string]string{"Category 1": "Group 1"},
+	}}, 0)
+
+	flags := cli.Flags{
+		Noninteractive: true,
+		ProgramCfgPath: programCfgPath,
+		M3UPath:        m3uPath,
+		AstraAddr:      astraAddr,
+		AstraUser:      apitest.User,
+		AstraPwd:       apitest.Password,
+	}
+	assert.NoError(t, run(log, flags))
+
+	astraCfg, err := apiHandler.FetchCfg()
+	assert.NoError(t, err)
+	assert.Len(t, astraCfg.Streams, 1)
+	assert.Empty(t, astraCfg.Streams[0].Inputs)
+	assert.Exactly(t, []string{deadURL}, astraCfg.Streams[0].DisabledInputs, "should disable dead input")
+
+	// Run program again, M3U channel still has the dead input.
+	assert.NoError(t, run(log, flags))
+
+	astraCfg2, err := apiHandler.FetchCfg()
+	assert.NoError(t, err)
+	assert.Exactly(t, astraCfg, astraCfg2, "should not add disabled input again and disable it twice")
 }

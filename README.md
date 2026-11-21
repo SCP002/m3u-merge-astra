@@ -193,7 +193,8 @@ lookahead `(?!...)`.
     > For example, astra stream 'tv1000' could be renamed to 'TV 1000' if M3U contains the last one.
 
   * `add_new_inputs`  
-    Add new inputs to astra streams if such found in M3U channels?
+    Add new inputs to astra streams if such found in M3U channels?  
+    Inputs which streams already have, including disabled ones, are not added again, so disabled inputs stay disabled.
     > Why does it exist?  
     > To add new inputs to existing astra streams if M3U channel with matching name found but it's URL is not in stream inputs list.
 
@@ -268,7 +269,8 @@ lookahead `(?!...)`.
 
   * `disable_dead_inputs`  
     Disable inputs of astra streams which do not respond or give invalid response?  
-    Supports HTTP(S), enable `use_analyzer` option for more.
+    Supports HTTP(S), enable `use_analyzer` option for more.  
+    Disabled inputs are not checked again, use `remove_dead_inputs` to check inputs on every run.
 
   * `dead_inputs_check_blacklist`  
     List of regular expressions.  
