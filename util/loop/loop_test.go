@@ -1,4 +1,4 @@
-package iter
+package loop
 
 import (
 	"testing"

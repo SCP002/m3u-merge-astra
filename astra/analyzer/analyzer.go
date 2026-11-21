@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"time"
 
-	"m3u-merge-astra/util/iter"
 	"m3u-merge-astra/util/logger"
+	"m3u-merge-astra/util/loop"
 
 	"github.com/cockroachdb/errors"
 	"github.com/gorilla/websocket"
@@ -204,7 +204,7 @@ func (a analyzer) Check(watchTime time.Duration, maxAttempts int, urlToCheck str
 	// Make attempts.
 	var result Result
 	var err error
-	iter.Times(maxAttempts, func(attempt int) bool {
+	loop.Times(maxAttempts, func(attempt int) bool {
 		a.log.DebugFi("Analyzing", "url", urlToCheck, "attempt", attempt)
 		ctx, cancel := context.WithTimeout(context.Background(), watchTime)
 		defer cancel()

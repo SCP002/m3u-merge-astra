@@ -53,12 +53,6 @@ func TestRemoveFirst(t *testing.T) {
 	assert.Exactly(t, expected, ol2, "should remove first object for which predicate returns true")
 }
 
-func TestFilled(t *testing.T) {
-	assert.Exactly(t, []string{}, Filled("a", 0))
-	assert.Exactly(t, []string{"", ""}, Filled("", 2))
-	assert.Exactly(t, []string{"a", "a", "a"}, Filled("a", 3))
-}
-
 func TestHasAnyPrefix(t *testing.T) {
 	assert.True(t, HasAnyPrefix("some words", "some"))
 	assert.False(t, HasAnyPrefix("some words", "words"))

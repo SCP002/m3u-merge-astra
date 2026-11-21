@@ -54,13 +54,6 @@ func RemoveFirst[T any](inp []T, tElm T) (out []T) {
 	return
 }
 
-// Filled returns new slice of `times` amount of `elm`.
-func Filled[T any](elm T, times int) []T {
-	return lo.RepeatBy(times, func(int) T {
-		return elm
-	})
-}
-
 // HasAnyPrefix returns true if `inp` has any prefix from `prefixes`.
 func HasAnyPrefix(inp string, prefixes ...string) bool {
 	return lo.SomeBy(prefixes, func(prefix string) bool {

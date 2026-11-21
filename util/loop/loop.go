@@ -1,4 +1,4 @@
-package iter
+package loop
 
 // Times runs `iteratee` `count` amount of times.
 //

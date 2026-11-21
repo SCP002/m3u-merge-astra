@@ -13,8 +13,8 @@ import (
 
 	"m3u-merge-astra/astra/analyzer"
 	"m3u-merge-astra/cfg"
-	"m3u-merge-astra/util/iter"
 	"m3u-merge-astra/util/logger"
+	"m3u-merge-astra/util/loop"
 	"m3u-merge-astra/util/network"
 	"m3u-merge-astra/util/slice"
 	"m3u-merge-astra/util/slice/find"
@@ -220,7 +220,7 @@ func (s Stream) disableAllButOneInputByRx(log *logger.Logger, cfg cfg.Streams, c
 		for _, inp := range s.Inputs {
 			if slice.RxMatch(log, rx, inp) {
 				inputsToDisable := slice.RemoveFirst(s.Inputs, inp)
-				iter.ForEach(inputsToDisable, callback)
+				loop.ForEach(inputsToDisable, callback)
 				s.DisabledInputs = append(slices.Clip(s.DisabledInputs), inputsToDisable...)
 				s.Inputs = []string{inp}
 				return s

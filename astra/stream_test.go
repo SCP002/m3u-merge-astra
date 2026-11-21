@@ -166,11 +166,12 @@ func TestHasInput(t *testing.T) {
 }
 
 func TestAddInput(t *testing.T) {
-	s1 := Stream{Inputs: []string{"http://input/1", "http://input/2"}}
+	s1 := Stream{Inputs: slicetest.WithSpare([]string{"http://input/1", "http://input/2"}, "spare")}
 	s1Original := copier.MustDeep(s1)
 
 	s2 := s1.AddInput("http://input/3")
 	assert.Exactly(t, s1Original, s1)
+	assert.Exactly(t, "spare", slicetest.Spare(s1.Inputs), "should not write to inputs of the stream")
 
 	expected := []string{"http://input/3", "http://input/1", "http://input/2"}
 	assert.Exactly(t, expected, s2.Inputs)
