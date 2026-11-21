@@ -425,7 +425,7 @@ func Init(log *logger.Logger, cfgFilePath string) (Root, bool, error) {
 		for _, rx := range root.Streams.RemoveDuplicatedInputsByRxList {
 			if len(rx.GetGroupNumbers()) < 2 { // Group 0 is the whole match.
 				msg := "Expecting at least one capture group"
-				return errors.Wrap(BadRegexpError{Regexp: rx, Reason: msg}, "Validate config")
+				return BadRegexpError{Regexp: rx, Reason: msg} // Wrapped by the caller.
 			}
 		}
 		return nil

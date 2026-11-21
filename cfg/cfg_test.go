@@ -82,6 +82,7 @@ func TestInitValidateCaptureGroups(t *testing.T) {
 
 	assert.False(t, isNewCfg)
 	assert.Exactly(t, expectedErr, errors.UnwrapAll(err))
+	assert.EqualError(t, err, "Validate config: "+expectedErr.Error(), "should wrap the error once")
 }
 
 func TestInitSimplifyAliases(t *testing.T) {
