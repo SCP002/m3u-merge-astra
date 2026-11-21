@@ -1,6 +1,7 @@
 package astra
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"m3u-merge-astra/astra/analyzer"
+	"m3u-merge-astra/astra/analyzer/analyzertest"
 	"m3u-merge-astra/cfg"
 	"m3u-merge-astra/util/copier"
 	"m3u-merge-astra/util/logger"
@@ -934,7 +936,7 @@ func TestRemoveDeadInputs(t *testing.T) {
 
 	srv := newDeadInputsServers(t)
 	httpClient := srv.Client(time.Millisecond * 300)
-	analyzerClient := analyzer.NewFake()
+	analyzerClient := analyzertest.NewFake()
 
 	// Check results.
 	sl1 := []Stream{
@@ -1045,7 +1047,7 @@ func TestDisableDeadInputsConcurrently(t *testing.T) {
 	p.cfg.Streams.UseAnalyzer = false
 
 	sl1Original := copier.MustDeep(sl1)
-	sl2 := p.DisableDeadInputs(srv.Client(time.Second*5), analyzer.NewFake(), sl1)
+	sl2 := p.DisableDeadInputs(srv.Client(time.Second*5), analyzertest.NewFake(), sl1)
 	assert.Exactly(t, sl1Original, sl1)
 
 	select {
@@ -1105,7 +1107,7 @@ func TestAnalyzerRemoveDeadInputs(t *testing.T) {
 	}
 	sl1Original := copier.MustDeep(sl1)
 
-	analyzerClient := analyzer.NewFake()
+	analyzerClient := analyzertest.NewFake()
 	analyzerClient.AddResult("http://dead/audio/50", analyzer.Result{HasAudio: true, Bitrate: 50})
 	analyzerClient.AddResult("http://alive/audio/100", analyzer.Result{HasAudio: true, Bitrate: 100})
 	analyzerClient.AddResult("http://dead/cc/15", analyzer.Result{CCErrors: 15, Bitrate: 1000})
@@ -1174,7 +1176,7 @@ func TestAnalyzerRemoveDeadInputs(t *testing.T) {
 		Inputs: []string{"https://dead/audio/50"}},
 	}
 
-	analyzerClient = analyzer.NewFake()
+	analyzerClient = analyzertest.NewFake()
 	analyzerClient.AddResult("https://dead/audio/50", analyzer.Result{HasAudio: true, Bitrate: 50})
 
 	_ = p.RemoveDeadInputs(httpClient, analyzerClient, sl1)
@@ -1189,6 +1191,70 @@ func TestAnalyzerRemoveDeadInputs(t *testing.T) {
 	assert.Contains(t, out.String(), msg)
 }
 
+func TestAnalyzerCheckArgs(t *testing.T) {
+	p := newDefProcessor()
+	p.cfg.Streams.InputMaxConns = 100
+	p.cfg.Streams.UseAnalyzer = true
+	p.cfg.Streams.AnalyzerWatchTime = time.Second * 7
+	p.cfg.Streams.AnalyzerMaxAttempts = 5
+	p.cfg.Streams.DeadInputsCheckBlacklist = []*regexp2.Regexp{
+		regexp2.MustCompile(`ignore/1`, regexp2.RE2),
+	}
+
+	sl1 := []Stream{{
+		Name:   "Name 1",
+		Groups: map[string]string{"Cat": "Grp"},
+		Inputs: []string{"http://url/1", "udp://url/2", "http://ignore/1", "xxx://unknown/1"},
+	}}
+
+	analyzerClient := analyzertest.NewFake()
+	_ = p.RemoveDeadInputs(nil, analyzerClient, sl1)
+
+	expected := []analyzertest.Call{
+		{WatchTime: time.Second * 7, MaxAttempts: 5, URL: "http://url/1"},
+		{WatchTime: time.Second * 7, MaxAttempts: 5, URL: "udp://url/2"},
+	}
+	assert.ElementsMatch(t, expected, analyzerClient.Calls(),
+		"should pass watch time and max attempts from config, skip ignored and unsupported inputs")
+}
+
+func TestAnalyzerErrorRemoveDeadInputs(t *testing.T) {
+	var out syncBuffer
+	p := newDefProcessorWithWriter(&out)
+	p.cfg.Streams.InputMaxConns = 100
+	p.cfg.Streams.UseAnalyzer = true
+	p.cfg.Streams.AnalyzerBitrateThreshold = 300
+
+	sl1 := []Stream{{
+		Name:   "Name 1",
+		Groups: map[string]string{"Cat": "Grp"},
+		Inputs: []string{"http://error/1", "http://dead/1", "http://alive/1"},
+	}}
+	sl1Original := copier.MustDeep(sl1)
+
+	analyzerClient := analyzertest.NewFake()
+	analyzerClient.AddError("http://error/1", errors.New("analyzer is down"))
+	analyzerClient.AddResult("http://dead/1", analyzer.Result{Bitrate: 50})
+	analyzerClient.AddResult("http://alive/1", analyzer.Result{Bitrate: 500})
+
+	sl2 := p.RemoveDeadInputs(nil, analyzerClient, sl1)
+	assert.Exactly(t, sl1Original, sl1)
+
+	assert.Len(t, sl2, len(sl1))
+	expected := []string{"http://error/1", "http://alive/1"}
+	assert.Exactly(t, expected, sl2[0].Inputs, "should keep inputs which analyzer failed to check")
+
+	assert.Contains(t, out.String(), "Failed to run analyzer: analyzer is down. Ignoring input http://error/1")
+	assert.NotContains(t, out.String(), `input "http://error/1", reason`)
+
+	// Same for disabling.
+	sl2 = p.DisableDeadInputs(nil, analyzerClient, sl1)
+	assert.Exactly(t, sl1Original, sl1)
+
+	assert.Exactly(t, expected, sl2[0].Inputs, "should not disable inputs which analyzer failed to check")
+	assert.Exactly(t, []string{"http://dead/1"}, sl2[0].DisabledInputs)
+}
+
 func TestProgressRemoveDeadInputs(t *testing.T) {
 	var out syncBuffer
 	p := newDefProcessorWithWriter(&out)
@@ -1197,7 +1263,7 @@ func TestProgressRemoveDeadInputs(t *testing.T) {
 
 	srv := newDeadInputsServers(t)
 	httpClient := srv.Client(time.Second * 3)
-	analyzerClient := analyzer.NewFake()
+	analyzerClient := analyzertest.NewFake()
 
 	sl1 := []Stream{{Inputs: []string{
 		"http://streams.test/alive/1",
@@ -1244,7 +1310,7 @@ func TestDisableDeadInputs(t *testing.T) {
 
 	srv := newDeadInputsServers(t)
 	httpClient := srv.Client(time.Second * 3)
-	analyzerClient := analyzer.NewFake()
+	analyzerClient := analyzertest.NewFake()
 
 	// Check results.
 	sl1 := []Stream{

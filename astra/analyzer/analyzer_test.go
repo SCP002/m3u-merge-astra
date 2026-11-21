@@ -212,12 +212,3 @@ func TestCheckInFlightResponses(t *testing.T) {
 	_, err := analyzer.Check(time.Millisecond, 1, "http://url")
 	assert.NoError(t, err)
 }
-
-func TestFakeCheck(t *testing.T) {
-	analyzer := NewFake()
-	analyzer.AddResult("url1", Result{Bitrate: 1})
-
-	result, err := analyzer.Check(time.Second, 1, "url1")
-	assert.Exactly(t, Result{Bitrate: 1}, result)
-	assert.NoError(t, err)
-}

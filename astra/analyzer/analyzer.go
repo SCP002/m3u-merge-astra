@@ -217,25 +217,3 @@ func (a analyzer) Check(watchTime time.Duration, maxAttempts int, urlToCheck str
 
 	return result, err
 }
-
-// fakeAnalyzer represents fake astra analyzer client.
-type fakeAnalyzer struct {
-	urlResultMap map[string]Result
-}
-
-// NewFake returns new fake astra analyzer client.
-func NewFake() *fakeAnalyzer {
-	return &fakeAnalyzer{
-		urlResultMap: map[string]Result{},
-	}
-}
-
-// AddResult adds new `result` to return when checking `url`.
-func (a fakeAnalyzer) AddResult(url string, result Result) {
-	a.urlResultMap[url] = result
-}
-
-// Check returns fake result for `urlToCheck` and nil error.
-func (a fakeAnalyzer) Check(watchTime time.Duration, maxAttempts int, urlToCheck string) (Result, error) {
-	return a.urlResultMap[urlToCheck], nil
-}
