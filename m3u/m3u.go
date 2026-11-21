@@ -7,9 +7,8 @@ import (
 	"strings"
 
 	"m3u-merge-astra/cfg"
-	"m3u-merge-astra/util/logger"
 	"m3u-merge-astra/util/slice"
-	urlUtil "m3u-merge-astra/util/url"
+	"m3u-merge-astra/util/urlfrag"
 
 	"github.com/samber/lo"
 )
@@ -167,12 +166,8 @@ func (p Processor) RemoveBlocked(channels []Channel) (out []Channel) {
 // HasURL returns true if `channels` contain `url`.
 //
 // If `withHash` is false, ignore hashes (everything after #) during the search.
-func HasURL(log *logger.Logger, channels []Channel, url string, withHash bool) bool {
+func HasURL(channels []Channel, url string, withHash bool) bool {
 	return lo.ContainsBy(channels, func(ch Channel) bool {
-		equal, err := urlUtil.Equal(ch.URL, url, withHash)
-		if err != nil {
-			log.Debug(err)
-		}
-		return equal
+		return urlfrag.Equal(ch.URL, url, withHash)
 	})
 }

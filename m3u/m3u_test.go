@@ -225,27 +225,25 @@ func TestRemoveBlocked(t *testing.T) {
 }
 
 func TestHasUrl(t *testing.T) {
-	p := newDefProcessor()
-
 	cl := []Channel{{URL: "http://other/input"}, {URL: "http://known/input#a"}}
 
-	assert.False(t, HasURL(p.log, cl, "http://known/input", true), "should not contain URL without hash")
-	assert.True(t, HasURL(p.log, cl, "http://known/input#a", true))
+	assert.False(t, HasURL(cl, "http://known/input", true), "should not contain URL without hash")
+	assert.True(t, HasURL(cl, "http://known/input#a", true))
 
-	assert.True(t, HasURL(p.log, cl, "http://known/input", false), "should contain URL without hash")
-	assert.True(t, HasURL(p.log, cl, "http://known/input#b", false), "should contain URL with different hashes")
+	assert.True(t, HasURL(cl, "http://known/input", false), "should contain URL without hash")
+	assert.True(t, HasURL(cl, "http://known/input#b", false), "should contain URL with different hashes")
 
-	assert.False(t, HasURL(p.log, cl, "http://foreign/input", true))
-	assert.False(t, HasURL(p.log, cl, "http://foreign/input#a", true))
+	assert.False(t, HasURL(cl, "http://foreign/input", true))
+	assert.False(t, HasURL(cl, "http://foreign/input#a", true))
 
-	assert.False(t, HasURL(p.log, cl, "http://foreign/input", false))
-	assert.False(t, HasURL(p.log, cl, "http://foreign/input#b", false))
+	assert.False(t, HasURL(cl, "http://foreign/input", false))
+	assert.False(t, HasURL(cl, "http://foreign/input#b", false))
 
 	cl = []Channel{{URL: "http://other/input#a"}, {URL: "http:/other/input/2#b"}}
 
-	assert.False(t, HasURL(p.log, cl, "http://foreign/input", true))
-	assert.False(t, HasURL(p.log, cl, "http://foreign/input#a", true))
+	assert.False(t, HasURL(cl, "http://foreign/input", true))
+	assert.False(t, HasURL(cl, "http://foreign/input#a", true))
 
-	assert.False(t, HasURL(p.log, cl, "http://foreign/input", false))
-	assert.False(t, HasURL(p.log, cl, "http://foreign/input#b", false))
+	assert.False(t, HasURL(cl, "http://foreign/input", false))
+	assert.False(t, HasURL(cl, "http://foreign/input#b", false))
 }

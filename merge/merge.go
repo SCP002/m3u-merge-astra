@@ -36,7 +36,7 @@ func (p Processor) UpdateInputs(streams []astra.Stream, channels []m3u.Channel) 
 
 	for _, s := range streams {
 		find.EverySimilar(p.cfg.General, channels, s.Name, 0, func(ch m3u.Channel, _ int) {
-			if !s.HasInput(p.log, ch.URL, true) {
+			if !s.HasInput(ch.URL, true) {
 				var updated bool
 				s, updated = s.UpdateInput(p.log, p.cfg.Streams, ch.URL, func(oldURL string) {
 					p.log.InfoFi("Updating input of stream", "ID", s.ID, "name", s.Name, "old URL", oldURL,
@@ -63,7 +63,7 @@ func (p Processor) RemoveInputsByUpdateMap(streams []astra.Stream, channels []m3
 	for _, s := range streams {
 		similarChannels := find.GetSimilar(p.cfg.General, channels, s.Name)
 		for _, knownInp := range s.KnownInputs(p.log, p.cfg.Streams) {
-			if !m3u.HasURL(p.log, similarChannels, knownInp, false) {
+			if !m3u.HasURL(similarChannels, knownInp, false) {
 				s = s.RemoveInputsCb(knownInp, func() {
 					p.log.InfoFi("Removing absent input from stream according the update map", "ID", s.ID,
 						"name", s.Name, "group", s.FirstGroup(), "input", knownInp)
@@ -84,7 +84,7 @@ func (p Processor) AddNewInputs(streams []astra.Stream, channels []m3u.Channel) 
 
 	for _, s := range streams {
 		find.EverySimilar(p.cfg.General, channels, s.Name, 0, func(ch m3u.Channel, _ int) {
-			if !s.HasInput(p.log, ch.URL, p.cfg.Streams.HashCheckOnAddNewInputs) {
+			if !s.HasInput(ch.URL, p.cfg.Streams.HashCheckOnAddNewInputs) {
 				p.log.InfoFi("Adding new input to stream", "ID", s.ID, "name", s.Name, "group", s.FirstGroup(),
 					"URL", ch.URL, "note", s.InputsUpdateNote(p.cfg.Streams))
 				s = s.AddInput(ch.URL)
@@ -108,7 +108,7 @@ func (p Processor) AddNewStreams(streams []astra.Stream, channels []m3u.Channel,
 
 	streams = slices.Clip(streams)
 	for _, ch := range channels {
-		if !p.cfg.Streams.AddNewWithKnownInputs && astra.HasInput(p.log, streams, ch.URL, false) {
+		if !p.cfg.Streams.AddNewWithKnownInputs && astra.HasInput(streams, ch.URL, false) {
 			continue
 		}
 		if !find.HasAnySimilar(p.cfg.General, streams, ch.Name) {

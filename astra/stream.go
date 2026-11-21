@@ -18,7 +18,7 @@ import (
 	"m3u-merge-astra/util/network"
 	"m3u-merge-astra/util/slice"
 	"m3u-merge-astra/util/slice/find"
-	urlUtil "m3u-merge-astra/util/url"
+	"m3u-merge-astra/util/urlfrag"
 
 	"github.com/alitto/pond/v2"
 	"github.com/google/go-cmp/cmp"
@@ -93,14 +93,7 @@ func (s Stream) UpdateInput(log *logger.Logger, cfg cfg.Streams, newURL string, 
 			if slice.RxMatch(log, updRec.From, oldURL) && slice.RxMatch(log, updRec.To, newURL) {
 				// Append old hash to new URL.
 				if cfg.KeepInputHash {
-					oldHash, err := urlUtil.GetHash(oldURL)
-					if err != nil {
-						log.Debug(err)
-					}
-					newURL, _, err = urlUtil.AddHash(oldHash, newURL)
-					if err != nil {
-						log.Debug(err)
-					}
+					newURL, _ = urlfrag.Add(newURL, urlfrag.Get(oldURL))
 				}
 				if oldURL == newURL {
 					continue
@@ -116,16 +109,12 @@ func (s Stream) UpdateInput(log *logger.Logger, cfg cfg.Streams, newURL string, 
 	return s, false
 }
 
-// HasInput returns true if stream inputs contain `tURLStr` parameter.
+// HasInput returns true if stream inputs contain `inp`.
 //
 // If `withHash` is false, ignore hashes (everything after #) during the search.
-func (s Stream) HasInput(log *logger.Logger, tURLStr string, withHash bool) bool {
-	return lo.ContainsBy(s.Inputs, func(cURLStr string) bool {
-		equal, err := urlUtil.Equal(tURLStr, cURLStr, withHash)
-		if err != nil {
-			log.Debug(err)
-		}
-		return equal
+func (s Stream) HasInput(inp string, withHash bool) bool {
+	return lo.ContainsBy(s.Inputs, func(sInp string) bool {
+		return urlfrag.Equal(inp, sInp, withHash)
 	})
 }
 
@@ -282,9 +271,9 @@ func (s Stream) removePrefix(prefix string) Stream {
 // HasInput returns true if any input of `streams` contains `inp`.
 //
 // If `withHash` is false, ignore hashes (everything after #) during the search.
-func HasInput(log *logger.Logger, streams []Stream, inp string, withHash bool) bool {
+func HasInput(streams []Stream, inp string, withHash bool) bool {
 	return lo.ContainsBy(streams, func(s Stream) bool {
-		return s.HasInput(log, inp, withHash)
+		return s.HasInput(inp, withHash)
 	})
 }
 
@@ -389,7 +378,7 @@ func (p Processor) UniteInputs(streams []Stream) (out []Stream) {
 				p.log.InfoFi("Uniting inputs of streams", "from ID", nextStream.ID, "from name", nextStream.Name,
 					"input", nextInput, "to ID", currStream.ID, "to name", currStream.Name,
 					"note", currStream.InputsUpdateNote(p.cfg.Streams))
-				if !currStream.HasInput(p.log, nextInput, true) {
+				if !currStream.HasInput(nextInput, true) {
 					currStream = currStream.AddInput(nextInput)
 					if p.cfg.Streams.EnableOnInputUpdate && !currStream.Enabled {
 						p.log.InfoFi("Enabling the stream (uniting inputs of streams, enable_on_input_update is on)",
@@ -464,11 +453,7 @@ func (p Processor) AddHashes(streams []Stream) (out []Stream) {
 			// By inputs.
 			for _, rule := range p.cfg.Streams.InputToInputHashMap {
 				if slice.RxMatch(p.log, rule.By, inp) {
-					var err error
-					inp, changed, err = urlUtil.AddHash(rule.Hash, inp)
-					if err != nil {
-						p.log.Debug(err)
-					}
+					inp, changed = urlfrag.Add(inp, rule.Hash)
 					if changed {
 						p.log.InfoFi("Adding hash to input of stream", "ID", s.ID, "name", s.Name,
 							"group", s.FirstGroup(), "hash", rule.Hash, "result", inp)
@@ -478,11 +463,7 @@ func (p Processor) AddHashes(streams []Stream) (out []Stream) {
 			// By name.
 			for _, rule := range p.cfg.Streams.NameToInputHashMap {
 				if slice.RxMatch(p.log, rule.By, s.Name) {
-					var err error
-					inp, changed, err = urlUtil.AddHash(rule.Hash, inp)
-					if err != nil {
-						p.log.Debug(err)
-					}
+					inp, changed = urlfrag.Add(inp, rule.Hash)
 					if changed {
 						p.log.InfoFi("Adding hash to input of stream", "ID", s.ID, "name", s.Name,
 							"group", s.FirstGroup(), "hash", rule.Hash, "result", inp)
@@ -492,11 +473,7 @@ func (p Processor) AddHashes(streams []Stream) (out []Stream) {
 			// By group.
 			for _, rule := range p.cfg.Streams.GroupToInputHashMap {
 				if slice.RxMatch(p.log, rule.By, s.FirstGroup()) {
-					var err error
-					inp, changed, err = urlUtil.AddHash(rule.Hash, inp)
-					if err != nil {
-						p.log.Debug(err)
-					}
+					inp, changed = urlfrag.Add(inp, rule.Hash)
 					if changed {
 						p.log.InfoFi("Adding hash to input of stream", "ID", s.ID, "name", s.Name,
 							"group", s.FirstGroup(), "hash", rule.Hash, "result", inp)

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -15,7 +14,6 @@ import (
 	"m3u-merge-astra/astra/analyzer/analyzertest"
 	"m3u-merge-astra/cfg"
 	"m3u-merge-astra/util/copier"
-	"m3u-merge-astra/util/logger"
 	"m3u-merge-astra/util/network/nettest"
 	"m3u-merge-astra/util/slice/slicetest"
 
@@ -140,29 +138,27 @@ func TestUpdateStreamInput(t *testing.T) {
 }
 
 func TestHasInput(t *testing.T) {
-	log := logger.New(logger.DebugLevel, os.Stderr)
-
 	s := Stream{Inputs: []string{"http://other/input", "http://known/input#a"}}
 
-	assert.False(t, s.HasInput(log, "http://known/input", true), "should not contain URL without hash")
-	assert.True(t, s.HasInput(log, "http://known/input#a", true))
+	assert.False(t, s.HasInput("http://known/input", true), "should not contain URL without hash")
+	assert.True(t, s.HasInput("http://known/input#a", true))
 
-	assert.True(t, s.HasInput(log, "http://known/input", false), "should contain URL without hash")
-	assert.True(t, s.HasInput(log, "http://known/input#b", false), "should contain URL with different hashes")
+	assert.True(t, s.HasInput("http://known/input", false), "should contain URL without hash")
+	assert.True(t, s.HasInput("http://known/input#b", false), "should contain URL with different hashes")
 
-	assert.False(t, s.HasInput(log, "http://foreign/input", true))
-	assert.False(t, s.HasInput(log, "http://foreign/input#a", true))
+	assert.False(t, s.HasInput("http://foreign/input", true))
+	assert.False(t, s.HasInput("http://foreign/input#a", true))
 
-	assert.False(t, s.HasInput(log, "http://foreign/input", false))
-	assert.False(t, s.HasInput(log, "http://foreign/input#b", false))
+	assert.False(t, s.HasInput("http://foreign/input", false))
+	assert.False(t, s.HasInput("http://foreign/input#b", false))
 
 	s = Stream{Inputs: []string{"http://other/input#a", "http:/other/input/2#b"}}
 
-	assert.False(t, s.HasInput(log, "http://foreign/input", true))
-	assert.False(t, s.HasInput(log, "http://foreign/input#a", true))
+	assert.False(t, s.HasInput("http://foreign/input", true))
+	assert.False(t, s.HasInput("http://foreign/input#a", true))
 
-	assert.False(t, s.HasInput(log, "http://foreign/input", false))
-	assert.False(t, s.HasInput(log, "http://foreign/input#b", false))
+	assert.False(t, s.HasInput("http://foreign/input", false))
+	assert.False(t, s.HasInput("http://foreign/input#b", false))
 }
 
 func TestAddInput(t *testing.T) {
@@ -515,32 +511,30 @@ func TestRemovePrefix(t *testing.T) {
 }
 
 func TestAnyHasInput(t *testing.T) {
-	p := newDefProcessor()
-
 	sl := []Stream{
 		{Inputs: []string{"http://other/input", "http:/other/input/2"}},
 		{Inputs: []string{"http://other/input", "http://known/input#a"}},
 	}
-	assert.False(t, HasInput(p.log, sl, "http://known/input", true), "should not contain URL without hash")
-	assert.True(t, HasInput(p.log, sl, "http://known/input#a", true))
+	assert.False(t, HasInput(sl, "http://known/input", true), "should not contain URL without hash")
+	assert.True(t, HasInput(sl, "http://known/input#a", true))
 
-	assert.True(t, HasInput(p.log, sl, "http://known/input", false), "should contain URL without hash")
-	assert.True(t, HasInput(p.log, sl, "http://known/input#b", false), "should contain URL with different hashes")
+	assert.True(t, HasInput(sl, "http://known/input", false), "should contain URL without hash")
+	assert.True(t, HasInput(sl, "http://known/input#b", false), "should contain URL with different hashes")
 
-	assert.False(t, HasInput(p.log, sl, "http://foreign/input", true))
-	assert.False(t, HasInput(p.log, sl, "http://foreign/input#a", true))
+	assert.False(t, HasInput(sl, "http://foreign/input", true))
+	assert.False(t, HasInput(sl, "http://foreign/input#a", true))
 
-	assert.False(t, HasInput(p.log, sl, "http://foreign/input", false))
-	assert.False(t, HasInput(p.log, sl, "http://foreign/input#b", false))
+	assert.False(t, HasInput(sl, "http://foreign/input", false))
+	assert.False(t, HasInput(sl, "http://foreign/input#b", false))
 
 	sl = []Stream{
 		{Inputs: []string{"http://other/input#a", "http:/other/input/2#b"}},
 	}
-	assert.False(t, HasInput(p.log, sl, "http://foreign/input", true))
-	assert.False(t, HasInput(p.log, sl, "http://foreign/input#a", true))
+	assert.False(t, HasInput(sl, "http://foreign/input", true))
+	assert.False(t, HasInput(sl, "http://foreign/input#a", true))
 
-	assert.False(t, HasInput(p.log, sl, "http://foreign/input", false))
-	assert.False(t, HasInput(p.log, sl, "http://foreign/input#b", false))
+	assert.False(t, HasInput(sl, "http://foreign/input", false))
+	assert.False(t, HasInput(sl, "http://foreign/input#b", false))
 }
 
 func TestRemoveNamePrefixes(t *testing.T) {
