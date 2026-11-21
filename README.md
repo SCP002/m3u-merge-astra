@@ -413,7 +413,7 @@ lookahead `(?!...)`.
 5. To build a binary for current OS / architecture into `./build/` folder:
 
     ```sh
-    go build -ldflags "-s -w" -o build/ .
+    go build -trimpath -ldflags "-s -w" -o build/ .
     ```
 
     Or run `./build.sh` to build binaries for every OS / architecture pair.
