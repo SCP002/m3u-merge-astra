@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/errors"
+	pLog "github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -155,4 +157,88 @@ func TestAddFileWriter(t *testing.T) {
 	assert.Exactly(t, "value 3", entry.Field1)
 	assert.Exactly(t, 4, entry.Field2)
 	assert.Exactly(t, "message 2", entry.Message)
+}
+
+func TestDisabledFatalAndPanic(t *testing.T) {
+	// Fatal level is disabled by panic level, but the program should exit anyway.
+	calls := []struct {
+		name string
+		call func(Logger)
+	}{
+		{name: "plain", call: func(l Logger) { l.Fatal("message") }},
+		{name: "format", call: func(l Logger) { l.Fatalf("%v", "message") }},
+		{name: "fields", call: func(l Logger) { l.FatalFi("message", "a", "b") }},
+	}
+	for _, c := range calls {
+		t.Run("fatal/"+c.name, func(t *testing.T) {
+			assertExits(t, func() { c.call(*New(PanicLevel, os.Stderr)) }, regexp.MustCompile(`^$`))
+		})
+	}
+
+	// Panic level is disabled by any higher level, but the program should panic anyway.
+	var buf bytes.Buffer
+	log := New(PanicLevel+1, &buf)
+	assert.PanicsWithValue(t, "message", func() { log.Panic("message") })
+	assert.PanicsWithValue(t, "message 1", func() { log.Panicf("message %v", 1) })
+	assert.PanicsWithValue(t, "message", func() { log.PanicFi("message", "a", "b") })
+	assert.Empty(t, buf.String(), "should not print disabled messages")
+}
+
+func TestSetLevel(t *testing.T) {
+	var buf bytes.Buffer
+	log := New(InfoLevel, &buf)
+	log.Debug("message 1")
+	log.SetLevel(DebugLevel)
+	log.Debug("message 2")
+	assert.NotContains(t, buf.String(), "message 1")
+	assert.Contains(t, buf.String(), "DEBUG message 2")
+}
+
+func TestFields(t *testing.T) {
+	var buf bytes.Buffer
+	log := New(InfoLevel, &buf)
+
+	log.InfoFi("message", "quoted", `say "hi"`, "multiline", "a\nb", "cyrillic", "Канал")
+	assert.Contains(t, buf.String(), `message: quoted "say \"hi\"", multiline "a\nb", cyrillic "Канал"`+"\n",
+		"should escape quotes and special characters only")
+
+	buf.Reset()
+	log.InfoFi("message", "error", errors.Wrap(errors.New("cause"), "context"))
+	assert.Contains(t, buf.String(), `message: error "context: cause"`, "should print error message")
+}
+
+func TestColors(t *testing.T) {
+	var buf bytes.Buffer
+	New(InfoLevel, &buf).InfoFi("message", "a", "b")
+	assert.NotContains(t, buf.String(), "\x1b[", "should not color output which is not a terminal")
+
+	assert.False(t, isColorTerminal(&buf), "should not color writers other than files")
+	t.Setenv("NO_COLOR", "1")
+	assert.False(t, isColorTerminal(os.Stderr), "should not color output with NO_COLOR set")
+
+	format := func(colorize bool) string {
+		var out bytes.Buffer
+		args := pLog.FormatterArgs{
+			Time:      "2026-01-02T03:04:05.678Z",
+			Level:     "info",
+			Message:   "message",
+			KeyValues: []keyValue{{Key: "a", Value: "b", ValueType: 's'}},
+		}
+		_, err := newConsoleFormatter(colorize, time.DateTime)(&out, &args)
+		assert.NoError(t, err)
+		return out.String()
+	}
+	assert.Exactly(t, "2026-01-02 03:04:05 INFO message: a \"b\"\n", format(false))
+	colored := format(true)
+	assert.Contains(t, colored, "\x1b[", "should color output regardless of stdout")
+	assert.Contains(t, colored, "\x1b[32mINFO\x1b[0m", "should color level")
+	assert.Contains(t, colored, "a \"\x1b[36mb\x1b[0m\"", "should color value without quotes")
+}
+
+func TestFormatterBadTime(t *testing.T) {
+	var out bytes.Buffer
+	args := pLog.FormatterArgs{Time: "not a time", Level: "info", Message: "message"}
+	_, err := newConsoleFormatter(false, time.DateTime)(&out, &args)
+	assert.NoError(t, err)
+	assert.Exactly(t, "not a time INFO message\n", out.String(), "should keep message with unparsable time")
 }

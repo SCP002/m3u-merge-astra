@@ -1239,7 +1239,8 @@ func TestAnalyzerErrorRemoveDeadInputs(t *testing.T) {
 	expected := []string{"http://error/1", "http://alive/1"}
 	assert.Exactly(t, expected, sl2[0].Inputs, "should keep inputs which analyzer failed to check")
 
-	assert.Contains(t, out.String(), "Failed to run analyzer: analyzer is down. Ignoring input http://error/1")
+	assert.Contains(t, out.String(),
+		`Failed to run analyzer, ignoring input: input "http://error/1", error "analyzer is down"`)
 	assert.NotContains(t, out.String(), `input "http://error/1", reason`)
 
 	// Same for disabling.

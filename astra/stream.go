@@ -676,7 +676,7 @@ func (p Processor) removeDeadInputs(httpClient *http.Client, analyzer analyzer.A
 		if p.cfg.Streams.UseAnalyzer {
 			result, err := analyzer.Check(p.cfg.Streams.AnalyzerWatchTime, p.cfg.Streams.AnalyzerMaxAttempts, inp)
 			if err != nil {
-				p.log.Errorf("Failed to run analyzer: %v. Ignoring input %v", err, inp)
+				p.log.ErrorFi("Failed to run analyzer, ignoring input", "input", inp, "error", err)
 				return ""
 			}
 			// Check bitrate.

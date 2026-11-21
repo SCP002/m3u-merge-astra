@@ -82,7 +82,7 @@ func run(log *logger.Logger, flags cli.Flags) error {
 		return err
 	}
 	if isNewCfg {
-		log.Infof("New config is written to %v, please verify it and start this program again", flags.ProgramCfgPath)
+		log.InfoFi("New config is written, please verify it and start this program again", "path", flags.ProgramCfgPath)
 		return nil
 	}
 

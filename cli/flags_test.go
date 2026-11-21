@@ -4,8 +4,9 @@ import (
 	"os"
 	"testing"
 
+	"m3u-merge-astra/util/logger"
+
 	goFlags "github.com/jessevdk/go-flags"
-	pLog "github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,19 +39,31 @@ func TestParse(t *testing.T) {
 	os.Args = []string{"", "--logLevel=2"}
 	flags, err = Parse()
 	assert.NoError(t, err)
-	assert.Exactly(t, pLog.DebugLevel, flags.LogLevel)
+	assert.Exactly(t, logger.DebugLevel, flags.LogLevel)
 
-	os.Args = []string{"", "--logLevel=999"}
+	os.Args = []string{"", "--logLevel=1"}
 	flags, err = Parse()
 	assert.NoError(t, err)
-	assert.Exactly(t, pLog.Level(999), flags.LogLevel)
+	assert.Exactly(t, logger.TraceLevel, flags.LogLevel)
+
+	os.Args = []string{"", "--logLevel=7"}
+	flags, err = Parse()
+	assert.NoError(t, err)
+	assert.Exactly(t, logger.PanicLevel, flags.LogLevel)
+
+	for _, lvl := range []string{"0", "8", "999"} {
+		os.Args = []string{"", "--logLevel=" + lvl}
+		_, err = Parse()
+		assert.ErrorContains(t, err, "invalid log level "+lvl+", must be from 1 to 7")
+		assert.True(t, IsErrOfType(err, goFlags.ErrMarshal))
+	}
 
 	os.Args = []string{"", "--noninteractive", "--logFile=/log", "--programCfgPath=/cfg/path", "--m3uPath=/m3u/path",
 		"--astraAddr=http://127.0.0.1:8005", "--astraUser=admin", "--astraPwd=admin"}
 	flags, err = Parse()
 	assert.NoError(t, err)
 	assert.True(t, flags.Noninteractive)
-	assert.Exactly(t, pLog.InfoLevel, flags.LogLevel)
+	assert.Exactly(t, logger.InfoLevel, flags.LogLevel)
 	assert.Exactly(t, "/log", flags.LogFile)
 	assert.Exactly(t, "/cfg/path", flags.ProgramCfgPath)
 	assert.Exactly(t, "/m3u/path", flags.M3UPath)

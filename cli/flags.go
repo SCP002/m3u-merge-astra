@@ -1,37 +1,44 @@
 package cli
 
 import (
+	"fmt"
+
+	"m3u-merge-astra/util/logger"
+
 	"github.com/cockroachdb/errors"
 	goFlags "github.com/jessevdk/go-flags"
-	pLog "github.com/phuslu/log"
 )
 
 // Flags represents command line flags.
 //
 //nolint:lll // go-flags struct tags cannot be wrapped across lines.
 type Flags struct {
-	Version        bool       `short:"v" long:"version"        description:"Print the program version"`
-	Update         bool       `          long:"update"         description:"Check for updates, update and exit"`
-	Noninteractive bool       `short:"n" long:"noninteractive" description:"Do not ask user for input (confirmations etc.)"`
-	LogLevel       pLog.Level `short:"l" long:"logLevel"       description:"Logging level. Can be from 1 (most verbose) to 7 (least verbose)"`
-	LogFile        string     `short:"f" long:"logFile"        description:"Log file. If set, writes structured log to a file at the specified path"`
-	ProgramCfgPath string     `short:"c" long:"programCfgPath" description:"Program config file path to read from or initialize a default"`
-	M3UPath        string     `short:"m" long:"m3uPath"        description:"M3U file path to get channels from. Can be a local file or URL"`
-	AstraAddr      string     `short:"a" long:"astraAddr"      description:"Astra address in format of scheme://host:port"`
-	AstraUser      string     `short:"u" long:"astraUser"      description:"Astra user"`
-	AstraPwd       string     `short:"p" long:"astraPwd"       description:"Astra password"`
+	Version        bool         `short:"v" long:"version"        description:"Print the program version"`
+	Update         bool         `          long:"update"         description:"Check for updates, update and exit"`
+	Noninteractive bool         `short:"n" long:"noninteractive" description:"Do not ask user for input (confirmations etc.)"`
+	LogLevel       logger.Level `short:"l" long:"logLevel"       description:"Logging level. Can be from 1 (most verbose) to 7 (least verbose)"`
+	LogFile        string       `short:"f" long:"logFile"        description:"Log file. If set, writes structured log to a file at the specified path"`
+	ProgramCfgPath string       `short:"c" long:"programCfgPath" description:"Program config file path to read from or initialize a default"`
+	M3UPath        string       `short:"m" long:"m3uPath"        description:"M3U file path to get channels from. Can be a local file or URL"`
+	AstraAddr      string       `short:"a" long:"astraAddr"      description:"Astra address in format of scheme://host:port"`
+	AstraUser      string       `short:"u" long:"astraUser"      description:"Astra user"`
+	AstraPwd       string       `short:"p" long:"astraPwd"       description:"Astra password"`
 }
 
 // Parse returns a structure initialized with command line arguments and error if parsing failed.
 func Parse() (Flags, error) {
 	flags := Flags{
 		// Set defaults.
-		LogLevel:       pLog.InfoLevel,
+		LogLevel:       logger.InfoLevel,
 		ProgramCfgPath: "m3u-merge-astra.yaml",
 		AstraAddr:      "http://127.0.0.1:8000",
 	}
 	parser := goFlags.NewParser(&flags, goFlags.Options(goFlags.Default))
 	_, err := parser.Parse()
+	if err == nil && (flags.LogLevel < logger.TraceLevel || flags.LogLevel > logger.PanicLevel) {
+		err = &goFlags.Error{Type: goFlags.ErrMarshal, Message: fmt.Sprintf(
+			"invalid log level %v, must be from %v to %v", flags.LogLevel, logger.TraceLevel, logger.PanicLevel)}
+	}
 	return flags, errors.Wrap(err, "Parse CLI arguments")
 }
 
