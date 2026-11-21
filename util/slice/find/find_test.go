@@ -2,6 +2,7 @@ package find
 
 import (
 	"m3u-merge-astra/cfg"
+	"m3u-merge-astra/util/compare"
 	"m3u-merge-astra/util/copier"
 	"m3u-merge-astra/util/slice"
 	"m3u-merge-astra/util/slice/slicetest"
@@ -49,12 +50,12 @@ func TestNamed(t *testing.T) {
 		{Name: "Name"}, {Name: "Name 2"}, {Name: "Name 3"}, {Name: "Name 2"},
 	}
 
-	o, idx, found := Named(cfg, ol, "name2")
+	o, idx, found := Named(compare.NewNames(cfg), ol, "name2")
 	assert.Exactly(t, ol[1], o)
 	assert.Exactly(t, 1, idx, "should return index of first found element")
 	assert.True(t, found)
 
-	o, idx, found = Named(cfg, ol, "name4")
+	o, idx, found = Named(compare.NewNames(cfg), ol, "name4")
 	assert.Exactly(t, slice.TestNamedStruct{}, o, "should return empty object if not found")
 	assert.Exactly(t, -1, idx, "should return index -1 if not found")
 	assert.False(t, found, "should return false if no object matching the specified name found")
@@ -77,7 +78,7 @@ func TestEverySimilar(t *testing.T) {
 	}
 
 	idxNameMap := map[int]string{}
-	EverySimilar(cfg, ol, "name2!", 2, func(foundObj slice.TestNamedStruct, foundIdx int) {
+	EverySimilar(compare.NewNames(cfg), ol, "name2!", 2, func(foundObj slice.TestNamedStruct, foundIdx int) {
 		idxNameMap[foundIdx] = foundObj.Name
 	})
 
@@ -101,7 +102,7 @@ func TestGetSimilar(t *testing.T) {
 		/* 5 */ {Name: "Name-2"},
 	}
 	ol1Original := copier.MustDeep(ol1)
-	ol2 := GetSimilar(cfg, ol1, "name2!")
+	ol2 := GetSimilar(compare.NewNames(cfg), ol1, "name2!")
 
 	assert.Exactly(t, ol1Original, ol1)
 
@@ -118,7 +119,7 @@ func TestHasAnySimilar(t *testing.T) {
 	}
 	ol := []slice.TestNamedStruct{{Name: "Name"}, {Name: "Name 2"}, {Name: "Name 3"}}
 
-	assert.True(t, HasAnySimilar(cfg, ol, "name2!"))
-	assert.False(t, HasAnySimilar(cfg, ol, "Name 4"))
-	assert.True(t, HasAnySimilar(cfg, ol, "Name 4", "name2!"), "should find second object")
+	assert.True(t, HasAnySimilar(compare.NewNames(cfg), ol, "name2!"))
+	assert.False(t, HasAnySimilar(compare.NewNames(cfg), ol, "Name 4"))
+	assert.True(t, HasAnySimilar(compare.NewNames(cfg), ol, "Name 4", "name2!"), "should find second object")
 }

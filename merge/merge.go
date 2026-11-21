@@ -3,6 +3,7 @@ package merge
 import (
 	"m3u-merge-astra/astra"
 	"m3u-merge-astra/m3u"
+	"m3u-merge-astra/util/compare"
 	"m3u-merge-astra/util/slice/find"
 	"slices"
 	"strconv"
@@ -13,9 +14,10 @@ import (
 // RenameStreams returns `streams` with names taken from `channels` if their standardized names are equal.
 func (p Processor) RenameStreams(streams []astra.Stream, channels []m3u.Channel) (out []astra.Stream) {
 	p.log.Info("Renaming streams")
+	names := compare.NewNames(p.cfg.General)
 
 	for _, s := range streams {
-		ch, _, chFound := find.Named(p.cfg.General, channels, s.Name)
+		ch, _, chFound := find.Named(names, channels, s.Name)
 		if chFound && s.Name != ch.Name {
 			p.log.InfoFi("Renaming stream", "ID", s.ID, "old name", s.Name, "new name", ch.Name,
 				"group", s.FirstGroup())
@@ -33,9 +35,10 @@ func (p Processor) RenameStreams(streams []astra.Stream, channels []m3u.Channel)
 // If cfg.Streams.EnableOnInputUpdate is enabled in config, it also enables every stream on update.
 func (p Processor) UpdateInputs(streams []astra.Stream, channels []m3u.Channel) (out []astra.Stream) {
 	p.log.Info("Updating inputs of streams")
+	names := compare.NewNames(p.cfg.General)
 
 	for _, s := range streams {
-		find.EverySimilar(p.cfg.General, channels, s.Name, 0, func(ch m3u.Channel, _ int) {
+		find.EverySimilar(names, channels, s.Name, 0, func(ch m3u.Channel, _ int) {
 			if !s.HasInput(ch.URL, true) {
 				var updated bool
 				s, updated = s.UpdateInput(p.log, p.cfg.Streams, ch.URL, func(oldURL string) {
@@ -59,9 +62,10 @@ func (p Processor) UpdateInputs(streams []astra.Stream, channels []m3u.Channel) 
 // expression but none found in `channels`.
 func (p Processor) RemoveInputsByUpdateMap(streams []astra.Stream, channels []m3u.Channel) (out []astra.Stream) {
 	p.log.Info("Removing absent inputs from streams according the update map")
+	names := compare.NewNames(p.cfg.General)
 
 	for _, s := range streams {
-		similarChannels := find.GetSimilar(p.cfg.General, channels, s.Name)
+		similarChannels := find.GetSimilar(names, channels, s.Name)
 		for _, knownInp := range s.KnownInputs(p.log, p.cfg.Streams) {
 			if !m3u.HasURL(similarChannels, knownInp, false) {
 				s = s.RemoveInputsCb(knownInp, func() {
@@ -81,9 +85,10 @@ func (p Processor) RemoveInputsByUpdateMap(streams []astra.Stream, channels []m3
 // If cfg.Streams.EnableOnInputUpdate is enabled in config, it also enables every stream with new inputs.
 func (p Processor) AddNewInputs(streams []astra.Stream, channels []m3u.Channel) (out []astra.Stream) {
 	p.log.Info("Adding new inputs to streams")
+	names := compare.NewNames(p.cfg.General)
 
 	for _, s := range streams {
-		find.EverySimilar(p.cfg.General, channels, s.Name, 0, func(ch m3u.Channel, _ int) {
+		find.EverySimilar(names, channels, s.Name, 0, func(ch m3u.Channel, _ int) {
 			if !s.HasInput(ch.URL, p.cfg.Streams.HashCheckOnAddNewInputs) {
 				p.log.InfoFi("Adding new input to stream", "ID", s.ID, "name", s.Name, "group", s.FirstGroup(),
 					"URL", ch.URL, "note", s.InputsUpdateNote(p.cfg.Streams))
@@ -105,13 +110,14 @@ func (p Processor) AddNewInputs(streams []astra.Stream, channels []m3u.Channel) 
 // counter `gid` advanced by generated IDs.
 func (p Processor) AddNewStreams(streams []astra.Stream, channels []m3u.Channel, gid int) ([]astra.Stream, int) {
 	p.log.Info("Adding new streams")
+	names := compare.NewNames(p.cfg.General)
 
 	streams = slices.Clip(streams)
 	for _, ch := range channels {
 		if !p.cfg.Streams.AddNewWithKnownInputs && astra.HasInput(streams, ch.URL, false) {
 			continue
 		}
-		if !find.HasAnySimilar(p.cfg.General, streams, ch.Name) {
+		if !find.HasAnySimilar(names, streams, ch.Name) {
 			var id string
 			id, gid = generateUID(streams, gid)
 			stream := astra.NewStream(p.cfg.Streams, id, ch.Name, ch.Group, []string{ch.URL})

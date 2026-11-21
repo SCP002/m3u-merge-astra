@@ -13,6 +13,7 @@ import (
 
 	"m3u-merge-astra/astra/analyzer"
 	"m3u-merge-astra/cfg"
+	"m3u-merge-astra/util/compare"
 	"m3u-merge-astra/util/logger"
 	"m3u-merge-astra/util/loop"
 	"m3u-merge-astra/util/network"
@@ -371,9 +372,10 @@ func (p Processor) RemoveDuplicatedInputsByRx(streams []Stream) (out []Stream) {
 func (p Processor) UniteInputs(streams []Stream) (out []Stream) {
 	p.log.Info("Uniting inputs of streams")
 
+	names := compare.NewNames(p.cfg.General)
 	out = slices.Clone(streams)
 	for currIdx, currStream := range out {
-		find.EverySimilar(p.cfg.General, out, currStream.Name, currIdx+1, func(nextStream Stream, nextIdx int) {
+		find.EverySimilar(names, out, currStream.Name, currIdx+1, func(nextStream Stream, nextIdx int) {
 			for _, nextInput := range nextStream.Inputs {
 				p.log.InfoFi("Uniting inputs of streams", "from ID", nextStream.ID, "from name", nextStream.Name,
 					"input", nextInput, "to ID", currStream.ID, "to name", currStream.Name,

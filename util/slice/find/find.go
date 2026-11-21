@@ -3,7 +3,6 @@ package find
 import (
 	"slices"
 
-	"m3u-merge-astra/cfg"
 	"m3u-merge-astra/util/compare"
 	"m3u-merge-astra/util/slice"
 
@@ -24,21 +23,22 @@ func IndexOrElse[T any](list []T, fallback T, predicate func(elm T) bool) ([]T, 
 // Named returns `list` entry, it's index and true if .Name() of it matching the `name` or empty object, -1 and false if
 // not found.
 //
-// Both names standartized before comparsion using transliteration settings from `cfg`.
-func Named[T slice.Named](cfg cfg.General, list []T, name string) (T, int, bool) {
+// Names are compared with `names`.
+func Named[T slice.Named](names *compare.Names, list []T, name string) (T, int, bool) {
 	return lo.FindIndexOf(list, func(o T) bool {
-		return compare.IsNameSame(cfg, o.GetName(), name)
+		return names.Same(o.GetName(), name)
 	})
 }
 
 // EverySimilar runs callback `cb` for every entry of `list` starting from index `start` if it's .Name() matching the
 // `name`.
 //
-// Both names standartized before comparsion using transliteration settings from `cfg`.
-func EverySimilar[T slice.Named](cfg cfg.General, list []T, name string, start int, cb func(foundObj T, foundIdx int)) {
+// Names are compared with `names`.
+func EverySimilar[T slice.Named](names *compare.Names, list []T, name string, start int,
+	cb func(foundObj T, foundIdx int)) {
 	for currIdx := start; currIdx < len(list); currIdx++ {
 		currElm := list[currIdx]
-		if compare.IsNameSame(cfg, currElm.GetName(), name) {
+		if names.Same(currElm.GetName(), name) {
 			cb(currElm, currIdx)
 		}
 	}
@@ -46,20 +46,20 @@ func EverySimilar[T slice.Named](cfg cfg.General, list []T, name string, start i
 
 // GetSimilar returns entries of `list` whose .Name() matching the `name`.
 //
-// Both names standartized before comparsion using transliteration settings from `cfg`.
-func GetSimilar[T slice.Named](cfg cfg.General, list []T, name string) []T {
+// Names are compared with `names`.
+func GetSimilar[T slice.Named](names *compare.Names, list []T, name string) []T {
 	return lo.Filter(list, func(elm T, idx int) bool {
-		return compare.IsNameSame(cfg, elm.GetName(), name)
+		return names.Same(elm.GetName(), name)
 	})
 }
 
-// HasAnySimilar returns true if `list` contains entry with .Name() matching any of `names`.
+// HasAnySimilar returns true if `list` contains entry with .Name() matching any of `searchNames`.
 //
-// Both names standartized before comparsion using transliteration settings from `cfg`.
-func HasAnySimilar[T slice.Named](cfg cfg.General, list []T, names ...string) bool {
+// Names are compared with `names`.
+func HasAnySimilar[T slice.Named](names *compare.Names, list []T, searchNames ...string) bool {
 	return lo.ContainsBy(list, func(elm T) bool {
-		return lo.SomeBy(names, func(name string) bool {
-			return compare.IsNameSame(cfg, elm.GetName(), name)
+		return lo.SomeBy(searchNames, func(name string) bool {
+			return names.Same(elm.GetName(), name)
 		})
 	})
 }

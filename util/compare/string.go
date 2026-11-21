@@ -8,38 +8,66 @@ import (
 	"github.com/samber/lo"
 )
 
-// IsNameSame returns true if standardized `lName` is equal to standardized `rName` using transliteration settings and
-// aliases from `cfg`.
-func IsNameSame(cfg cfg.General, lName, rName string) bool {
+// Names compares names using transliteration settings and aliases from config.
+//
+// It remembers standardized forms of every name it compares, as the same names are compared many times when matching
+// lists of names. Create it for a single operation, as it uses config at the time of creation. Not safe for concurrent
+// use.
+type Names struct {
+	cfg  cfg.General
+	keys map[string]nameKeys
+}
+
+// nameKeys represents standardized forms of a name, any of which being equal makes names the same.
+type nameKeys struct {
+	simple  string // Simplified name.
+	similar string // Simplified name with similar characters transliterated, if enabled in config.
+	full    string // Simplified name fully transliterated, if enabled in config.
+	alias   string // First alias of simplified name, if enabled in config.
+}
+
+// NewNames returns new name comparator configured with `cfg`.
+func NewNames(cfg cfg.General) *Names {
+	return &Names{cfg: cfg, keys: map[string]nameKeys{}}
+}
+
+// Same returns true if standardized `lName` is equal to standardized `rName`.
+func (n *Names) Same(lName, rName string) bool {
 	if lName == rName {
 		return true
 	}
+	l, r := n.keysOf(lName), n.keysOf(rName)
+	return l.simple == r.simple ||
+		n.cfg.SimilarTranslit && l.similar == r.similar ||
+		n.cfg.FullTranslit && l.full == r.full ||
+		n.cfg.NameAliases && l.alias == r.alias
+}
 
-	lSimpleName := simplify.Name(lName)
-	rSimpleName := simplify.Name(rName)
-	if lSimpleName == rSimpleName {
-		return true
+// keysOf returns standardized forms of `name`, computing them on the first call.
+func (n *Names) keysOf(name string) nameKeys {
+	if keys, ok := n.keys[name]; ok {
+		return keys
 	}
-
-	if cfg.SimilarTranslit {
-		if remap(lSimpleName, cfg.SimilarTranslitMap) == remap(rSimpleName, cfg.SimilarTranslitMap) {
-			return true
-		}
+	keys := nameKeys{simple: simplify.Name(name)}
+	if n.cfg.SimilarTranslit {
+		keys.similar = remap(keys.simple, n.cfg.SimilarTranslitMap)
 	}
-
-	if cfg.FullTranslit {
-		if remap(lSimpleName, cfg.FullTranslitMap) == remap(rSimpleName, cfg.FullTranslitMap) {
-			return true
-		}
+	if n.cfg.FullTranslit {
+		keys.full = remap(keys.simple, n.cfg.FullTranslitMap)
 	}
-
-	if cfg.NameAliases {
-		if firstAlias(lSimpleName, cfg.SimpleNameAliasList) == firstAlias(rSimpleName, cfg.SimpleNameAliasList) {
-			return true
-		}
+	if n.cfg.NameAliases {
+		keys.alias = firstAlias(keys.simple, n.cfg.SimpleNameAliasList)
 	}
+	n.keys[name] = keys
+	return keys
+}
 
-	return false
+// IsNameSame returns true if standardized `lName` is equal to standardized `rName` using transliteration settings and
+// aliases from `cfg`.
+//
+// Use Names to compare many names.
+func IsNameSame(cfg cfg.General, lName, rName string) bool {
+	return NewNames(cfg).Same(lName, rName)
 }
 
 // remap returns remapped `inp` using `dict`.

@@ -71,6 +71,27 @@ func TestIsNameSame(t *testing.T) {
 	assert.False(t, IsNameSame(cfg, "name_3_var_2", "Name 3"), msg)
 }
 
+func TestNamesSame(t *testing.T) {
+	names := NewNames(cfg.General{
+		FullTranslit:        true,
+		FullTranslitMap:     cfg.DefFullTranslitMap(),
+		SimilarTranslit:     true,
+		SimilarTranslitMap:  cfg.DefSimilarTranslitMap(),
+		NameAliases:         true,
+		SimpleNameAliasList: [][]string{{"first", "second"}},
+	})
+
+	for range 2 {
+		assert.True(t, names.Same("НТВ HD", "htb hd"), "should transliterate similar characters")
+		assert.True(t, names.Same("монитор", "Monitor!"), "should transliterate fully")
+		assert.True(t, names.Same("Second!", "first"), "should use aliases")
+		assert.False(t, names.Same("НТВ HD", "first"))
+	}
+	assert.Len(t, names.keys, 6, "should remember standardized forms of every name once")
+	assert.Exactly(t, nameKeys{simple: "second", similar: "second", full: "second", alias: "first"},
+		names.keys["Second!"])
+}
+
 func TestRemap(t *testing.T) {
 	dict := map[string]string{"A": "1", "B": "2", "C": "3"}
 	assert.Exactly(t, "123D", remap("ABCD", dict))
