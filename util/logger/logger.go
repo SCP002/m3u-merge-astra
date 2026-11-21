@@ -288,11 +288,16 @@ func newConsoleFormatter(colorize bool, timeFormat string) func(io.Writer, *pLog
 			messageSb.WriteString(": ")
 		}
 		for idx, item := range a.KeyValues {
-			// Escape quotes and special characters, coloring the value without surrounding quotes.
-			quoted := strconv.Quote(item.Value)
+			// Escape quotes and special characters of strings only, as other values such as JSON arrays are not
+			// ambiguous and would be harder to read escaped.
+			value := item.Value
+			if item.ValueType == 's' {
+				quoted := strconv.Quote(value)
+				value = quoted[1 : len(quoted)-1]
+			}
 			messageSb.WriteString(item.Key)
 			messageSb.WriteString(" \"")
-			messageSb.WriteString(cyan(quoted[1 : len(quoted)-1]))
+			messageSb.WriteString(cyan(value))
 			messageSb.WriteRune('"')
 			if idx < len(a.KeyValues)-1 {
 				messageSb.WriteString(", ")

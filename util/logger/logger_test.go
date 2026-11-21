@@ -203,6 +203,11 @@ func TestFields(t *testing.T) {
 		"should escape quotes and special characters only")
 
 	buf.Reset()
+	log.InfoFi("message", "list", []string{"a", "b"}, "number", 1, "flag", true)
+	assert.Contains(t, buf.String(), `message: list "["a","b"]", number "1", flag "true"`,
+		"should not escape values other than strings")
+
+	buf.Reset()
 	log.InfoFi("message", "error", errors.Wrap(errors.New("cause"), "context"))
 	assert.Contains(t, buf.String(), `message: error "context: cause"`, "should print error message")
 }
