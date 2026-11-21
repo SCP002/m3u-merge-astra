@@ -29,8 +29,8 @@ func TestRun(t *testing.T) {
 	// Sort inputs by weight, to get inputs of existing stream reordered.
 	cfgBytes, err := os.ReadFile(programCfgPath)
 	assert.NoError(t, err)
-	cfgBytes = bytes.Replace(cfgBytes, []byte("  input_weight_to_type_map: {}\n"),
-		[]byte("  input_weight_to_type_map:\n    1: 'fast'\n"), 1)
+	cfgBytes = bytes.Replace(cfgBytes, []byte("  input_weight_to_type_map: []\n"),
+		[]byte("  input_weight_to_type_map:\n    - by: 'fast'\n      weight: 1\n"), 1)
 	err = os.WriteFile(programCfgPath, cfgBytes, 0644)
 	assert.NoError(t, err)
 

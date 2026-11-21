@@ -183,8 +183,8 @@ type Streams struct {
 
 	// InputWeightToTypeMap represents Mapping of how high stream input should appear in the list after sorting.
 	//
-	// Any unspecified input will have weight of maximum - 1 (right before the last entry).
-	InputWeightToTypeMap map[int]*regexp2.Regexp `yaml:"input_weight_to_type_map"`
+	// Input gets weight of the first matching regular expression in order of the config, or UnknownInputWeight.
+	InputWeightToTypeMap []InputWeightRule `yaml:"input_weight_to_type_map"`
 
 	// UnknownInputWeight represents Default weight of unknown inputs.
 	UnknownInputWeight int `yaml:"unknown_input_weight"`
@@ -362,6 +362,12 @@ type UpdateRecord struct {
 type HashAddRule struct {
 	By   *regexp2.Regexp `yaml:"by"`
 	Hash string          `yaml:"hash"`
+}
+
+// InputWeightRule represents astra stream input sorting weight rule.
+type InputWeightRule struct {
+	By     *regexp2.Regexp `yaml:"by"`
+	Weight int             `yaml:"weight"`
 }
 
 // KeepActiveAddRule represents astra stream 'keep active' adding rule.
@@ -555,7 +561,7 @@ func NewDefCfg() Root {
 			UniteInputs:                       true,
 			HashCheckOnAddNewInputs:           false,
 			SortInputs:                        true,
-			InputWeightToTypeMap:              map[int]*regexp2.Regexp{},
+			InputWeightToTypeMap:              []InputWeightRule{},
 			UnknownInputWeight:                50,
 			InputBlacklist:                    []*regexp2.Regexp{},
 			RemoveDuplicatedInputs:            true,
@@ -837,10 +843,13 @@ func defCommentMap() yaml.CommentMap {
 		"$.streams.input_weight_to_type_map": []*yaml.Comment{
 			yaml.HeadComment(
 				"",
-				" Mapping of how high stream input should appear in the list after sorting.",
+				" Mapping of stream input regular expression to weight of how high it should appear in the list after sorting.",
+				" Input matching multiple expressions gets weight of the first one.",
 				" Any unspecified input will have weight of 'unknown_input_weight'.",
-				" 1: '192.\\168\\.88\\.' # Always first.",
-				" 99: 'least_reliable\\.tv' # Always last.",
+				" - by: '192\\.168\\.88\\.' # Always first.",
+				"   weight: 1",
+				" - by: 'least_reliable\\.tv' # Always last.",
+				"   weight: 99",
 			),
 		},
 		"$.streams.unknown_input_weight": []*yaml.Comment{

@@ -218,6 +218,7 @@ lookahead `(?!...)`.
 
   * `input_weight_to_type_map`  
     Mapping of how high stream input should appear in the list after sorting.  
+    Input matching multiple expressions gets weight of the first one.  
     Any unspecified input will have weight of `unknown_input_weight`.
 
   * `unknown_input_weight`  

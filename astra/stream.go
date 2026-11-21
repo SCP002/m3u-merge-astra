@@ -399,25 +399,32 @@ func (p Processor) UniteInputs(streams []Stream) (out []Stream) {
 }
 
 // SortInputs returns `streams` with all inputs sorted by InputWeightToTypeMap in config.
+//
+// Input gets weight of the first matching regular expression in order of the config, or UnknownInputWeight.
 func (p Processor) SortInputs(streams []Stream) (out []Stream) {
 	p.log.Info("Sorting inputs of streams")
+
+	// getWeight returns weight of `inp`.
+	getWeight := func(inp string) int {
+		for _, rule := range p.cfg.Streams.InputWeightToTypeMap {
+			if slice.RxMatch(p.log, rule.By, inp) {
+				return rule.Weight
+			}
+		}
+		return p.cfg.Streams.UnknownInputWeight
+	}
 
 	out = slices.Clone(streams)
 	for sIdx := range out {
 		s := &out[sIdx]
+		// Get weight of every input once, as sorting compares every input many times.
+		inpWeightMap := make(map[string]int, len(s.Inputs))
+		for _, inp := range s.Inputs {
+			inpWeightMap[inp] = getWeight(inp)
+		}
 		s.Inputs = slices.Clone(s.Inputs)
-		sort.SliceStable(s.Inputs, func(i, j int) bool {
-			// Set default weight.
-			leftInpWeight := p.cfg.Streams.UnknownInputWeight
-			rightInpWeight := p.cfg.Streams.UnknownInputWeight
-
-			for weight, rx := range p.cfg.Streams.InputWeightToTypeMap {
-				// Assign weight from map if match found.
-				leftInpWeight = lo.Ternary(slice.RxMatch(p.log, rx, s.Inputs[i]), weight, leftInpWeight)
-				rightInpWeight = lo.Ternary(slice.RxMatch(p.log, rx, s.Inputs[j]), weight, rightInpWeight)
-			}
-
-			return leftInpWeight < rightInpWeight
+		slices.SortStableFunc(s.Inputs, func(a, b string) int {
+			return inpWeightMap[a] - inpWeightMap[b]
 		})
 	}
 

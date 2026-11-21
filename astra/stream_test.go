@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -843,9 +844,9 @@ func TestSortInputs(t *testing.T) {
 
 	// Multiple entries.
 	p.cfg.Streams.UnknownInputWeight = 25
-	p.cfg.Streams.InputWeightToTypeMap = map[int]*regexp2.Regexp{
-		20: regexp2.MustCompile(`input/20`, regexp2.RE2),
-		30: regexp2.MustCompile(`input/30`, regexp2.RE2),
+	p.cfg.Streams.InputWeightToTypeMap = []cfg.InputWeightRule{
+		{By: regexp2.MustCompile(`input/20`, regexp2.RE2), Weight: 20},
+		{By: regexp2.MustCompile(`input/30`, regexp2.RE2), Weight: 30},
 	}
 	sl1 := []Stream{
 		{Inputs: []string{"http://other/a", "http://other/b", "http://input/30", "http://input/20"}},
@@ -868,8 +869,8 @@ func TestSortInputs(t *testing.T) {
 
 	// One entry.
 	p.cfg.Streams.UnknownInputWeight = 30
-	p.cfg.Streams.InputWeightToTypeMap = map[int]*regexp2.Regexp{
-		20: regexp2.MustCompile(`input/20`, regexp2.RE2),
+	p.cfg.Streams.InputWeightToTypeMap = []cfg.InputWeightRule{
+		{By: regexp2.MustCompile(`input/20`, regexp2.RE2), Weight: 20},
 	}
 	sl1 = []Stream{
 		{Inputs: []string{"http://other/a", "http://other/b", "http://other/c", "http://input/20"}},
@@ -889,7 +890,7 @@ func TestSortInputs(t *testing.T) {
 
 	// Empty map.
 	p.cfg.Streams.UnknownInputWeight = 50
-	p.cfg.Streams.InputWeightToTypeMap = map[int]*regexp2.Regexp{}
+	p.cfg.Streams.InputWeightToTypeMap = []cfg.InputWeightRule{}
 	sl1 = []Stream{
 		{Inputs: []string{"http://other/d", "http://other/c", "http://other/b", "http://other/a"}},
 		{Inputs: []string{"http://other/f", "http://other/e"}},
@@ -900,6 +901,23 @@ func TestSortInputs(t *testing.T) {
 	assert.Exactly(t, sl1Original, sl1)
 
 	assert.Exactly(t, sl1, sl2)
+
+	// Input matching multiple regular expressions.
+	p.cfg.Streams.UnknownInputWeight = 50
+	sl1 = []Stream{{Inputs: []string{"http://other/a", "udp://reliable/1", "udp://other/b"}}}
+	for range 20 { // Repeat, as weights were kept in a map, iterated in random order.
+		p.cfg.Streams.InputWeightToTypeMap = []cfg.InputWeightRule{
+			{By: regexp2.MustCompile(`^udp://reliable/`, regexp2.RE2), Weight: 99},
+			{By: regexp2.MustCompile(`^udp://`, regexp2.RE2), Weight: 1},
+		}
+		expected = []string{"udp://other/b", "http://other/a", "udp://reliable/1"}
+		assert.Exactly(t, expected, p.SortInputs(sl1)[0].Inputs, "should use the first matching weight")
+
+		p.cfg.Streams.InputWeightToTypeMap = slices.Clone(p.cfg.Streams.InputWeightToTypeMap)
+		slices.Reverse(p.cfg.Streams.InputWeightToTypeMap)
+		expected = []string{"udp://reliable/1", "udp://other/b", "http://other/a"}
+		assert.Exactly(t, expected, p.SortInputs(sl1)[0].Inputs, "should use the first matching weight")
+	}
 }
 
 // newDeadInputsServers returns test servers for dead inputs checks:
