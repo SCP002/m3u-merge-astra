@@ -2,7 +2,6 @@ package cfg
 
 import (
 	"m3u-merge-astra/util/copier"
-	"m3u-merge-astra/util/file"
 	"m3u-merge-astra/util/logger"
 	"os"
 	"path/filepath"
@@ -69,9 +68,10 @@ func TestInitValidateCaptureGroups(t *testing.T) {
 
 	path := filepath.Join(t.TempDir(), "m3u-merge-astra-init-test.yaml")
 
-	// Test reading config with 'remove_duplicated_inputs_by_rx_list'.
-	err := file.Copy("init-validate-capture-groups-test.yaml", path)
-	assert.NoError(t, err, "should copy and overwrite previous test file")
+	cfgBytes := []byte("streams:\n  remove_duplicated_inputs_by_rx_list:\n" +
+		"  - '(rx_in_capture_group)'\n  - 'rx_without_capture_group'\n")
+	err := os.WriteFile(path, cfgBytes, 0644)
+	assert.NoError(t, err)
 
 	_, isNewCfg, err := Init(log, path)
 
@@ -90,9 +90,11 @@ func TestInitSimplifyAliases(t *testing.T) {
 
 	path := filepath.Join(t.TempDir(), "m3u-merge-astra-init-test.yaml")
 
-	// Test reading config with name aliases and simplification of them.
-	err := file.Copy("init-simplify-aliases-test.yaml", path)
-	assert.NoError(t, err, "should copy and overwrite previous test file")
+	cfgBytes := []byte("general:\n  name_aliases: true\n  name_alias_list:\n" +
+		"  - ['Sample', 'Sample TV', 'Sample Television Channel']\n" +
+		"  - ['Discovery ID', 'Discovery Investigation']\n")
+	err := os.WriteFile(path, cfgBytes, 0644)
+	assert.NoError(t, err)
 
 	actual, isNewCfg, err := Init(log, path)
 
