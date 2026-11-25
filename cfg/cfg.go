@@ -36,41 +36,42 @@ type Root struct {
 
 // General represents general settings of the program.
 type General struct {
-	// FullTranslit specifies if name transliteration should be used to detect which M3U channel corresponds a stream.
+	// FullTranslit specifies if name transliteration should be used to detect which M3U channel corresponds to a
+	// stream.
 	FullTranslit bool `yaml:"full_translit"`
 
 	// FullTranslitMap represents source to destination character mapping.
 	//
-	// All symbols are lowercase as comparsion function will convert every character in a name to lowercase.
+	// All symbols are lowercase as the comparison function converts every character in a name to lowercase.
 	//
 	// Key: From. Value: To.
 	FullTranslitMap map[string]string `yaml:"full_translit_map"`
 
 	// SimilarTranslit specifies if name transliteration between visually similar characters should be used to detect
-	// which M3U channel corresponds a stream.
+	// which M3U channel corresponds to a stream.
 	SimilarTranslit bool `yaml:"similar_translit"`
 
 	// SimilarTranslitMap represents source to destination character mapping.
 	//
-	// All symbols are lowercase as comparsion function will convert every character in a name to lowercase.
+	// All symbols are lowercase as the comparison function converts every character in a name to lowercase.
 	//
 	// Key: From. Value: To.
 	SimilarTranslitMap map[string]string `yaml:"similar_translit_map"`
 
-	// NameAliases specifies if name aliases should be used to detect which M3U channel corresponds a stream.
+	// NameAliases specifies if name aliases should be used to detect which M3U channel corresponds to a stream.
 	NameAliases bool `yaml:"name_aliases"`
 
 	// NameAliasList represents the list of lists.
 	//
 	// Names defined here will be considered identical to any other name in the same nested group.
 	//
-	// During comparsion, names will be simplified (lowercase, no special characters except the '+' sign), but not
+	// During comparison, names will be simplified (lowercase, no special characters except the '+' sign), but not
 	// transliterated.
 	NameAliasList [][]string `yaml:"name_alias_list"`
 
-	// NameAliasList represents simplified version of NameAliasList.
+	// SimpleNameAliasList represents simplified version of NameAliasList.
 	//
-	// This field will not be included into config and used to improve performance of util/compare.IsNameSame().
+	// This field is not included into config and is used to improve performance of util/compare.IsNameSame().
 	SimpleNameAliasList [][]string `yaml:"-"`
 
 	// AstraAPIRespTimeout represents astra API response timeout.
@@ -97,21 +98,21 @@ type M3U struct {
 	// RespTimeout represents M3U playlist URL response timeout.
 	RespTimeout time.Duration `yaml:"resp_timeout"`
 
-	// ChannNameBlacklist represens the list of regular expressions.
+	// ChannNameBlacklist represents the list of regular expressions.
 	//
-	// If any expression match name of a channel, this channel will be removed from M3U input before merging.
+	// If any expression matches name of a channel, this channel will be removed from M3U input before merging.
 	ChannNameBlacklist []*regexp2.Regexp `yaml:"chann_name_blacklist"`
 
-	// ChannGroupBlacklist represens the list of regular expressions.
+	// ChannGroupBlacklist represents the list of regular expressions.
 	//
-	// If any expression match group of a channel, this channel will be removed from M3U input before merging.
+	// If any expression matches group of a channel, this channel will be removed from M3U input before merging.
 	//
 	// It runs after replacing groups by ChannGroupMap so enter the appropriate values.
 	ChannGroupBlacklist []*regexp2.Regexp `yaml:"chann_group_blacklist"`
 
-	// ChannURLBlacklist represens the list of regular expressions.
+	// ChannURLBlacklist represents the list of regular expressions.
 	//
-	// If any expression match URL of a channel, this channel will be removed from M3U input before merging.
+	// If any expression matches URL of a channel, this channel will be removed from M3U input before merging.
 	ChannURLBlacklist []*regexp2.Regexp `yaml:"chann_url_blacklist"`
 
 	// ChannGroupMap represents invalid to valid M3U channel group mapping.
@@ -125,7 +126,7 @@ type Streams struct {
 	// AddedPrefix represents new stream name prefix.
 	AddedPrefix string `yaml:"added_prefix"`
 
-	// AddNew specifies if new astra streams should be added if streams does not contain M3U channel name.
+	// AddNew specifies if new astra streams should be added if streams do not contain M3U channel name.
 	AddNew bool `yaml:"add_new"`
 
 	// AddGroupsToNew specifies if groups should be added to new astra streams.
@@ -147,7 +148,7 @@ type Streams struct {
 	// MPTS - Multi-Program Transport Stream. Preparing multiplexes to DVB modulators.
 	NewType StreamType `yaml:"new_type"`
 
-	// NewKeepActive represents delay before stop stream if no active connections for new streams.
+	// NewKeepActive represents delay before stopping new streams if they have no active connections.
 	NewKeepActive int `yaml:"new_keep_active"`
 
 	// DisabledPrefix represents disabled stream name prefix.
@@ -165,7 +166,7 @@ type Streams struct {
 	// (but not removed).
 	EnableOnInputUpdate bool `yaml:"enable_on_input_update"`
 
-	// Rename specifies if astra streams should be renamed as M3U channels if their standartized names are equal.
+	// Rename specifies if astra streams should be renamed as M3U channels if their standardized names are equal.
 	Rename bool `yaml:"rename"`
 
 	// AddNewInputs specifies if new inputs of astra streams should be added if such found in M3U channels.
@@ -181,28 +182,28 @@ type Streams struct {
 	// SortInputs specifies if inputs of astra streams should be sorted.
 	SortInputs bool `yaml:"sort_inputs"`
 
-	// InputWeightToTypeMap represents Mapping of how high stream input should appear in the list after sorting.
+	// InputWeightToTypeMap represents mapping of how high stream input should appear in the list after sorting.
 	//
 	// Input gets weight of the first matching regular expression in order of the config, or UnknownInputWeight.
 	InputWeightToTypeMap []InputWeightRule `yaml:"input_weight_to_type_map"`
 
-	// UnknownInputWeight represents Default weight of unknown inputs.
+	// UnknownInputWeight represents default weight of unknown inputs.
 	UnknownInputWeight int `yaml:"unknown_input_weight"`
 
-	// InputBlacklist represens the list of regular expressions.
+	// InputBlacklist represents the list of regular expressions.
 	//
-	// If any expression match URL of a stream's input, this input will be removed from astra streams before adding new
-	// ones.
+	// If any expression matches URL of a stream's input, this input will be removed from astra streams before adding
+	// new ones.
 	InputBlacklist []*regexp2.Regexp `yaml:"input_blacklist"`
 
-	// RemoveDuplicatedInputs specifies if inputs of astra streams which already present in config should be
+	// RemoveDuplicatedInputs specifies if inputs of astra streams which are already present in config should be
 	// removed.
 	RemoveDuplicatedInputs bool `yaml:"remove_duplicated_inputs"`
 
-	// RemoveDuplicatedInputsByRxList represens the list of regular expressions.
+	// RemoveDuplicatedInputsByRxList represents the list of regular expressions.
 	//
-	// If any first capture group (anything surrounded by the first '()') of regular expression match URL of input of a
-	// stream, any other inputs of that stream which first capture group is the same will be removed from stream.
+	// If any first capture group (anything surrounded by the first '()') of regular expression matches URL of input of
+	// a stream, any other inputs of that stream whose first capture group is the same will be removed from stream.
 	//
 	// This setting is not controlled by 'remove_duplicated_inputs'.
 	RemoveDuplicatedInputsByRxList []*regexp2.Regexp `yaml:"remove_duplicated_inputs_by_rx_list"`
@@ -212,19 +213,19 @@ type Streams struct {
 
 	// EnableStreamInputsByRxList represents the list of regular expressions.
 	//
-	// If any expression match URL of a stream's disabled input, this input will be enabled.
+	// If any expression matches URL of a stream's disabled input, this input will be enabled.
 	EnableStreamInputsByRxList []*regexp2.Regexp `yaml:"enable_stream_inputs_by_rx_list"`
 
 	// DisableStreamInputsByRxList represents the list of regular expressions.
 	//
-	// If any expression match URL of a stream's input, this input will be disabled.
+	// If any expression matches URL of a stream's input, this input will be disabled.
 	//
 	// It has priority over EnableStreamInputsByRxList.
 	DisableStreamInputsByRxList []*regexp2.Regexp `yaml:"disable_stream_inputs_by_rx_list"`
 
-	// DisableAllButOneInputByRxList represens the list of regular expressions.
+	// DisableAllButOneInputByRxList represents the list of regular expressions.
 	//
-	// If any expression match URL of a stream's input, only this input will be kept and all other will be disabled.
+	// If any expression matches URL of a stream's input, only this input will be kept and all others will be disabled.
 	//
 	// If list has multiple entries, only input matching first found expression will be kept.
 	DisableAllButOneInputByRxList []*regexp2.Regexp `yaml:"disable_all_but_one_input_by_rx_list"`
@@ -243,14 +244,14 @@ type Streams struct {
 	// Supports HTTP(S), enable 'use_analyzer' option for more.
 	DisableDeadInputs bool `yaml:"disable_dead_inputs"`
 
-	// DeadInputsCheckBlacklist represens the list of regular expressions.
+	// DeadInputsCheckBlacklist represents the list of regular expressions.
 	//
-	// If any expression match URL of a stream's input, this input will not be checked for availability.
+	// If any expression matches URL of a stream's input, this input will not be checked for availability.
 	DeadInputsCheckBlacklist []*regexp2.Regexp `yaml:"dead_inputs_check_blacklist"`
 
 	// InputMaxConns represents maximum amount of simultaneous connections to validate inputs of astra streams.
 	//
-	// Use more than 1 with caution. It may result in false positives if server consider frequent requests as spam.
+	// Use more than 1 with caution. It may result in false positives if server considers frequent requests as spam.
 	InputMaxConns int `yaml:"input_max_conns"`
 
 	// InputRespTimeout represents astra stream input response timeout.
@@ -271,51 +272,51 @@ type Streams struct {
 	// response from stream input.
 	AnalyzerMaxAttempts int `yaml:"analyzer_max_attempts"`
 
-	// AnalyzerWatchTime represents average bitrate threshold in kbit/s for stream inputs.
+	// AnalyzerBitrateThreshold represents average bitrate threshold in kbit/s for stream inputs.
 	//
-	// If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.
+	// If astra analyzer returns bitrate lower than specified threshold, input will be considered dead.
 	AnalyzerBitrateThreshold int `yaml:"analyzer_bitrate_threshold"`
 
 	// AnalyzerVideoOnlyBitrateThreshold represents average bitrate threshold in kbit/s for stream inputs without audio.
 	//
-	// If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.
+	// If astra analyzer returns bitrate lower than specified threshold, input will be considered dead.
 	AnalyzerVideoOnlyBitrateThreshold int `yaml:"analyzer_video_only_bitrate_threshold"`
 
 	// AnalyzerAudioOnlyBitrateThreshold represents average bitrate threshold in kbit/s for stream inputs without video.
 	//
-	// If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.
+	// If astra analyzer returns bitrate lower than specified threshold, input will be considered dead.
 	AnalyzerAudioOnlyBitrateThreshold int `yaml:"analyzer_audio_only_bitrate_threshold"`
 
 	// AnalyzerCCErrorsThreshold represents average amount of CC errors for stream inputs.
 	//
-	// If astra analyzer will return amount of CC errors higher than specified threshold, input will be cosidered dead.
+	// If astra analyzer returns amount of CC errors higher than specified threshold, input will be considered dead.
 	//
 	// Set to negative value to disable this check.
 	AnalyzerCCErrorsThreshold int `yaml:"analyzer_cc_errors_threshold"`
 
 	// AnalyzerPCRErrorsThreshold represents average amount of PCR errors for stream inputs.
 	//
-	// If astra analyzer will return amount of PCR errors higher than specified threshold, input will be cosidered dead.
+	// If astra analyzer returns amount of PCR errors higher than specified threshold, input will be considered dead.
 	//
 	// Set to negative value to disable this check.
 	AnalyzerPCRErrorsThreshold int `yaml:"analyzer_pcr_errors_threshold"`
 
 	// AnalyzerPESErrorsThreshold represents average amount of PES errors for stream inputs.
 	//
-	// If astra analyzer will return amount of PES errors higher than specified threshold, input will be cosidered dead.
+	// If astra analyzer returns amount of PES errors higher than specified threshold, input will be considered dead.
 	//
 	// Set to negative value to disable this check.
 	AnalyzerPESErrorsThreshold int `yaml:"analyzer_pes_errors_threshold"`
 
-	// InputUpdateMap represens list of regular expression pairs.
+	// InputUpdateMap represents list of regular expression pairs.
 	//
-	// If any `From` expression match URL of astra stream's input, it will be replaced with URL from according M3U
+	// If any `From` expression matches URL of astra stream's input, it will be replaced with URL from according M3U
 	// channel if it matches the `To` expression.
 	//
 	// In most cases specified `From` and `To` should be identical.
 	//
 	// Using InputBlacklist with AddNewInputs instead will have almost the same end result but since old
-	// URL's will be removed beforehand, original hash (#...) will be lost. Also it will be less clear which input was
+	// URLs will be removed beforehand, original hash (#...) will be lost. Also it will be less clear which input was
 	// being replaced.
 	InputUpdateMap []UpdateRecord `yaml:"input_update_map"`
 
@@ -327,7 +328,7 @@ type Streams struct {
 	KeepInputHash bool `yaml:"keep_input_hash"`
 
 	// RemoveInputsByUpdateMap specifies if inputs of astra streams which match at least one InputUpdateMap.From
-	// expression but not in M3U channels should be removed.
+	// expression but are not in M3U channels should be removed.
 	RemoveInputsByUpdateMap bool `yaml:"remove_inputs_by_update_map"`
 
 	// NameToInputHashMap represents mapping of stream name regular expression to stream input hash which should
@@ -407,7 +408,7 @@ func (e BadRegexpError) Error() string {
 	return fmt.Sprintf("%v; Regular expression: %v", e.Reason, e.Regexp.String())
 }
 
-// Init returns config instance and false if config at `cfgFilePath` already exist.
+// Init returns config instance and false if config at `cfgFilePath` already exists.
 //
 // If config does not exist, creates a default, returns empty instance and true.
 //
@@ -461,7 +462,7 @@ func Init(log *logger.Logger, cfgFilePath string) (Root, bool, error) {
 		return nil
 	}
 
-	// Read config or create a new if not exist.
+	// Read config or create a new one if it does not exist.
 	if err := readConfig(); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			log.Info("Config file not found, creating a default")
@@ -631,14 +632,14 @@ func defCommentMap() yaml.CommentMap {
 		"$.general.full_translit": []*yaml.Comment{
 			yaml.HeadComment(
 				"",
-				" Use name transliteration to detect which M3U channel corresponds a stream?",
+				" Use name transliteration to detect which M3U channel corresponds to a stream?",
 			),
 		},
 		"$.general.full_translit_map": []*yaml.Comment{
 			yaml.HeadComment(
 				"",
 				" Source to destination character mapping.",
-				" All symbols are lowercase as comparsion function will convert every character in a name to lowercase.",
+				" All symbols are lowercase as the comparison function converts every character in a name to lowercase.",
 				" Key: From. Value: To.",
 			),
 		},
@@ -646,21 +647,21 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" Use name transliteration between visually similar characters to detect",
-				" which M3U channel corresponds a stream?",
+				" which M3U channel corresponds to a stream?",
 			),
 		},
 		"$.general.similar_translit_map": []*yaml.Comment{
 			yaml.HeadComment(
 				"",
 				" Source to destination character mapping.",
-				" All symbols are lowercase as comparsion function will convert every character in a name to lowercase.",
+				" All symbols are lowercase as the comparison function converts every character in a name to lowercase.",
 				" Key: From. Value: To.",
 			),
 		},
 		"$.general.name_aliases": []*yaml.Comment{
 			yaml.HeadComment(
 				"",
-				" Use name aliases list to detect which M3U channel corresponds a stream?",
+				" Use name aliases list to detect which M3U channel corresponds to a stream?",
 			),
 		},
 		"$.general.name_alias_list": []*yaml.Comment{
@@ -668,7 +669,7 @@ func defCommentMap() yaml.CommentMap {
 				"",
 				" List of lists.",
 				" Names defined here will be considered identical to any other name in the same nested group.",
-				" During comparsion, names will be simplified (lowercase, no special characters except the '+' sign),",
+				" During comparison, names will be simplified (lowercase, no special characters except the '+' sign),",
 				" but not transliterated.",
 				" - - 'Sample'",
 				"   - 'Sample TV'",
@@ -706,7 +707,7 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" List of regular expressions.",
-				" If any expression match name of a channel, this channel will be removed from M3U input before merging.",
+				" If any expression matches name of a channel, this channel will be removed from M3U input before merging.",
 				" - 'Nonsense TV'",
 				" - '(?i)^Test$'",
 			),
@@ -715,7 +716,7 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" List of regular expressions.",
-				" If any expression match group of a channel, this channel will be removed from M3U input before merging.",
+				" If any expression matches group of a channel, this channel will be removed from M3U input before merging.",
 				" It runs after replacing groups by 'chann_group_map' so enter the appropriate values.",
 				" - '18\\+'",
 				" - '(?i)^cooking$'",
@@ -725,7 +726,7 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" List of regular expressions.",
-				" If any expression match URL of a channel, this channel will be removed from M3U input before merging.",
+				" If any expression matches URL of a channel, this channel will be removed from M3U input before merging.",
 				" - 'https?:\\/\\/filter_me\\.com'",
 				" - '192\\.168\\.88\\.14\\/play'",
 			),
@@ -757,7 +758,7 @@ func defCommentMap() yaml.CommentMap {
 		"$.streams.add_new": []*yaml.Comment{
 			yaml.HeadComment(
 				"",
-				" Add new astra streams if streams does not contain M3U channel name?",
+				" Add new astra streams if streams do not contain M3U channel name?",
 			),
 		},
 		"$.streams.add_groups_to_new": []*yaml.Comment{
@@ -795,7 +796,7 @@ func defCommentMap() yaml.CommentMap {
 		"$.streams.new_keep_active": []*yaml.Comment{
 			yaml.HeadComment(
 				"",
-				" Delay before stop stream if no active connections for new streams.",
+				" Delay before stopping new streams if they have no active connections.",
 			),
 		},
 		"$.streams.disabled_prefix": []*yaml.Comment{
@@ -827,7 +828,7 @@ func defCommentMap() yaml.CommentMap {
 		"$.streams.rename": []*yaml.Comment{
 			yaml.HeadComment(
 				"",
-				" Rename astra streams as M3U channels if their standartized names are equal?",
+				" Rename astra streams as M3U channels if their standardized names are equal?",
 			),
 		},
 		"$.streams.add_new_inputs": []*yaml.Comment{
@@ -876,7 +877,7 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" List of regular expressions.",
-				" If any expression match URL of a stream's input, this input will be removed from astra streams before adding",
+				" If any expression matches URL of a stream's input, this input will be removed from astra streams before adding",
 				" new ones.",
 				" - 'https?:\\/\\/filter_me\\.com'",
 				" - '192\\.168\\.88\\.14\\/play'",
@@ -885,15 +886,15 @@ func defCommentMap() yaml.CommentMap {
 		"$.streams.remove_duplicated_inputs": []*yaml.Comment{
 			yaml.HeadComment(
 				"",
-				" Remove inputs of astra streams which already present in config?",
+				" Remove inputs of astra streams which are already present in config?",
 			),
 		},
 		"$.streams.remove_duplicated_inputs_by_rx_list": []*yaml.Comment{
 			yaml.HeadComment(
 				"",
 				" List of regular expressions.",
-				" If any first capture group (anything surrounded by the first '()') of regular expression match URL of input of",
-				" a stream, any other inputs of that stream which first capture group is the same will be removed from stream.",
+				" If any first capture group (anything surrounded by the first '()') of regular expression matches URL of input of",
+				" a stream, any other inputs of that stream whose first capture group is the same will be removed from stream.",
 				" This setting is not controlled by 'remove_duplicated_inputs'.",
 				" - '^.*:\\/\\/([^#?/]*)' # By host",
 				" - '^.*:\\/\\/.*?\\/([^#?]*)' # By path",
@@ -909,7 +910,7 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" List of regular expressions.",
-				" If any expression match URL of a stream's disabled input, this input will be enabled.",
+				" If any expression matches URL of a stream's disabled input, this input will be enabled.",
 				" - 'restored_provider\\.tv'",
 			),
 		},
@@ -917,7 +918,7 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" List of regular expressions.",
-				" If any expression match URL of a stream's input, this input will be disabled.",
+				" If any expression matches URL of a stream's input, this input will be disabled.",
 				" It has priority over 'enable_stream_inputs_by_rx_list'.",
 				" - 'broken_provider\\.tv'",
 			),
@@ -926,7 +927,7 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" List of regular expressions.",
-				" If any expression match URL of a stream's input, only this input will be kept and all other will be disabled.",
+				" If any expression matches URL of a stream's input, only this input will be kept and all others will be disabled.",
 				" If list has multiple entries, only input matching first found expression will be kept.",
 				" - '[#&]no_sync(&|$)'",
 			),
@@ -950,7 +951,7 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" List of regular expressions.",
-				" If any expression match URL of a stream's input, this input will not be checked for availability.",
+				" If any expression matches URL of a stream's input, this input will not be checked for availability.",
 				" - 'https?:\\/\\/dont-check\\.com\\/play'",
 				" - '192\\.168\\.88\\.'",
 			),
@@ -959,7 +960,7 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" Maximum amount of simultaneous connections to validate inputs of astra streams.",
-				" Use more than 1 with caution. It may result in false positives if server consider frequent requests as spam.",
+				" Use more than 1 with caution. It may result in false positives if server considers frequent requests as spam.",
 			),
 		},
 		"$.streams.input_resp_timeout": []*yaml.Comment{
@@ -997,29 +998,28 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" Average bitrate threshold in kbit/s for stream inputs.",
-				" If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.",
+				" If astra analyzer returns bitrate lower than specified threshold, input will be considered dead.",
 			),
 		},
 		"$.streams.analyzer_video_only_bitrate_threshold": []*yaml.Comment{
 			yaml.HeadComment(
 				"",
 				" Average bitrate threshold in kbit/s for stream inputs without audio.",
-				" If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.",
+				" If astra analyzer returns bitrate lower than specified threshold, input will be considered dead.",
 			),
 		},
 		"$.streams.analyzer_audio_only_bitrate_threshold": []*yaml.Comment{
 			yaml.HeadComment(
 				"",
 				" Average bitrate threshold in kbit/s for stream inputs without video.",
-				" If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.",
+				" If astra analyzer returns bitrate lower than specified threshold, input will be considered dead.",
 			),
 		},
 		"$.streams.analyzer_cc_errors_threshold": []*yaml.Comment{
 			yaml.HeadComment(
 				"",
 				" Average amount of CC errors for stream inputs.",
-				" If astra analyzer will return amount of CC errors higher than specified threshold, input will be cosidered",
-				" dead.",
+				" If astra analyzer returns amount of CC errors higher than specified threshold, input will be considered dead.",
 				" Set to negative value to disable this check.",
 			),
 		},
@@ -1027,8 +1027,7 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" Average amount of PCR errors for stream inputs.",
-				" If astra analyzer will return amount of PCR errors higher than specified threshold, input will be cosidered",
-				" dead.",
+				" If astra analyzer returns amount of PCR errors higher than specified threshold, input will be considered dead.",
 				" Set to negative value to disable this check.",
 			),
 		},
@@ -1036,8 +1035,7 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" Average amount of PES errors for stream inputs.",
-				" If astra analyzer will return amount of PES errors higher than specified threshold, input will be cosidered",
-				" dead.",
+				" If astra analyzer returns amount of PES errors higher than specified threshold, input will be considered dead.",
 				" Set to negative value to disable this check.",
 			),
 		},
@@ -1045,7 +1043,7 @@ func defCommentMap() yaml.CommentMap {
 			yaml.HeadComment(
 				"",
 				" List of regular expression pairs.",
-				" If any 'from' expression match URL of astra stream's input, it will be replaced with URL from according M3U",
+				" If any 'from' expression matches URL of astra stream's input, it will be replaced with URL from according M3U",
 				" channel if it matches the 'to' expression.",
 				" Only first matching input will be updated per M3U channel.",
 				" In most cases specified 'from' and 'to' should be identical.",
@@ -1070,7 +1068,7 @@ func defCommentMap() yaml.CommentMap {
 		"$.streams.remove_inputs_by_update_map": []*yaml.Comment{
 			yaml.HeadComment(
 				"",
-				" Remove inputs of astra streams which match at least one 'input_update_map.from' expression but not in M3U",
+				" Remove inputs of astra streams which match at least one 'input_update_map.from' expression but are not in M3U",
 				" channels?",
 			),
 		},

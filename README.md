@@ -6,14 +6,14 @@ Heavily configurable CLI tool to add channels from M3U playlist into [Cesbo Astr
 
 ## Why was it made?
 
-To simplify the process of adding new, updating and removing astra streams and it's inputs.
+To simplify the process of adding new, updating and removing astra streams and their inputs.
 
-## How it works?
+## How does it work?
 
-It connects to astra using API, reads its config (mostly streams), adds M3U channels into it from `--m3uPath` by rules
+It connects to astra using its API, reads its config (mostly streams), adds M3U channels into it from `--m3uPath` by rules
 defined in `--programCfgPath` and sends requests to astra to modify config.
 
-## How to use it?
+## How to use it
 
 | Command argument     | Description                                                                                     |
 | -------------------- | ----------------------------------------------------------------------------------------------- |
@@ -29,25 +29,25 @@ defined in `--programCfgPath` and sends requests to astra to modify config.
 | -u, --astraUser      | Astra user                                                                                      |
 | -p, --astraPwd       | Astra password                                                                                  |
 
-Unless config already exists, on first run it creates default config in current directory and terminates.
+Unless config already exists, on first run it creates a default config in the current directory and terminates.
 Tweak it to suit your needs and start the program again.
 
 ## Downloads
 
-See [releases page](https://github.com/SCP002/m3u-merge-astra/releases)
+See the [releases page](https://github.com/SCP002/m3u-merge-astra/releases).
 
 ## Tips
 
-* `--version` and `--help` goes to **stdout**.  
-  Logs goes to **stderr**.
+* `--version` and `--help` go to **stdout**.  
+  Logs go to **stderr**.
 
-* It is possible to add streams from one instance of astra to another one, for example:  
+* It is possible to add streams from one instance of astra to another one, for example:
 
   ```sh
   m3u-merge-astra -m http://another_astra:8005/playlist.m3u8 -a 127.0.0.1:8002 -u admin -p admin
   ```
 
-* It is possible to use dummy M3U file to run independent tasks
+* It is possible to use a dummy M3U file to run independent tasks
   such as uniting inputs, removing dead ones, filtering etc., for example:
 
   ```sh
@@ -59,16 +59,15 @@ See [releases page](https://github.com/SCP002/m3u-merge-astra/releases)
 
 ## Docker
 
-For developement:
+For development, open the project in Visual Studio Code with the `Dev Containers` extension installed, or enter the
+devcontainer manually:
 
 ```sh
 docker compose --file compose.dev.yaml up --detach
 docker compose --file compose.dev.yaml exec dev bash
 ```
 
-to enter the devcontainer, or open the project in Visual Studio Code with `Dev Containers` extension installed.
-
-To build in container environment:
+To build in a container environment:
 
 ```sh
 docker compose --file compose.dev.yaml run --rm --build dev bash ./build.sh
@@ -104,28 +103,28 @@ lookahead `(?!...)`.
   General settings of the program.
 
   * `full_translit`  
-    Use name transliteration to detect which M3U channel corresponds a stream?
+    Use name transliteration to detect which M3U channel corresponds to a stream?
 
   * `full_translit_map`  
     Source to destination character mapping.  
-    All symbols are lowercase as comparsion function will convert every character in a name to lowercase.  
+    All symbols are lowercase as the comparison function converts every character in a name to lowercase.  
     Key: From. Value: To.
 
   * `similar_translit`  
-    Use name transliteration between visually similar characters to detect which M3U channel corresponds a stream?
+    Use name transliteration between visually similar characters to detect which M3U channel corresponds to a stream?
 
   * `similar_translit_map`  
-    Source to destination character mapping.
-    All symbols are lowercase as comparsion function will convert every character in a name to lowercase.  
+    Source to destination character mapping.  
+    All symbols are lowercase as the comparison function converts every character in a name to lowercase.  
     Key: From. Value: To.
 
   * `name_aliases`  
-    Use name aliases list to detect which M3U channel corresponds a stream?
+    Use name aliases list to detect which M3U channel corresponds to a stream?
 
   * `name_alias_list`  
-    List of lists.
-    Names defined here will be considered identical to any other name in the same nested group.
-    During comparsion, names will be simplified (lowercase, no special characters except the `+` sign),
+    List of lists.  
+    Names defined here will be considered identical to any other name in the same nested group.  
+    During comparison, names will be simplified (lowercase, no special characters except the `+` sign),
     but not transliterated.
 
   * `astra_api_resp_timeout`  
@@ -142,16 +141,16 @@ lookahead `(?!...)`.
 
   * `chann_name_blacklist`  
     List of regular expressions.  
-    If any expression match name of a channel, this channel will be removed from M3U input before merging.
+    If any expression matches name of a channel, this channel will be removed from M3U input before merging.
 
   * `chann_group_blacklist`  
     List of regular expressions.  
-    If any expression match group of a channel, this channel will be removed from M3U input before merging.  
+    If any expression matches group of a channel, this channel will be removed from M3U input before merging.  
     It runs after replacing groups by `chann_group_map` so enter the appropriate values.
 
   * `chann_url_blacklist`  
     List of regular expressions.  
-    If any expression match URL of a channel, this channel will be removed from M3U input before merging.
+    If any expression matches URL of a channel, this channel will be removed from M3U input before merging.
 
   * `chann_group_map`  
     Invalid to valid M3U channel group mapping.  
@@ -167,7 +166,7 @@ lookahead `(?!...)`.
     > To distinguish between regular streams and streams added by this program.
 
   * `add_new`  
-    Add new astra streams if streams does not contain M3U channel name?
+    Add new astra streams if streams do not contain M3U channel name?
 
   * `add_groups_to_new`  
     Add groups to new astra streams?
@@ -178,7 +177,7 @@ lookahead `(?!...)`.
   * `add_new_with_known_inputs`  
     Add new astra streams if streams contain M3U channel URL?
     > Why does it exist?  
-    > To prevent adding duplicate of existing channel under a different name.
+    > To prevent adding a duplicate of an existing channel under a different name.
 
   * `make_new_enabled`  
     Make new streams enabled?
@@ -189,7 +188,7 @@ lookahead `(?!...)`.
     `mpts` - Multi-Program Transport Stream. Preparing multiplexes to DVB modulators.
 
   * `new_keep_active`  
-    Delay before stop stream if no active connections for new streams.
+    Delay before stopping new streams if they have no active connections.
 
   * `disabled_prefix`  
     Disabled stream name prefix.  
@@ -208,35 +207,35 @@ lookahead `(?!...)`.
     Enable streams if they got new inputs or inputs were updated (but not removed)?
 
   * `rename`  
-    Rename astra streams as M3U channels if their standartized names are equal?
+    Rename astra streams as M3U channels if their standardized names are equal?
     > Why does it exist?  
     > To make astra streams named exactly as their counterparts in M3U playlist.
-    > For example, astra stream 'tv1000' could be renamed to 'TV 1000' if M3U contains the last one.
+    > For example, astra stream 'tv1000' could be renamed to 'TV 1000' if M3U contains the latter.
 
   * `add_new_inputs`  
     Add new inputs to astra streams if such found in M3U channels?  
     Inputs which streams already have, including disabled ones, are not added again, so disabled inputs stay disabled.
     > Why does it exist?  
-    > To add new inputs to existing astra streams if M3U channel with matching name found but it's URL is not in stream inputs list.
+    > To add new inputs to existing astra streams if M3U channel with matching name found but its URL is not in stream inputs list.
 
   * `unite_inputs`  
     Move inputs of astra streams with the same names to the first stream found?
     > Why does it exist?  
     > To help in removal of duplicated streams. Works best with `remove_without_inputs` or `disable_without_inputs`.  
-    > For example stream 'SPORTS (HD)' with input A and stream 'Sports HD' with input B will result
+    > For example, stream 'SPORTS (HD)' with input A and stream 'Sports HD' with input B will result
     > in 'SPORTS (HD)' with inputs A and B, and 'Sports HD' with no inputs.
 
   * `hash_check_on_add_new_inputs`  
     Add new inputs to astra streams even if M3U channel and stream input only differ by hash (everything after #)?
     > Why does it exist?  
-    > To prevent adding already exising URL's to inputs astra astreams.  
-    > For example if it set to 'true', M3U channel URL '<http://channel>' will be added to stream with input
+    > To prevent adding already existing URLs to inputs of astra streams.  
+    > For example, if it is set to 'true', M3U channel URL '<http://channel>' will be added to stream with input
     > '<http://channel#no_sync>', otherwise it won't.
 
   * `sort_inputs`  
     Sort inputs of astra streams?
     > Why does it exist?  
-    > To structurize logs and produce astra config which is easier to navigate in.
+    > To structure logs and produce astra config which is easier to navigate in.
 
   * `input_weight_to_type_map`  
     Mapping of how high stream input should appear in the list after sorting.  
@@ -248,37 +247,37 @@ lookahead `(?!...)`.
 
   * `input_blacklist`  
     List of regular expressions.  
-    If any expression match URL of a stream's input, this input will be removed from astra streams before adding new ones.
+    If any expression matches URL of a stream's input, this input will be removed from astra streams before adding new ones.
 
   * `remove_duplicated_inputs`  
-    Remove inputs of astra streams which already present in config?
+    Remove inputs of astra streams which are already present in config?
 
   * `remove_duplicated_inputs_by_rx_list`  
     List of regular expressions.  
-    If any first capture group (anything surrounded by the first `()`) of regular expression match URL of input of a
-    stream, any other inputs of that stream which first capture group is the same will be removed from stream.  
+    If any first capture group (anything surrounded by the first `()`) of regular expression matches URL of input of a
+    stream, any other inputs of that stream whose first capture group is the same will be removed from stream.  
     This setting is not controlled by `remove_duplicated_inputs`.
     > Why does it exist?  
-    > To be able to remove dulticated inputs per stream by specific conditions, for example by host name.
+    > To be able to remove duplicated inputs per stream by specific conditions, for example by host name.
 
   * `remove_disabled_inputs`  
     Remove disabled inputs?
 
   * `enable_stream_inputs_by_rx_list`  
     List of regular expressions.  
-    If any expression match URL of a stream's disabled input, this input will be enabled.
+    If any expression matches URL of a stream's disabled input, this input will be enabled.
 
   * `disable_stream_inputs_by_rx_list`  
     List of regular expressions.  
-    If any expression match URL of a stream's input, this input will be disabled.  
+    If any expression matches URL of a stream's input, this input will be disabled.  
     It has priority over `enable_stream_inputs_by_rx_list`.
 
   * `disable_all_but_one_input_by_rx_list`  
     List of regular expressions.  
-    If any expression match URL of a stream's input, only this input will be kept and all other will be disabled.  
+    If any expression matches URL of a stream's input, only this input will be kept and all others will be disabled.  
     If list has multiple entries, only input matching first found expression will be kept.
     > Why does it exist?  
-    > To give an option to leave only one input in stream, if specific inputs implies so.
+    > To give an option to leave only one input in stream, if specific inputs imply so.
     >
     > For example, input with `#no_sync` will periodically be unavailable, causing stream to switch to another input,
     > causing unwanted interruptions.
@@ -295,17 +294,17 @@ lookahead `(?!...)`.
 
   * `dead_inputs_check_blacklist`  
     List of regular expressions.  
-    If any expression match URL of a stream's input, this input will not be checked for availability.
+    If any expression matches URL of a stream's input, this input will not be checked for availability.
 
   * `input_max_conns`  
     Maximum amount of simultaneous connections to validate inputs of astra streams.  
-    Use more than 1 with caution. It may result in false positives if server consider frequent requests as spam.
+    Use more than 1 with caution. It may result in false positives if server considers frequent requests as spam.
 
   * `input_resp_timeout`  
     Astra stream input response timeout.
 
   * `use_analyzer`  
-    Use astra analyzer (astra --analyze -p \<port\>) to check for dead inputs?  
+    Use astra analyzer (`astra --analyze -p <port>`) to check for dead inputs?  
     Supports HTTP(S), UDP, RTP, RTSP.
     > Why does it exist?  
     > To remove or disable dead inputs by advanced criteria such as bitrate or errors, check more protocols and
@@ -320,39 +319,39 @@ lookahead `(?!...)`.
   * `analyzer_max_attempts`  
     Maximum amount of attempts that astra analyzer should perform trying to get response from stream input.
     > Why does it exist?  
-    > On rare occasions, some streams may not respond after first request no matter how much time analyzer will
-    > spend trying to get info from it.
+    > On rare occasions, some streams may not respond to the first request no matter how much time analyzer
+    > spends trying to get info from them.
 
   * `analyzer_bitrate_threshold`  
     Average bitrate threshold in kbit/s for stream inputs.  
-    If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.
+    If astra analyzer returns bitrate lower than specified threshold, input will be considered dead.
 
   * `analyzer_video_only_bitrate_threshold`  
     Average bitrate threshold in kbit/s for stream inputs without audio.  
-    If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.
+    If astra analyzer returns bitrate lower than specified threshold, input will be considered dead.
 
   * `analyzer_audio_only_bitrate_threshold`  
     Average bitrate threshold in kbit/s for stream inputs without video.  
-    If astra analyzer will return bitrate lower than specified threshold, input will be cosidered dead.
+    If astra analyzer returns bitrate lower than specified threshold, input will be considered dead.
 
   * `analyzer_cc_errors_threshold`  
     Average amount of CC errors for stream inputs.  
-    If astra analyzer will return amount of CC errors higher than specified threshold, input will be cosidered dead.  
+    If astra analyzer returns amount of CC errors higher than specified threshold, input will be considered dead.  
     Set to negative value to disable this check.
 
   * `analyzer_pcr_errors_threshold`  
     Average amount of PCR errors for stream inputs.  
-    If astra analyzer will return amount of PCR errors higher than specified threshold, input will be cosidered dead.  
+    If astra analyzer returns amount of PCR errors higher than specified threshold, input will be considered dead.  
     Set to negative value to disable this check.
 
   * `analyzer_pes_errors_threshold`  
     Average amount of PES errors for stream inputs.  
-    If astra analyzer will return amount of PES errors higher than specified threshold, input will be cosidered dead.  
+    If astra analyzer returns amount of PES errors higher than specified threshold, input will be considered dead.  
     Set to negative value to disable this check.
 
   * `input_update_map`  
     List of regular expression pairs.  
-    If any `from` expression match URL of astra stream's input, it will be replaced with URL from according M3U
+    If any `from` expression matches URL of astra stream's input, it will be replaced with URL from according M3U
     channel if it matches the `to` expression.  
     Only first matching input will be updated per M3U channel.  
     In most cases specified `from` and `to` should be identical.
@@ -361,10 +360,10 @@ lookahead `(?!...)`.
     > preserve input's order, existing hashes (everything after #) and to produce readable report
     > about which inputs were replaced.  
     >
-    > Why not to use `input_blacklist` to remove, `add_new_inputs` to add, **\*_to_input_hash_map**
+    > Why not use `input_blacklist` to remove, `add_new_inputs` to add, **\*_to_input_hash_map**
     > to generate hashes and `sort_inputs` to sort them instead?  
     > Since old inputs will be removed beforehand, original hash will be lost and **\*_to_input_hash_map**
-    > might not cover your usecase, the same with bulk sorting.  
+    > might not cover your use case, the same with bulk sorting.  
     > Also update will be divided into 3 different parts, making it difficult to see actual changes.
 
   * `update_inputs`  
@@ -374,9 +373,9 @@ lookahead `(?!...)`.
     Keep old input hash on updating inputs of astra streams?
 
   * `remove_inputs_by_update_map`  
-    Remove inputs of astra streams which match at least one `input_update_map.from` expression but not in M3U channels?
+    Remove inputs of astra streams which match at least one `input_update_map.from` expression but are not in M3U channels?
     > Why does it exist?  
-    > To remove inputs of astra streams which are no longer valid (meant to be updated but not exist anymore).
+    > To remove inputs of astra streams which are no longer valid (meant to be updated but do not exist anymore).
 
   * `name_to_input_hash_map`  
     Mapping of stream name regular expression to stream input hash which should be added.
@@ -392,7 +391,7 @@ lookahead `(?!...)`.
   * `input_to_input_hash_map`  
     Mapping of stream input regular expression to stream input hash which should be added.
     > Why does it exist?  
-    > To be able to add specific hashes per stream input, for example set User-Agent (#ua=...) to specific URL's.
+    > To be able to add specific hashes per stream input, for example set User-Agent (#ua=...) to specific URLs.
 
   * `name_to_keep_active_map`  
     Mapping of stream name regular expression to `keep active` setting of stream which should be set.  
@@ -417,7 +416,7 @@ lookahead `(?!...)`.
 
 1. Install [Golang](https://golang.org/) 1.27.3 or newer.
 
-2. Download the source code:  
+2. Download the source code:
 
     ```sh
     git clone https://github.com/SCP002/m3u-merge-astra.git
@@ -443,7 +442,7 @@ lookahead `(?!...)`.
     go get -u ./...
     ```
 
-5. To build a binary for current OS / architecture into `./build/` folder:
+5. To build a binary for current OS / architecture into the `./build/` folder:
 
     ```sh
     go build -trimpath -ldflags "-s -w" -o build/ .
