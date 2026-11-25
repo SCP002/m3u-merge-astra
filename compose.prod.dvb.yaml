@@ -1,0 +1,6 @@
+# Override for hosts with DVB adapters. Drivers (DD / TBS) and firmware must be installed on the host.
+# Adapters are captured at container start: restart the container after reloading drivers.
+services:
+  astra:
+    devices:
+      - /dev/dvb:/dev/dvb

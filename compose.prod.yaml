@@ -1,0 +1,41 @@
+services:
+  astra:
+    build:
+      context: .
+      args:
+        ASTRA_URL: ${ASTRA_URL:-https://astra.cesbo.com/latest}
+    image: m3u-merge-astra
+    init: true
+    restart: unless-stopped
+    # Host network: multicast UDP in/out works, ports are published as is, and Astra sees
+    # the host's real network interfaces (same MACs as on the host, stable across re-creation).
+    network_mode: host
+    command: ["-c", "/etc/astra/astra.conf", "-p", "${ASTRA_PORT:-8000}"]
+    volumes:
+      # astra.conf and license.txt. A directory, not single files: Astra rewrites its config.
+      # Same path on the host as in a regular Astra installation.
+      - ${ASTRA_DIR:-/etc/astra}:/etc/astra
+      # m3u-merge-astra.yaml and local M3U files.
+      - ${M3U_MERGE_ASTRA_DIR:-/etc/m3u-merge-astra}:/m3u-merge-astra
+      - /etc/localtime:/etc/localtime:ro
+      - type: bind
+        source: /etc/machine-id
+        target: /etc/machine-id
+        read_only: true
+        bind:
+          create_host_path: false
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/${ASTRA_PORT:-8000}"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3

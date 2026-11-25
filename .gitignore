@@ -7,6 +7,9 @@
 # ASTRA_BIN for /workspace/.dev mount
 /.env
 
+# Local Astra files (/workspace/.dev mount)
+/.dev/
+
 # OS
 .DS_Store
 Thumbs.db

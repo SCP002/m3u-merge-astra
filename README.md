@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Heavily configurable CLI tool to add channels from M3U playlist into Cesbo Astra 5.
+Heavily configurable CLI tool to add channels from M3U playlist into [Cesbo Astra 5](https://astra.cesbo.com).
 
 ## Why was it made?
 
@@ -73,6 +73,27 @@ To build in container environment:
 ```sh
 docker compose --file compose.dev.yaml run --rm --build dev bash ./build.sh
 ```
+
+To run with Astra in production:
+
+```sh
+mkdir -p /etc/astra && cp license.txt /etc/astra/
+docker compose --file compose.prod.yaml up --detach --build
+docker compose --file compose.prod.yaml exec astra m3u-merge-astra -m playlist.m3u -u admin -p admin
+```
+
+With DVB adapters (drivers installed on the host):
+
+```sh
+docker compose --file compose.prod.yaml --file compose.prod.dvb.yaml up --detach --build
+```
+
+| Variable            | Description                                                              |
+| ------------------- | ------------------------------------------------------------------------ |
+| ASTRA_DIR           | Astra config and license directory [default: `/etc/astra`]               |
+| M3U_MERGE_ASTRA_DIR | Program config and M3U files directory [default: `/etc/m3u-merge-astra`] |
+| ASTRA_PORT          | Astra port [default: `8000`]                                             |
+| ASTRA_URL           | Astra binary URL [default: `https://astra.cesbo.com/latest`]             |
 
 ## Program config settings
 
