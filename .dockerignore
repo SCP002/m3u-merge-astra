@@ -4,6 +4,7 @@
 /.dockerignore
 /.env
 /.git/
+/.github/
 /.gitignore
 /.vscode/
 /CLAUDE.md
