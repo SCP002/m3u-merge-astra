@@ -180,8 +180,7 @@ func (s Stream) disable() Stream {
 func (s Stream) removeDuplicatedInputsByRx(log *logger.Logger, cfg cfg.Streams, callback func(string)) Stream {
 
 	// inputsCGMap is used to check if first capture group of input is the first one encountered in the list.
-	// Value of the map is not used.
-	inputsCGMap := map[string]bool{}
+	inputsCGMap := map[string]struct{}{}
 
 	for _, rx := range cfg.RemoveDuplicatedInputsByRxList {
 		for _, inp := range s.Inputs {
@@ -195,7 +194,7 @@ func (s Stream) removeDuplicatedInputsByRx(log *logger.Logger, cfg cfg.Streams, 
 				callback(inp)
 				s.Inputs = slice.RemoveLast(s.Inputs, inp)
 			} else {
-				inputsCGMap[captureGroup] = true
+				inputsCGMap[captureGroup] = struct{}{}
 			}
 		}
 	}
@@ -366,8 +365,8 @@ func (p Processor) RemoveBlockedInputs(streams []Stream) (out []Stream) {
 func (p Processor) RemoveDuplicatedInputs(streams []Stream) (out []Stream) {
 	p.log.Info("Removing duplicated inputs from streams")
 
-	// inputsMap is used to check if input is the first one encountered in the list. Value of the map is not used.
-	inputsMap := map[string]bool{}
+	// inputsMap is used to check if input is the first one encountered in the list.
+	inputsMap := map[string]struct{}{}
 
 	for _, s := range streams {
 		for _, inp := range s.Inputs {
@@ -376,7 +375,7 @@ func (p Processor) RemoveDuplicatedInputs(streams []Stream) (out []Stream) {
 					"group", s.FirstGroup(), "input", inp)
 				s.Inputs = slice.RemoveLast(s.Inputs, inp)
 			} else {
-				inputsMap[inp] = true
+				inputsMap[inp] = struct{}{}
 			}
 		}
 		out = append(out, s)
